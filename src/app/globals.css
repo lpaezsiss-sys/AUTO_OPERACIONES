@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f0f4f3;
+  --bg-deep: #e2ebe8;
+  --surface: #ffffff;
+  --ink: #0f1f1c;
+  --ink-muted: #5a6f69;
+  --accent: #0d7377;
+  --accent-hover: #095c5f;
+  --accent-soft: #d4eeef;
+  --entrada: #0f766e;
+  --salida: #b45309;
+  --border: #c9d6d2;
+  --danger: #b91c1c;
+  --shadow: 0 1px 2px rgb(15 31 28 / 0.04), 0 8px 24px rgb(15 31 28 / 0.06);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-deep: var(--bg-deep);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-entrada: var(--entrada);
+  --color-salida: var(--salida);
+  --color-border: var(--border);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-outfit);
+  --font-display: var(--font-fraunces);
+}
+
+body {
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, #c8e6e4 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, #dce8e4 0%, transparent 50%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+  color: var(--ink);
+  min-height: 100vh;
+  font-family: var(--font-outfit), system-ui, sans-serif;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.45s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out both;
+}
+
+.stagger-1 {
+  animation-delay: 0.05s;
+}
+.stagger-2 {
+  animation-delay: 0.1s;
+}
+.stagger-3 {
+  animation-delay: 0.15s;
+}
+.stagger-4 {
+  animation-delay: 0.2s;
+}

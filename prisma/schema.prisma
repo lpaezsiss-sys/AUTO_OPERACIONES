@@ -1,0 +1,44 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id              String     @id @default(cuid())
+  code            String     @unique
+  name            String
+  description     String     @default("")
+  stock           Float      @default(0)
+  averageUnitCost Float      @default(0) // CUP / PMP
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  movements       Movement[]
+}
+
+enum MovementType {
+  ENTRADA
+  SALIDA
+}
+
+model Movement {
+  id             String       @id @default(cuid())
+  type           MovementType
+  documentNumber String
+  productId      String
+  product        Product      @relation(fields: [productId], references: [id])
+  quantity       Float
+  unitPrice      Float        @default(0)
+  date           DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+
+  @@index([productId])
+  @@index([date])
+  @@index([type])
+}
