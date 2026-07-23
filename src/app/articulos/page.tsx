@@ -1,11 +1,16 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/Button";
 import { Field, Input, Textarea } from "@/components/FormFields";
 import { Modal } from "@/components/Modal";
 import { formatCurrency, formatNumber } from "@/lib/format";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import {
+  downloadInventoryCsv,
+  matchesProductSearch,
+} from "@/lib/exportCsv";
 
 type Product = {
   id: string;
@@ -35,6 +40,8 @@ export default function ArticulosPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   const load = useCallback(async () => {
     try {
@@ -53,6 +60,12 @@ export default function ArticulosPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const visibleProducts = useMemo(() => {
+    return products.filter((p) =>
+      matchesProductSearch(debouncedSearch, p.code, p.name)
+    );
+  }, [products, debouncedSearch]);
 
   function openCreate() {
     setEditing(null);
@@ -131,6 +144,22 @@ export default function ArticulosPage() {
     }
   }
 
+  function handleExport() {
+    if (visibleProducts.length === 0) return;
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadInventoryCsv(
+      visibleProducts.map((p) => ({
+        code: p.code,
+        name: p.name,
+        stock: p.stock,
+        lowStockThreshold: p.lowStockThreshold ?? 2,
+        averageUnitCost: p.averageUnitCost,
+        totalValue: p.stock * p.averageUnitCost,
+      })),
+      `articulos-${stamp}.csv`
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -147,6 +176,38 @@ export default function ArticulosPage() {
         </p>
       ) : (
         <div className="animate-fade-up overflow-hidden rounded-xl border border-border/80 bg-surface shadow-[var(--shadow)]">
+          <div className="flex flex-col gap-2 border-b border-border px-4 py-3 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="articulos-search" className="sr-only">
+                Buscar artículos
+              </label>
+              <Input
+                id="articulos-search"
+                type="search"
+                placeholder="Buscar por código o nombre…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleExport}
+              disabled={visibleProducts.length === 0}
+              className="shrink-0"
+            >
+              Exportar a CSV
+            </Button>
+          </div>
+          {debouncedSearch.trim() ? (
+            <p className="border-b border-border px-4 py-2 text-xs text-ink-muted">
+              {visibleProducts.length} resultado
+              {visibleProducts.length === 1 ? "" : "s"} para “
+              {debouncedSearch.trim()}”
+            </p>
+          ) : null}
+
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-left text-sm">
               <thead className="bg-bg-deep/60 text-xs uppercase tracking-wide text-ink-muted">
@@ -163,17 +224,19 @@ export default function ArticulosPage() {
                 </tr>
               </thead>
               <tbody>
-                {products.length === 0 ? (
+                {visibleProducts.length === 0 ? (
                   <tr>
                     <td
                       colSpan={7}
                       className="px-4 py-10 text-center text-ink-muted"
                     >
-                      Aún no hay artículos registrados.
+                      {debouncedSearch.trim()
+                        ? "No hay coincidencias para la búsqueda."
+                        : "Aún no hay artículos registrados."}
                     </td>
                   </tr>
                 ) : (
-                  products.map((p) => {
+                  visibleProducts.map((p) => {
                     const isLow = p.stock <= (p.lowStockThreshold ?? 2);
                     return (
                       <tr

@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/Button";
+import { Input } from "@/components/FormFields";
 import { formatCurrency, formatNumber } from "@/lib/format";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import {
+  downloadInventoryCsv,
+  matchesProductSearch,
+} from "@/lib/exportCsv";
 
 type DashboardItem = {
   id: string;
@@ -102,6 +108,8 @@ export default function DashboardPage() {
   const [tab, setTab] = useState<TabId>("general");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   useEffect(() => {
     let cancelled = false;
@@ -142,13 +150,33 @@ export default function DashboardPage() {
   const visibleItems = useMemo(() => {
     if (!data) return [];
     const source = tab === "bajo-stock" ? lowStockItems : data.items;
-    return [...source].sort((a, b) => compareItems(a, b, sortKey, sortDir));
-  }, [data, tab, lowStockItems, sortKey, sortDir]);
+    const filtered = source.filter((item) =>
+      matchesProductSearch(debouncedSearch, item.code, item.name)
+    );
+    return [...filtered].sort((a, b) => compareItems(a, b, sortKey, sortDir));
+  }, [data, tab, lowStockItems, debouncedSearch, sortKey, sortDir]);
 
   const tableTotalValue = useMemo(
     () => visibleItems.reduce((sum, item) => sum + item.totalValue, 0),
     [visibleItems]
   );
+
+  function handleExport() {
+    if (visibleItems.length === 0) return;
+    const stamp = new Date().toISOString().slice(0, 10);
+    const suffix = tab === "bajo-stock" ? "bajo-stock" : "inventario";
+    downloadInventoryCsv(
+      visibleItems.map((item) => ({
+        code: item.code,
+        name: item.name,
+        stock: item.stock,
+        lowStockThreshold: item.lowStockThreshold,
+        averageUnitCost: item.averageUnitCost,
+        totalValue: item.totalValue,
+      })),
+      `inventario-${suffix}-${stamp}.csv`
+    );
+  }
 
   return (
     <div>
@@ -204,47 +232,81 @@ export default function DashboardPage() {
           </div>
 
           <div className="animate-fade-up stagger-2 overflow-hidden rounded-xl border border-border/80 bg-surface shadow-[var(--shadow)]">
-            <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex gap-1 rounded-lg bg-bg-deep p-1">
-                <button
-                  type="button"
-                  onClick={() => setTab("general")}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
-                    tab === "general"
-                      ? "bg-surface text-ink shadow-sm"
-                      : "text-ink-muted hover:text-ink"
-                  }`}
-                >
-                  Inventario general
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTab("bajo-stock");
-                    setSortKey("stock");
-                    setSortDir("asc");
-                  }}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
-                    tab === "bajo-stock"
-                      ? "bg-surface text-ink shadow-sm"
-                      : "text-ink-muted hover:text-ink"
-                  }`}
-                >
-                  Bajo stock
-                  <span
-                    className={`ml-2 inline-flex min-w-5 items-center justify-center rounded-md px-1.5 py-0.5 text-xs tabular-nums ${
-                      lowStockItems.length > 0
-                        ? "bg-salida/15 text-salida"
-                        : "bg-border/60 text-ink-muted"
+            <div className="space-y-3 border-b border-border px-4 py-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex gap-1 rounded-lg bg-bg-deep p-1">
+                  <button
+                    type="button"
+                    onClick={() => setTab("general")}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
+                      tab === "general"
+                        ? "bg-surface text-ink shadow-sm"
+                        : "text-ink-muted hover:text-ink"
                     }`}
                   >
-                    {lowStockItems.length}
-                  </span>
-                </button>
+                    Inventario general
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTab("bajo-stock");
+                      setSortKey("stock");
+                      setSortDir("asc");
+                    }}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
+                      tab === "bajo-stock"
+                        ? "bg-surface text-ink shadow-sm"
+                        : "text-ink-muted hover:text-ink"
+                    }`}
+                  >
+                    Bajo stock
+                    <span
+                      className={`ml-2 inline-flex min-w-5 items-center justify-center rounded-md px-1.5 py-0.5 text-xs tabular-nums ${
+                        lowStockItems.length > 0
+                          ? "bg-salida/15 text-salida"
+                          : "bg-border/60 text-ink-muted"
+                      }`}
+                    >
+                      {lowStockItems.length}
+                    </span>
+                  </button>
+                </div>
+                {tab === "bajo-stock" ? (
+                  <p className="text-xs text-ink-muted">
+                    Artículos con stock ≤ umbral configurado en cada producto
+                  </p>
+                ) : null}
               </div>
-              {tab === "bajo-stock" ? (
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="min-w-0 flex-1">
+                  <label htmlFor="dashboard-search" className="sr-only">
+                    Buscar productos
+                  </label>
+                  <Input
+                    id="dashboard-search"
+                    type="search"
+                    placeholder="Buscar por código o nombre…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleExport}
+                  disabled={visibleItems.length === 0}
+                  className="shrink-0 sm:w-auto"
+                >
+                  Exportar a CSV
+                </Button>
+              </div>
+              {debouncedSearch.trim() ? (
                 <p className="text-xs text-ink-muted">
-                  Artículos con stock ≤ umbral configurado en cada producto
+                  {visibleItems.length} resultado
+                  {visibleItems.length === 1 ? "" : "s"} para “
+                  {debouncedSearch.trim()}”
                 </p>
               ) : null}
             </div>
@@ -308,7 +370,9 @@ export default function DashboardPage() {
                         colSpan={6}
                         className="px-4 py-10 text-center text-ink-muted"
                       >
-                        {tab === "bajo-stock" ? (
+                        {debouncedSearch.trim() ? (
+                          "No hay coincidencias para la búsqueda."
+                        ) : tab === "bajo-stock" ? (
                           "No hay artículos con bajo stock."
                         ) : (
                           <>
