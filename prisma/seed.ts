@@ -7,8 +7,7 @@ const INITIAL_DOC = "INI-2026-01-01";
 const INITIAL_DATE = new Date("2026-01-01T12:00:00.000Z");
 
 /**
- * Catálogo con stock inicial (Cant Total) y CUP en CLP.
- * Valores CUP sin separador de miles (ej. 1.384.732 → 1384732).
+ * Inventario inicial corregido (Saldo + CUP en CLP) al 01/01/2026.
  */
 const products = [
   {
@@ -33,18 +32,18 @@ const products = [
     cup: 65_980,
   },
   {
-    code: "13555",
-    name: "Correa Sonic 16 GRV 13555",
-    description: "Correa Sonic 16 GRV 13555",
-    initialQty: 3,
-    cup: 71_632,
-  },
-  {
     code: "13474",
     name: "Correa Sonic 16 GRV 13474",
     description: "Correa Sonic 16 GRV 13474",
-    initialQty: 5,
+    initialQty: 3,
     cup: 73_494,
+  },
+  {
+    code: "13555",
+    name: "Correa Sonic 16 GRV 13555",
+    description: "Correa Sonic 16 GRV 13555",
+    initialQty: 5,
+    cup: 71_632,
   },
   {
     code: "12638",
@@ -103,17 +102,10 @@ const products = [
     cup: 0,
   },
   {
-    code: "10976",
-    name: "Filtro Completo Con Indicador de Saturacion",
-    description: "Filtro Completo Con Indicador de Saturacion",
-    initialQty: 1,
-    cup: 620_000,
-  },
-  {
     code: "10434",
     name: 'Flexible 3" Largo 12 Pies',
     description: 'Flexible 3" Largo 12 Pies',
-    initialQty: 0,
+    initialQty: 1,
     cup: 346_183,
   },
   {
@@ -122,6 +114,13 @@ const products = [
     description: 'Flexible 4" Largo 12 Pies',
     initialQty: 0,
     cup: 346_183,
+  },
+  {
+    code: "10976",
+    name: "Filtro Completo Con Indicador de Saturacion",
+    description: "Filtro Completo Con Indicador de Saturacion",
+    initialQty: 0,
+    cup: 620_000,
   },
   {
     code: "A08-10100",
@@ -143,8 +142,8 @@ async function main() {
   let created = 0;
   let updated = 0;
   let movementsCreated = 0;
-  let movementsSkipped = 0;
-  let cupsSynced = 0;
+  let movementsUpdated = 0;
+  let movementsDeleted = 0;
 
   for (const item of products) {
     const existing = await prisma.product.findUnique({
@@ -158,6 +157,7 @@ async function main() {
             name: item.name,
             description: item.description,
             averageUnitCost: item.cup,
+            stock: item.initialQty,
           },
         })
       : await prisma.product.create({
@@ -165,19 +165,15 @@ async function main() {
             code: item.code,
             name: item.name,
             description: item.description,
-            stock: 0,
+            stock: item.initialQty,
             averageUnitCost: item.cup,
           },
         });
 
-    if (existing) {
-      updated += 1;
-    } else {
-      created += 1;
-    }
-    cupsSynced += 1;
+    if (existing) updated += 1;
+    else created += 1;
 
-    const alreadySeeded = await prisma.movement.findFirst({
+    const iniMovement = await prisma.movement.findFirst({
       where: {
         productId: product.id,
         documentNumber: INITIAL_DOC,
@@ -185,42 +181,34 @@ async function main() {
       },
     });
 
-    if (alreadySeeded) {
-      // Sincroniza el precio unitario del ingreso inicial con el CUP de planilla
-      await prisma.movement.update({
-        where: { id: alreadySeeded.id },
-        data: { unitPrice: item.cup },
-      });
-      movementsSkipped += 1;
-      continue;
+    if (item.initialQty > 0) {
+      if (iniMovement) {
+        await prisma.movement.update({
+          where: { id: iniMovement.id },
+          data: {
+            quantity: item.initialQty,
+            unitPrice: item.cup,
+            date: INITIAL_DATE,
+          },
+        });
+        movementsUpdated += 1;
+      } else {
+        await prisma.movement.create({
+          data: {
+            type: "ENTRADA",
+            documentNumber: INITIAL_DOC,
+            productId: product.id,
+            quantity: item.initialQty,
+            unitPrice: item.cup,
+            date: INITIAL_DATE,
+          },
+        });
+        movementsCreated += 1;
+      }
+    } else if (iniMovement) {
+      await prisma.movement.delete({ where: { id: iniMovement.id } });
+      movementsDeleted += 1;
     }
-
-    if (item.initialQty <= 0) {
-      continue;
-    }
-
-    await prisma.$transaction(async (tx) => {
-      await tx.movement.create({
-        data: {
-          type: "ENTRADA",
-          documentNumber: INITIAL_DOC,
-          productId: product.id,
-          quantity: item.initialQty,
-          unitPrice: item.cup,
-          date: INITIAL_DATE,
-        },
-      });
-
-      await tx.product.update({
-        where: { id: product.id },
-        data: {
-          stock: product.stock + item.initialQty,
-          averageUnitCost: item.cup,
-        },
-      });
-    });
-
-    movementsCreated += 1;
   }
 
   const totalUnits = products.reduce((sum, p) => sum + p.initialQty, 0);
@@ -232,12 +220,11 @@ async function main() {
   console.log(
     `Catálogo: ${created} creados, ${updated} actualizados (${products.length} productos).`
   );
-  console.log(`CUP sincronizados: ${cupsSynced}`);
   console.log(
-    `Ingreso inicial ${INITIAL_DOC} (01/01/2026): ${movementsCreated} movimientos nuevos, ${movementsSkipped} ya existían.`
+    `Ingreso ${INITIAL_DOC}: ${movementsCreated} creados, ${movementsUpdated} actualizados, ${movementsDeleted} eliminados.`
   );
   console.log(
-    `Unidades: ${totalUnits} · Valor teórico importación: $${inventoryValue.toLocaleString("es-CL")}`
+    `Stock total: ${totalUnits} · Valor inventario: $${inventoryValue.toLocaleString("es-CL")}`
   );
 }
 
