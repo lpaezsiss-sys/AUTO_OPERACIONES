@@ -1,47 +1,15 @@
 "use client";
 
-import { FormEvent, Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Field, Input } from "@/components/FormFields";
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const next = searchParams.get("next") || "/";
+  const error = searchParams.get("error");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-        credentials: "same-origin",
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(json.error || "Error al iniciar sesión");
-      }
-
-      const next = searchParams.get("next");
-      const target =
-        next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
-
-      // Navegación completa para que el middleware lea la cookie nueva
-      window.location.assign(target);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al iniciar sesión");
-      setLoading(false);
-    }
-  }
 
   return (
     <div className="w-full max-w-md animate-fade-up rounded-xl border border-border/80 bg-surface p-6 shadow-[var(--shadow)] sm:p-8">
@@ -54,18 +22,25 @@ function LoginForm() {
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form
+        action="/api/auth/login"
+        method="post"
+        className="space-y-4"
+        autoComplete="on"
+      >
+        <input type="hidden" name="next" value={next} />
+
         <Field label="Usuario" htmlFor="username">
           <Input
             id="username"
             name="username"
             autoComplete="username"
             required
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            defaultValue="admin"
             placeholder="admin"
           />
         </Field>
+
         <Field label="Contraseña" htmlFor="password">
           <div className="relative">
             <Input
@@ -74,9 +49,8 @@ function LoginForm() {
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              defaultValue="inventario2026"
+              placeholder="inventario2026"
               className="pr-24"
             />
             <button
@@ -99,13 +73,13 @@ function LoginForm() {
           </p>
         ) : null}
 
-        <Button type="submit" disabled={loading} className="w-full">
-          {loading ? "Ingresando…" : "Ingresar"}
+        <Button type="submit" className="w-full">
+          Ingresar
         </Button>
 
         <p className="text-center text-xs text-ink-muted">
-          Usuario por defecto: <span className="font-medium text-ink">admin</span>{" "}
-          · contraseña:{" "}
+          Usuario: <span className="font-medium text-ink">admin</span> ·
+          Contraseña:{" "}
           <span className="font-medium text-ink">inventario2026</span>
         </p>
       </form>
