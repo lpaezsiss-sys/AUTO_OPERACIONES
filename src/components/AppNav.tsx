@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { Button } from "@/components/Button";
 
 const links = [
   { href: "/", label: "Dashboard" },
@@ -12,6 +14,23 @@ const links = [
 
 export function AppNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  if (pathname === "/login") {
+    return null;
+  }
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-surface/80 backdrop-blur-md">
@@ -25,28 +44,39 @@ export function AppNav() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1 overflow-x-auto">
-          {links.map((link) => {
-            const active =
-              link.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(link.href);
+        <div className="flex items-center gap-2">
+          <nav className="flex items-center gap-1 overflow-x-auto">
+            {links.map((link) => {
+              const active =
+                link.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(link.href);
 
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-accent-soft text-accent"
-                    : "text-ink-muted hover:bg-bg-deep hover:text-ink"
-                }`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-accent-soft text-accent"
+                      : "text-ink-muted hover:bg-bg-deep hover:text-ink"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <Button
+            type="button"
+            variant="ghost"
+            className="!px-3 !py-1.5 whitespace-nowrap"
+            onClick={handleLogout}
+            disabled={loggingOut}
+          >
+            {loggingOut ? "Saliendo…" : "Salir"}
+          </Button>
+        </div>
       </div>
     </header>
   );

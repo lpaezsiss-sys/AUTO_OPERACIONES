@@ -4,6 +4,7 @@ Aplicación web de control de inventario con **Next.js (App Router)**, **Tailwin
 
 ## Funcionalidades
 
+- **Login**: acceso con usuario y contraseña (sesión protegida).
 - **Artículos**: crear, editar y listar productos (código, nombre, descripción, stock, CUP).
 - **Documentos**:
   - **Entrada / Compra**: aumenta stock y recalcula el Costo Unitario Promedio (CUP/PMP).
@@ -33,6 +34,14 @@ npm run dev
 ```
 
 Abre [http://localhost:3000](http://localhost:3000).
+
+### Acceso
+
+| Usuario | Contraseña |
+|---------|------------|
+| `admin` | `inventario2026` |
+
+Define `AUTH_SECRET` en `.env` (ver `.env.example`).
 
 El seed carga el catálogo de 18 productos Sonic/CMC, registra el **ingreso inicial**
 (`INI-2026-01-01`) al **01/01/2026** con las cantidades de stock y asigna el **CUP en CLP**

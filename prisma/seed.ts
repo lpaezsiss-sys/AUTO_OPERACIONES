@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -139,6 +140,26 @@ const products = [
 ] as const;
 
 async function main() {
+  // Usuario por defecto para acceso a la app
+  const defaultUsername = "admin";
+  const defaultPassword = "inventario2026";
+  const passwordHash = await bcrypt.hash(defaultPassword, 10);
+  await prisma.user.upsert({
+    where: { username: defaultUsername },
+    create: {
+      username: defaultUsername,
+      passwordHash,
+      name: "Administrador",
+    },
+    update: {
+      passwordHash,
+      name: "Administrador",
+    },
+  });
+  console.log(
+    `Usuario: ${defaultUsername} / ${defaultPassword} (cambiar en producción).`
+  );
+
   let created = 0;
   let updated = 0;
   let movementsCreated = 0;
