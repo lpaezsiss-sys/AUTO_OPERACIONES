@@ -14,6 +14,7 @@ type Product = {
   description: string;
   stock: number;
   averageUnitCost: number;
+  lowStockThreshold: number;
 };
 
 const emptyForm = {
@@ -22,6 +23,7 @@ const emptyForm = {
   description: "",
   stock: "0",
   averageUnitCost: "0",
+  lowStockThreshold: "2",
 };
 
 export default function ArticulosPage() {
@@ -67,6 +69,7 @@ export default function ArticulosPage() {
       description: product.description,
       stock: String(product.stock),
       averageUnitCost: String(product.averageUnitCost),
+      lowStockThreshold: String(product.lowStockThreshold ?? 2),
     });
     setFormError("");
     setModalOpen(true);
@@ -83,6 +86,7 @@ export default function ArticulosPage() {
             code: form.code,
             name: form.name,
             description: form.description,
+            lowStockThreshold: Number(form.lowStockThreshold),
           }
         : {
             code: form.code,
@@ -90,6 +94,7 @@ export default function ArticulosPage() {
             description: form.description,
             stock: Number(form.stock) || 0,
             averageUnitCost: Number(form.averageUnitCost) || 0,
+            lowStockThreshold: Number(form.lowStockThreshold),
           };
 
       const res = await fetch(
@@ -143,13 +148,16 @@ export default function ArticulosPage() {
       ) : (
         <div className="animate-fade-up overflow-hidden rounded-xl border border-border/80 bg-surface shadow-[var(--shadow)]">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <table className="w-full min-w-[820px] text-left text-sm">
               <thead className="bg-bg-deep/60 text-xs uppercase tracking-wide text-ink-muted">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Código</th>
                   <th className="px-4 py-3 font-semibold">Nombre</th>
                   <th className="px-4 py-3 font-semibold">Descripción</th>
                   <th className="px-4 py-3 font-semibold text-right">Stock</th>
+                  <th className="px-4 py-3 font-semibold text-right">
+                    Bajo stock
+                  </th>
                   <th className="px-4 py-3 font-semibold text-right">CUP</th>
                   <th className="px-4 py-3 font-semibold text-right">Acciones</th>
                 </tr>
@@ -158,51 +166,61 @@ export default function ArticulosPage() {
                 {products.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-4 py-10 text-center text-ink-muted"
                     >
                       Aún no hay artículos registrados.
                     </td>
                   </tr>
                 ) : (
-                  products.map((p) => (
-                    <tr
-                      key={p.id}
-                      className="border-t border-border/70 transition-colors hover:bg-accent-soft/40"
-                    >
-                      <td className="px-4 py-3 font-mono text-xs">{p.code}</td>
-                      <td className="px-4 py-3 font-medium">{p.name}</td>
-                      <td className="max-w-[240px] truncate px-4 py-3 text-ink-muted">
-                        {p.description || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {formatNumber(p.stock)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {formatCurrency(p.averageUnitCost)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="!px-2 !py-1"
-                            onClick={() => openEdit(p)}
-                          >
-                            Editar
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="!px-2 !py-1 text-danger"
-                            onClick={() => onDelete(p)}
-                          >
-                            Eliminar
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  products.map((p) => {
+                    const isLow = p.stock <= (p.lowStockThreshold ?? 2);
+                    return (
+                      <tr
+                        key={p.id}
+                        className="border-t border-border/70 transition-colors hover:bg-accent-soft/40"
+                      >
+                        <td className="px-4 py-3 font-mono text-xs">{p.code}</td>
+                        <td className="px-4 py-3 font-medium">{p.name}</td>
+                        <td className="max-w-[220px] truncate px-4 py-3 text-ink-muted">
+                          {p.description || "—"}
+                        </td>
+                        <td
+                          className={`px-4 py-3 text-right tabular-nums ${
+                            isLow ? "font-semibold text-salida" : ""
+                          }`}
+                        >
+                          {formatNumber(p.stock)}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-ink-muted">
+                          ≤ {formatNumber(p.lowStockThreshold ?? 2, 0)}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums">
+                          {formatCurrency(p.averageUnitCost)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="!px-2 !py-1"
+                              onClick={() => openEdit(p)}
+                            >
+                              Editar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="!px-2 !py-1 text-danger"
+                              onClick={() => onDelete(p)}
+                            >
+                              Eliminar
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -243,6 +261,27 @@ export default function ArticulosPage() {
               }
               placeholder="Detalle opcional"
             />
+          </Field>
+
+          <Field label="Umbral bajo stock" htmlFor="lowStock">
+            <Input
+              id="lowStock"
+              type="number"
+              min="0"
+              step="any"
+              required
+              value={form.lowStockThreshold}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  lowStockThreshold: e.target.value,
+                }))
+              }
+            />
+            <p className="mt-1 text-xs text-ink-muted">
+              Se considera bajo stock cuando el saldo es menor o igual a este
+              valor.
+            </p>
           </Field>
 
           {!editing ? (

@@ -11,15 +11,16 @@ datasource db {
 }
 
 model Product {
-  id              String     @id @default(cuid())
-  code            String     @unique
-  name            String
-  description     String     @default("")
-  stock           Float      @default(0)
-  averageUnitCost Float      @default(0) // CUP / PMP
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-  movements       Movement[]
+  id                 String     @id @default(cuid())
+  code               String     @unique
+  name               String
+  description        String     @default("")
+  stock              Float      @default(0)
+  averageUnitCost    Float      @default(0) // CUP / PMP
+  lowStockThreshold  Float      @default(2) // Umbral de bajo stock
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  movements          Movement[]
 }
 
 enum MovementType {

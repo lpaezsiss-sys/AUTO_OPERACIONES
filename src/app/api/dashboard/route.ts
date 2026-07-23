@@ -14,7 +14,9 @@ export async function GET() {
       description: p.description,
       stock: p.stock,
       averageUnitCost: p.averageUnitCost,
+      lowStockThreshold: p.lowStockThreshold,
       totalValue: p.stock * p.averageUnitCost,
+      isLowStock: p.stock <= p.lowStockThreshold,
     }));
 
     const totalInventoryValue = items.reduce(

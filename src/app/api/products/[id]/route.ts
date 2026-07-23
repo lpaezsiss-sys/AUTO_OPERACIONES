@@ -27,11 +27,19 @@ export async function PUT(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { code, name, description } = body;
+    const { code, name, description, lowStockThreshold } = body;
 
     if (!code?.trim() || !name?.trim()) {
       return NextResponse.json(
         { error: "Código y nombre son obligatorios" },
+        { status: 400 }
+      );
+    }
+
+    const threshold = Number(lowStockThreshold);
+    if (!Number.isFinite(threshold) || threshold < 0) {
+      return NextResponse.json(
+        { error: "El umbral de bajo stock debe ser un número ≥ 0" },
         { status: 400 }
       );
     }
@@ -61,6 +69,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
         code: code.trim(),
         name: name.trim(),
         description: description?.trim() ?? "",
+        lowStockThreshold: threshold,
       },
     });
 

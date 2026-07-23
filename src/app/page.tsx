@@ -13,7 +13,9 @@ type DashboardItem = {
   description: string;
   stock: number;
   averageUnitCost: number;
+  lowStockThreshold: number;
   totalValue: number;
+  isLowStock: boolean;
 };
 
 type DashboardData = {
@@ -28,10 +30,14 @@ type DashboardData = {
 };
 
 type TabId = "general" | "bajo-stock";
-type SortKey = "code" | "name" | "stock" | "averageUnitCost" | "totalValue";
+type SortKey =
+  | "code"
+  | "name"
+  | "stock"
+  | "averageUnitCost"
+  | "totalValue"
+  | "lowStockThreshold";
 type SortDir = "asc" | "desc";
-
-const LOW_STOCK_THRESHOLD = 2;
 
 function compareItems(
   a: DashboardItem,
@@ -130,7 +136,7 @@ export default function DashboardPage() {
 
   const lowStockItems = useMemo(() => {
     if (!data) return [];
-    return data.items.filter((item) => item.stock <= LOW_STOCK_THRESHOLD);
+    return data.items.filter((item) => item.isLowStock);
   }, [data]);
 
   const visibleItems = useMemo(() => {
@@ -238,13 +244,13 @@ export default function DashboardPage() {
               </div>
               {tab === "bajo-stock" ? (
                 <p className="text-xs text-ink-muted">
-                  Artículos con stock ≤ {LOW_STOCK_THRESHOLD}
+                  Artículos con stock ≤ umbral configurado en cada producto
                 </p>
               ) : null}
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-sm">
+              <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="bg-bg-deep/60 text-xs uppercase tracking-wide">
                   <tr>
                     <SortableTh
@@ -264,6 +270,14 @@ export default function DashboardPage() {
                     <SortableTh
                       label="Stock"
                       column="stock"
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      align="right"
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Bajo stock"
+                      column="lowStockThreshold"
                       sortKey={sortKey}
                       sortDir={sortDir}
                       align="right"
@@ -291,7 +305,7 @@ export default function DashboardPage() {
                   {visibleItems.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-4 py-10 text-center text-ink-muted"
                       >
                         {tab === "bajo-stock" ? (
@@ -311,7 +325,6 @@ export default function DashboardPage() {
                     </tr>
                   ) : (
                     visibleItems.map((item) => {
-                      const isLow = item.stock <= LOW_STOCK_THRESHOLD;
                       return (
                         <tr
                           key={item.id}
@@ -323,10 +336,13 @@ export default function DashboardPage() {
                           <td className="px-4 py-3 font-medium">{item.name}</td>
                           <td
                             className={`px-4 py-3 text-right tabular-nums ${
-                              isLow ? "font-semibold text-salida" : ""
+                              item.isLowStock ? "font-semibold text-salida" : ""
                             }`}
                           >
                             {formatNumber(item.stock)}
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums text-ink-muted">
+                            ≤ {formatNumber(item.lowStockThreshold, 0)}
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums">
                             {formatCurrency(item.averageUnitCost)}
@@ -343,7 +359,7 @@ export default function DashboardPage() {
                   <tfoot>
                     <tr className="border-t-2 border-border bg-bg-deep/40">
                       <td
-                        colSpan={4}
+                        colSpan={5}
                         className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-ink-muted"
                       >
                         {tab === "bajo-stock"

@@ -19,11 +19,20 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { code, name, description, stock, averageUnitCost } = body;
+    const { code, name, description, stock, averageUnitCost, lowStockThreshold } =
+      body;
 
     if (!code?.trim() || !name?.trim()) {
       return NextResponse.json(
         { error: "Código y nombre son obligatorios" },
+        { status: 400 }
+      );
+    }
+
+    const threshold = Number(lowStockThreshold);
+    if (Number.isFinite(threshold) && threshold < 0) {
+      return NextResponse.json(
+        { error: "El umbral de bajo stock no puede ser negativo" },
         { status: 400 }
       );
     }
@@ -45,6 +54,7 @@ export async function POST(request: NextRequest) {
         description: description?.trim() ?? "",
         stock: Number(stock) || 0,
         averageUnitCost: Number(averageUnitCost) || 0,
+        lowStockThreshold: Number.isFinite(threshold) ? threshold : 2,
       },
     });
 
