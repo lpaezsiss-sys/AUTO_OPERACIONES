@@ -34,7 +34,9 @@ npm run dev
 
 Abre [http://localhost:3000](http://localhost:3000).
 
-El seed carga el catálogo inicial de 18 productos Sonic/CMC (stock y CUP en 0).
+El seed carga el catálogo de 18 productos Sonic/CMC y registra el **ingreso inicial**
+(`INI-2026-01-01`) al **01/01/2026** con las cantidades de stock de la planilla.
+El CUP queda en 0 hasta que se registren compras con precio.
 
 ## Scripts
 
@@ -60,6 +62,7 @@ El seed carga el catálogo inicial de 18 productos Sonic/CMC (stock y CUP en 0).
 
 ```
 prisma/schema.prisma     # Modelos Product y Movement
+prisma/seed.ts           # Catálogo inicial de productos
 src/lib/prisma.ts        # Cliente Prisma
 src/lib/inventory.ts     # Cálculo de CUP
 src/app/api/             # Rutas API
