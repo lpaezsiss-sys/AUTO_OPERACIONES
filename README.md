@@ -42,6 +42,7 @@ Abre [http://localhost:3000](http://localhost:3000).
 | `admin` | `inventario2026` |
 
 Define `AUTH_SECRET` en `.env` (ver `.env.example`).
+Para cookies Secure en HTTPS, agrega `COOKIE_SECURE=true`.
 
 El seed carga el catálogo de 18 productos Sonic/CMC, registra el **ingreso inicial**
 (`INI-2026-01-01`) al **01/01/2026** con las cantidades de stock y asigna el **CUP en CLP**

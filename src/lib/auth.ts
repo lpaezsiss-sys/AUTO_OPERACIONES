@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import {
   SESSION_COOKIE,
   SESSION_DAYS,
@@ -14,24 +15,48 @@ export {
   type SessionPayload,
 };
 
-export async function setSessionCookie(token: string) {
-  const jar = await cookies();
-  jar.set(SESSION_COOKIE, token, {
+/** En localhost (http) las cookies Secure no se guardan; solo forzar Secure si se pide. */
+function cookieSecure() {
+  return process.env.COOKIE_SECURE === "true";
+}
+
+export function sessionCookieOptions() {
+  return {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    secure: cookieSecure(),
     path: "/",
     maxAge: SESSION_DAYS * 24 * 60 * 60,
+  };
+}
+
+export async function setSessionCookie(token: string) {
+  const jar = await cookies();
+  jar.set(SESSION_COOKIE, token, sessionCookieOptions());
+}
+
+export function attachSessionCookie(
+  response: NextResponse,
+  token: string
+): NextResponse {
+  response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+  return response;
+}
+
+export function clearSessionCookieOnResponse(
+  response: NextResponse
+): NextResponse {
+  response.cookies.set(SESSION_COOKIE, "", {
+    ...sessionCookieOptions(),
+    maxAge: 0,
   });
+  return response;
 }
 
 export async function clearSessionCookie() {
   const jar = await cookies();
   jar.set(SESSION_COOKIE, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
+    ...sessionCookieOptions(),
     maxAge: 0,
   });
 }
