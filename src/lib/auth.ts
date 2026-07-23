@@ -15,9 +15,11 @@ export {
   type SessionPayload,
 };
 
-/** En localhost (http) las cookies Secure no se guardan; solo forzar Secure si se pide. */
+/** En producción HTTPS (BlueHosting) usa COOKIE_SECURE=true. */
 function cookieSecure() {
-  return process.env.COOKIE_SECURE === "true";
+  if (process.env.COOKIE_SECURE === "true") return true;
+  if (process.env.COOKIE_SECURE === "false") return false;
+  return false;
 }
 
 export function sessionCookieOptions() {

@@ -68,13 +68,14 @@ de cada artículo según la planilla de costos.
 | `GET/POST` | `/api/movements` | Listar / registrar movimientos |
 | `GET` | `/api/dashboard` | Resumen e inventario valorizado |
 
-## Estructura
+## Despliegue (BlueHosting)
 
+Esta app requiere **Node.js 20+** (no es un sitio PHP).
+
+```bash
+npm run build:deploy
 ```
-prisma/schema.prisma     # Modelos Product y Movement
-prisma/seed.ts           # Catálogo inicial de productos
-src/lib/prisma.ts        # Cliente Prisma
-src/lib/inventory.ts     # Cálculo de CUP
-src/app/api/             # Rutas API
-src/app/                 # Páginas (Dashboard, Artículos, Documentos, Movimientos)
-```
+
+Sube la carpeta `deploy/` a BlueHosting y sigue la guía:
+
+→ **[DEPLOY-BLUEHOSTING.md](./DEPLOY-BLUEHOSTING.md)**

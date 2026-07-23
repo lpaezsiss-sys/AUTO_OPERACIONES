@@ -46,5 +46,10 @@ next-env.d.ts
 # SQLite
 /prisma/*.db
 /prisma/*.db-journal
+/data/*.db
+/data/*.db-journal
 *.db
 *.db-journal
+
+# Paquete de despliegue
+/deploy
