@@ -211,9 +211,101 @@ async function main() {
     }
   }
 
-  const totalUnits = products.reduce((sum, p) => sum + p.initialQty, 0);
-  const inventoryValue = products.reduce(
-    (sum, p) => sum + p.initialQty * p.cup,
+  /**
+   * Facturas / documentos posteriores al inventario inicial.
+   * Factura electrónica Nº170 — Viña Morandé — 20/01/2026
+   * Código en factura: A07-13455 (Kit Tensor Correa → SKU 13455)
+   * Ref. Guía despacho N°87 (2025-12-17): el egreso físico es anterior al
+   * inventario 01/01/2026 (saldo 0), por eso no vuelve a descontar stock.
+   */
+  const postInitialDocs = [
+    {
+      documentNumber: "F170",
+      type: "SALIDA" as const,
+      productCode: "13455",
+      quantity: 1,
+      date: new Date("2026-01-20T12:00:00.000Z"),
+      affectsStock: false,
+    },
+  ];
+
+  let docsCreated = 0;
+  let docsUpdated = 0;
+
+  for (const doc of postInitialDocs) {
+    const product = await prisma.product.findUnique({
+      where: { code: doc.productCode },
+    });
+    if (!product) {
+      console.warn(`Documento ${doc.documentNumber}: producto ${doc.productCode} no encontrado`);
+      continue;
+    }
+
+    const existingDoc = await prisma.movement.findFirst({
+      where: {
+        documentNumber: doc.documentNumber,
+        productId: product.id,
+        type: doc.type,
+      },
+    });
+
+    if (existingDoc) {
+      await prisma.movement.update({
+        where: { id: existingDoc.id },
+        data: {
+          quantity: doc.quantity,
+          unitPrice: product.averageUnitCost,
+          date: doc.date,
+        },
+      });
+      docsUpdated += 1;
+    } else {
+      await prisma.movement.create({
+        data: {
+          type: doc.type,
+          documentNumber: doc.documentNumber,
+          productId: product.id,
+          quantity: doc.quantity,
+          unitPrice: product.averageUnitCost,
+          date: doc.date,
+        },
+      });
+      docsCreated += 1;
+    }
+
+    if (doc.affectsStock === false) {
+      const catalog = products.find((p) => p.code === doc.productCode);
+      await prisma.product.update({
+        where: { id: product.id },
+        data: { stock: catalog?.initialQty ?? product.stock },
+      });
+      continue;
+    }
+
+    const catalog = products.find((p) => p.code === doc.productCode);
+    const initialQty = catalog?.initialQty ?? 0;
+    const laterMoves = await prisma.movement.findMany({
+      where: {
+        productId: product.id,
+        documentNumber: { not: INITIAL_DOC },
+      },
+    });
+    const stock = laterMoves.reduce((sum, m) => {
+      return m.type === "ENTRADA" ? sum + m.quantity : sum - m.quantity;
+    }, initialQty);
+
+    await prisma.product.update({
+      where: { id: product.id },
+      data: { stock },
+    });
+  }
+
+  const allProducts = await prisma.product.findMany({
+    where: { code: { in: products.map((p) => p.code) } },
+  });
+  const totalUnits = allProducts.reduce((sum, p) => sum + p.stock, 0);
+  const inventoryValue = allProducts.reduce(
+    (sum, p) => sum + p.stock * p.averageUnitCost,
     0
   );
 
@@ -222,6 +314,9 @@ async function main() {
   );
   console.log(
     `Ingreso ${INITIAL_DOC}: ${movementsCreated} creados, ${movementsUpdated} actualizados, ${movementsDeleted} eliminados.`
+  );
+  console.log(
+    `Documentos posteriores: ${docsCreated} creados, ${docsUpdated} actualizados.`
   );
   console.log(
     `Stock total: ${totalUnits} · Valor inventario: $${inventoryValue.toLocaleString("es-CL")}`
