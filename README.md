@@ -28,10 +28,13 @@ Nuevo CUP = (Stock Actual × CUP Actual + Cantidad × Precio Unitario) / (Stock 
 npm install
 cp .env.example .env   # si no existe .env
 npx prisma migrate dev
+npm run db:seed
 npm run dev
 ```
 
 Abre [http://localhost:3000](http://localhost:3000).
+
+El seed carga el catálogo inicial de 18 productos Sonic/CMC (stock y CUP en 0).
 
 ## Scripts
 
@@ -42,6 +45,7 @@ Abre [http://localhost:3000](http://localhost:3000).
 | `npm start` | Servidor de producción |
 | `npm run db:migrate` | Migraciones Prisma |
 | `npm run db:generate` | Generar cliente Prisma |
+| `npm run db:seed` | Cargar catálogo de productos |
 
 ## API
 
