@@ -34,9 +34,9 @@ npm run dev
 
 Abre [http://localhost:3000](http://localhost:3000).
 
-El seed carga el catálogo de 18 productos Sonic/CMC y registra el **ingreso inicial**
-(`INI-2026-01-01`) al **01/01/2026** con las cantidades de stock de la planilla.
-El CUP queda en 0 hasta que se registren compras con precio.
+El seed carga el catálogo de 18 productos Sonic/CMC, registra el **ingreso inicial**
+(`INI-2026-01-01`) al **01/01/2026** con las cantidades de stock y asigna el **CUP en CLP**
+de cada artículo según la planilla de costos.
 
 ## Scripts
 

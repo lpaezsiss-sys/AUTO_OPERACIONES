@@ -7,8 +7,8 @@ const INITIAL_DOC = "INI-2026-01-01";
 const INITIAL_DATE = new Date("2026-01-01T12:00:00.000Z");
 
 /**
- * Catálogo con stock inicial (Cant Total).
- * CUP/precio unitario parten en 0 (sin costo en la planilla de importación).
+ * Catálogo con stock inicial (Cant Total) y CUP en CLP.
+ * Valores CUP sin separador de miles (ej. 1.384.732 → 1384732).
  */
 const products = [
   {
@@ -16,108 +16,126 @@ const products = [
     name: "Sonic 100/150 Bearing Cartridge Kit",
     description: "Sonic 100/150 Bearing Cartridge Kit (PN #14453)",
     initialQty: 1,
+    cup: 1_384_732,
   },
   {
     code: "13451",
     name: "Correa Sonic 16 GRV 13451",
     description: "Correa Sonic 16 GRV 13451",
     initialQty: 10,
+    cup: 76_337,
   },
   {
     code: "13514",
     name: "Correa Sonic 16 GRV 13514",
     description: "Correa Sonic 16 GRV 13514",
     initialQty: 11,
+    cup: 65_980,
   },
   {
     code: "13555",
     name: "Correa Sonic 16 GRV 13555",
     description: "Correa Sonic 16 GRV 13555",
     initialQty: 3,
+    cup: 71_632,
   },
   {
     code: "13474",
     name: "Correa Sonic 16 GRV 13474",
     description: "Correa Sonic 16 GRV 13474",
     initialQty: 5,
+    cup: 73_494,
   },
   {
     code: "12638",
     name: "Sonic 85/150 Impeller",
     description: "Sonic 85/150 Impeller (PN #12638)",
     initialQty: 1,
+    cup: 987_150,
   },
   {
     code: "14452",
     name: "Sonic 70/85 Bearing Cartridge Kit",
     description: "Sonic 70/85 Bearing Cartridge Kit (PN #14452)",
     initialQty: 1,
+    cup: 1_120_636,
   },
   {
     code: "13455",
     name: "Kit Tensor Correa",
     description: "Kit Tensor Correa",
     initialQty: 0,
+    cup: 328_498,
   },
   {
     code: "10317",
     name: "Filtro SONIC 85 Poly",
     description: "Filtro SONIC 85 Poly",
     initialQty: 1,
+    cup: 208_746,
   },
   {
     code: "13900A-150",
     name: "Sonic Pulley 13900A-150",
     description: "Sonic Pulley (PN #13900A-150)",
     initialQty: 2,
+    cup: 178_569,
   },
   {
     code: "13900A-152",
     name: "Sonic Pulley 13900A-152",
     description: "Sonic Pulley (PN #13900A-152)",
     initialQty: 0,
+    cup: 171_405,
   },
   {
     code: "13900A-160",
     name: "Sonic Pulley 13900A-160",
     description: "Sonic Pulley (PN #13900A-160)",
     initialQty: 1,
+    cup: 196_945,
   },
   {
     code: "14454",
     name: "Blower S85 Completo",
     description: "Blower S85 Completo",
     initialQty: 0,
+    cup: 0,
   },
   {
     code: "10976",
     name: "Filtro Completo Con Indicador de Saturacion",
     description: "Filtro Completo Con Indicador de Saturacion",
     initialQty: 1,
+    cup: 620_000,
   },
   {
     code: "10434",
     name: 'Flexible 3" Largo 12 Pies',
     description: 'Flexible 3" Largo 12 Pies',
     initialQty: 0,
+    cup: 346_183,
   },
   {
     code: "10435",
     name: 'Flexible 4" Largo 12 Pies',
     description: 'Flexible 4" Largo 12 Pies',
     initialQty: 0,
+    cup: 346_183,
   },
   {
     code: "A08-10100",
     name: "CINTA Doble Fas CMC 10730",
     description: "CINTA Doble Fas CMC 10730 A25 L 33m",
     initialQty: 49,
+    cup: 45_756,
   },
   {
     code: "A08-10101",
     name: "CMC 10431 RED 25 mm x 33 mt",
     description: "CMC 10431 RED Ancho 25 mm x 33 mt",
     initialQty: 24,
+    cup: 42_994,
   },
 ] as const;
 
@@ -126,6 +144,7 @@ async function main() {
   let updated = 0;
   let movementsCreated = 0;
   let movementsSkipped = 0;
+  let cupsSynced = 0;
 
   for (const item of products) {
     const existing = await prisma.product.findUnique({
@@ -138,6 +157,7 @@ async function main() {
           data: {
             name: item.name,
             description: item.description,
+            averageUnitCost: item.cup,
           },
         })
       : await prisma.product.create({
@@ -146,16 +166,16 @@ async function main() {
             name: item.name,
             description: item.description,
             stock: 0,
-            averageUnitCost: 0,
+            averageUnitCost: item.cup,
           },
         });
 
-    if (existing) updated += 1;
-    else created += 1;
-
-    if (item.initialQty <= 0) {
-      continue;
+    if (existing) {
+      updated += 1;
+    } else {
+      created += 1;
     }
+    cupsSynced += 1;
 
     const alreadySeeded = await prisma.movement.findFirst({
       where: {
@@ -166,7 +186,16 @@ async function main() {
     });
 
     if (alreadySeeded) {
+      // Sincroniza el precio unitario del ingreso inicial con el CUP de planilla
+      await prisma.movement.update({
+        where: { id: alreadySeeded.id },
+        data: { unitPrice: item.cup },
+      });
       movementsSkipped += 1;
+      continue;
+    }
+
+    if (item.initialQty <= 0) {
       continue;
     }
 
@@ -177,17 +206,16 @@ async function main() {
           documentNumber: INITIAL_DOC,
           productId: product.id,
           quantity: item.initialQty,
-          unitPrice: 0,
+          unitPrice: item.cup,
           date: INITIAL_DATE,
         },
       });
 
-      // Ajusta stock al inventario inicial si aún no había movimientos INI.
-      // Si el producto ya tenía stock de un seed previo en 0, queda en initialQty.
       await tx.product.update({
         where: { id: product.id },
         data: {
           stock: product.stock + item.initialQty,
+          averageUnitCost: item.cup,
         },
       });
     });
@@ -196,14 +224,21 @@ async function main() {
   }
 
   const totalUnits = products.reduce((sum, p) => sum + p.initialQty, 0);
+  const inventoryValue = products.reduce(
+    (sum, p) => sum + p.initialQty * p.cup,
+    0
+  );
 
   console.log(
     `Catálogo: ${created} creados, ${updated} actualizados (${products.length} productos).`
   );
+  console.log(`CUP sincronizados: ${cupsSynced}`);
   console.log(
     `Ingreso inicial ${INITIAL_DOC} (01/01/2026): ${movementsCreated} movimientos nuevos, ${movementsSkipped} ya existían.`
   );
-  console.log(`Unidades totales de importación: ${totalUnits}`);
+  console.log(
+    `Unidades: ${totalUnits} · Valor teórico importación: $${inventoryValue.toLocaleString("es-CL")}`
+  );
 }
 
 main()
