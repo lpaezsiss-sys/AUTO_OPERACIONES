@@ -283,14 +283,14 @@ async function main() {
     }
 
     const catalog = products.find((p) => p.code === doc.productCode);
-    const initialQty = catalog?.initialQty ?? 0;
+    const initialQty: number = catalog?.initialQty ?? 0;
     const laterMoves = await prisma.movement.findMany({
       where: {
         productId: product.id,
         documentNumber: { not: INITIAL_DOC },
       },
     });
-    const stock = laterMoves.reduce((sum, m) => {
+    const stock = laterMoves.reduce((sum: number, m) => {
       return m.type === "ENTRADA" ? sum + m.quantity : sum - m.quantity;
     }, initialQty);
 
