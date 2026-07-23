@@ -7,13 +7,35 @@ export type InventoryExportRow = {
   totalValue: number;
 };
 
-const HEADERS = [
+export type MovementExportRow = {
+  date: string;
+  type: string;
+  documentNumber: string;
+  productCode: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+};
+
+const INVENTORY_HEADERS = [
   "Código",
   "Producto",
   "Stock",
   "Umbral Bajo Stock",
   "CUP",
   "Valor Total",
+] as const;
+
+const MOVEMENT_HEADERS = [
+  "Fecha",
+  "Tipo",
+  "N° Documento",
+  "Código",
+  "Producto",
+  "Cantidad",
+  "Precio Unitario",
+  "Total Línea",
 ] as const;
 
 /** Números puros para Excel (punto decimal, sin símbolo de moneda). */
@@ -35,6 +57,18 @@ function escapeCsvCell(value: string, separator: string): string {
   return value;
 }
 
+function downloadCsv(content: string, filename: string): void {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename.endsWith(".csv") ? filename : `${filename}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 /**
  * Genera CSV con BOM UTF-8 y separador `;` (compatible con Excel en es-CL).
  * Los campos numéricos van sin símbolo de moneda.
@@ -42,7 +76,7 @@ function escapeCsvCell(value: string, separator: string): string {
 export function buildInventoryCsv(rows: InventoryExportRow[]): string {
   const separator = ";";
   const lines = [
-    HEADERS.join(separator),
+    INVENTORY_HEADERS.join(separator),
     ...rows.map((row) =>
       [
         escapeCsvCell(row.code, separator),
@@ -61,16 +95,34 @@ export function downloadInventoryCsv(
   rows: InventoryExportRow[],
   filename: string
 ): void {
-  const csv = buildInventoryCsv(rows);
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename.endsWith(".csv") ? filename : `${filename}.csv`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
+  downloadCsv(buildInventoryCsv(rows), filename);
+}
+
+export function buildMovementsCsv(rows: MovementExportRow[]): string {
+  const separator = ";";
+  const lines = [
+    MOVEMENT_HEADERS.join(separator),
+    ...rows.map((row) =>
+      [
+        escapeCsvCell(row.date, separator),
+        escapeCsvCell(row.type, separator),
+        escapeCsvCell(row.documentNumber, separator),
+        escapeCsvCell(row.productCode, separator),
+        escapeCsvCell(row.productName, separator),
+        csvNumber(row.quantity),
+        csvNumber(row.unitPrice),
+        csvNumber(row.lineTotal),
+      ].join(separator)
+    ),
+  ];
+  return `\uFEFF${lines.join("\r\n")}`;
+}
+
+export function downloadMovementsCsv(
+  rows: MovementExportRow[],
+  filename: string
+): void {
+  downloadCsv(buildMovementsCsv(rows), filename);
 }
 
 export function matchesProductSearch(

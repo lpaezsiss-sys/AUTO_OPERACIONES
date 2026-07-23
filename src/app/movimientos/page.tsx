@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/Button";
 import { Select } from "@/components/FormFields";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
+import { downloadMovementsCsv } from "@/lib/exportCsv";
 
 type Movement = {
   id: string;
@@ -19,18 +21,56 @@ type Movement = {
   };
 };
 
+type ProductOption = {
+  id: string;
+  code: string;
+  name: string;
+};
+
 export default function MovimientosPage() {
   const [movements, setMovements] = useState<Movement[]>([]);
-  const [filter, setFilter] = useState<"ALL" | "ENTRADA" | "SALIDA">("ALL");
+  const [products, setProducts] = useState<ProductOption[]>([]);
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "ENTRADA" | "SALIDA">(
+    "ALL"
+  );
+  const [productId, setProductId] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProducts() {
+      try {
+        const res = await fetch("/api/products");
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Error al cargar productos");
+        if (!cancelled) {
+          setProducts(
+            (json as ProductOption[])
+              .map((p) => ({ id: p.id, code: p.code, name: p.name }))
+              .sort((a, b) =>
+                a.code.localeCompare(b.code, "es", { numeric: true })
+              )
+          );
+        }
+      } catch {
+        // La tabla de movimientos puede seguir; el select quedará vacío
+      }
+    }
+    loadProducts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const qs =
-        filter === "ALL" ? "" : `?type=${encodeURIComponent(filter)}`;
-      const res = await fetch(`/api/movements${qs}`);
+      const params = new URLSearchParams();
+      if (typeFilter !== "ALL") params.set("type", typeFilter);
+      if (productId !== "ALL") params.set("productId", productId);
+      const qs = params.toString();
+      const res = await fetch(`/api/movements${qs ? `?${qs}` : ""}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error al listar");
       setMovements(json);
@@ -40,31 +80,178 @@ export default function MovimientosPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [typeFilter, productId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  const selectedProduct = useMemo(
+    () => products.find((p) => p.id === productId) ?? null,
+    [products, productId]
+  );
+
+  const summary = useMemo(() => {
+    let entradasQty = 0;
+    let salidasQty = 0;
+    let entradasValue = 0;
+    let salidasValue = 0;
+    for (const m of movements) {
+      const line = m.quantity * m.unitPrice;
+      if (m.type === "ENTRADA") {
+        entradasQty += m.quantity;
+        entradasValue += line;
+      } else {
+        salidasQty += m.quantity;
+        salidasValue += line;
+      }
+    }
+    return {
+      count: movements.length,
+      entradasQty,
+      salidasQty,
+      entradasValue,
+      salidasValue,
+    };
+  }, [movements]);
+
+  function handleExport() {
+    if (movements.length === 0) return;
+    const stamp = new Date().toISOString().slice(0, 10);
+    const parts = ["movimientos", stamp];
+    if (selectedProduct) parts.push(selectedProduct.code);
+    if (typeFilter !== "ALL") parts.push(typeFilter.toLowerCase());
+
+    downloadMovementsCsv(
+      movements.map((m) => ({
+        date: new Date(m.date).toISOString().slice(0, 10),
+        type: m.type === "ENTRADA" ? "Entrada" : "Salida",
+        documentNumber: m.documentNumber,
+        productCode: m.product.code,
+        productName: m.product.name,
+        quantity: m.quantity,
+        unitPrice: m.unitPrice,
+        lineTotal: m.quantity * m.unitPrice,
+      })),
+      parts.join("-")
+    );
+  }
+
   return (
     <div>
       <PageHeader
         title="Movimientos"
-        description="Historial de entradas y salidas: fecha, documento, producto, cantidad y precio."
+        description="Historial de entradas y salidas. Filtra por artículo o tipo y exporta el informe."
         action={
-          <Select
-            value={filter}
-            onChange={(e) =>
-              setFilter(e.target.value as "ALL" | "ENTRADA" | "SALIDA")
-            }
-            aria-label="Filtrar por tipo"
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleExport}
+            disabled={movements.length === 0 || loading}
           >
-            <option value="ALL">Todos</option>
-            <option value="ENTRADA">Entradas</option>
-            <option value="SALIDA">Salidas</option>
-          </Select>
+            Exportar informe CSV
+          </Button>
         }
       />
+
+      <div className="mb-4 animate-fade-up rounded-xl border border-border/80 bg-surface p-4 shadow-[var(--shadow)]">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_auto]">
+          <div>
+            <label
+              htmlFor="product-filter"
+              className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-muted"
+            >
+              Historial por artículo
+            </label>
+            <Select
+              id="product-filter"
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+              aria-label="Filtrar por artículo"
+            >
+              <option value="ALL">Todos los artículos</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.code} — {p.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <label
+              htmlFor="type-filter"
+              className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-muted"
+            >
+              Tipo de movimiento
+            </label>
+            <Select
+              id="type-filter"
+              value={typeFilter}
+              onChange={(e) =>
+                setTypeFilter(e.target.value as "ALL" | "ENTRADA" | "SALIDA")
+              }
+              aria-label="Filtrar por tipo"
+            >
+              <option value="ALL">Todos</option>
+              <option value="ENTRADA">Entradas</option>
+              <option value="SALIDA">Salidas</option>
+            </Select>
+          </div>
+          <div className="flex items-end">
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setProductId("ALL");
+                setTypeFilter("ALL");
+              }}
+              disabled={productId === "ALL" && typeFilter === "ALL"}
+            >
+              Limpiar filtros
+            </Button>
+          </div>
+        </div>
+
+        {!loading && !error ? (
+          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-border/70 pt-3 text-sm text-ink-muted">
+            {selectedProduct ? (
+              <p>
+                Artículo:{" "}
+                <span className="font-medium text-ink">
+                  {selectedProduct.code} — {selectedProduct.name}
+                </span>
+              </p>
+            ) : null}
+            <p>
+              Movimientos:{" "}
+              <span className="font-medium tabular-nums text-ink">
+                {formatNumber(summary.count, 0)}
+              </span>
+            </p>
+            <p>
+              Entradas:{" "}
+              <span className="font-medium tabular-nums text-entrada">
+                {formatNumber(summary.entradasQty)}
+              </span>
+              <span className="mx-1">·</span>
+              <span className="tabular-nums">
+                {formatCurrency(summary.entradasValue)}
+              </span>
+            </p>
+            <p>
+              Salidas:{" "}
+              <span className="font-medium tabular-nums text-salida">
+                {formatNumber(summary.salidasQty)}
+              </span>
+              <span className="mx-1">·</span>
+              <span className="tabular-nums">
+                {formatCurrency(summary.salidasValue)}
+              </span>
+            </p>
+          </div>
+        ) : null}
+      </div>
 
       {loading ? (
         <p className="text-ink-muted">Cargando movimientos…</p>
@@ -86,16 +273,19 @@ export default function MovimientosPage() {
                   <th className="px-4 py-3 font-semibold text-right">
                     Precio unit.
                   </th>
+                  <th className="px-4 py-3 font-semibold text-right">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {movements.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-4 py-10 text-center text-ink-muted"
                     >
-                      No hay movimientos registrados.
+                      {productId !== "ALL" || typeFilter !== "ALL"
+                        ? "No hay movimientos con los filtros seleccionados."
+                        : "No hay movimientos registrados."}
                     </td>
                   </tr>
                 ) : (
@@ -132,6 +322,9 @@ export default function MovimientosPage() {
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {formatCurrency(m.unitPrice)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium tabular-nums">
+                        {formatCurrency(m.quantity * m.unitPrice)}
                       </td>
                     </tr>
                   ))
