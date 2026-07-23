@@ -237,7 +237,7 @@ export default function ArticulosPage() {
                   </tr>
                 ) : (
                   visibleProducts.map((p) => {
-                    const isLow = p.stock <= (p.lowStockThreshold ?? 2);
+                    const isLow = p.stock < (p.lowStockThreshold ?? 2);
                     return (
                       <tr
                         key={p.id}
@@ -256,7 +256,7 @@ export default function ArticulosPage() {
                           {formatNumber(p.stock)}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-ink-muted">
-                          ≤ {formatNumber(p.lowStockThreshold ?? 2, 0)}
+                          {"<"} {formatNumber(p.lowStockThreshold ?? 2, 0)}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums">
                           {formatCurrency(p.averageUnitCost)}
@@ -342,8 +342,7 @@ export default function ArticulosPage() {
               }
             />
             <p className="mt-1 text-xs text-ink-muted">
-              Se considera bajo stock cuando el saldo es menor o igual a este
-              valor.
+              Se considera bajo stock cuando el saldo es menor a este valor.
             </p>
           </Field>
 

@@ -273,7 +273,7 @@ export default function DashboardPage() {
                 </div>
                 {tab === "bajo-stock" ? (
                   <p className="text-xs text-ink-muted">
-                    Artículos con stock ≤ umbral configurado en cada producto
+                    Artículos con stock {"<"} umbral configurado en cada producto
                   </p>
                 ) : null}
               </div>
@@ -406,7 +406,7 @@ export default function DashboardPage() {
                             {formatNumber(item.stock)}
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums text-ink-muted">
-                            ≤ {formatNumber(item.lowStockThreshold, 0)}
+                            {"<"} {formatNumber(item.lowStockThreshold, 0)}
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums">
                             {formatCurrency(item.averageUnitCost)}
