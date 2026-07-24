@@ -70,12 +70,22 @@ En la app Node.js → **Environment variables** (o archivo `.env` en la raíz):
 | `COOKIE_SECURE` | `true` |
 | `RUN_SEED` | `true` solo el primer arranque |
 
+**No uses** `HOSTNAME=0.0.0.0` en cPanel: rompe el login (redirect a `0.0.0.0:3000`).
+
 Copia `.env.example` → `.env` y edítalo.
 
 Genera un secreto:
 
 ```bash
 openssl rand -base64 32
+```
+
+Si el login muestra error, en Terminal:
+
+```bash
+cd ~/app
+npx prisma migrate deploy
+node scripts/seed-admin.mjs
 ```
 
 ### 5. Instalar dependencias y migrar

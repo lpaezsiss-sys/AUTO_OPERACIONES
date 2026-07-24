@@ -53,3 +53,5 @@ next-env.d.ts
 
 # Paquete de despliegue
 /deploy
+*.zip
+/public/inventario-bluehosting-deploy.zip

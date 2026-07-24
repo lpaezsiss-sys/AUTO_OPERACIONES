@@ -5,10 +5,28 @@ import {
   attachSessionCookie,
   createSessionToken,
 } from "@/lib/auth";
+import { absoluteUrl } from "@/lib/request-origin";
 
 function safeNextPath(value: FormDataEntryValue | null): string {
   const raw = String(value ?? "/");
   return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+}
+
+function loginErrorMessage(error: unknown): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  if (msg.includes("AUTH_SECRET")) {
+    return "Falta AUTH_SECRET en el servidor (.env)";
+  }
+  if (
+    msg.includes("Can't reach database") ||
+    msg.includes("P1001") ||
+    msg.includes("P1003") ||
+    msg.includes("no such table") ||
+    msg.includes("P2021")
+  ) {
+    return "Base de datos no lista. Ejecuta migrate y seed.";
+  }
+  return "Error al iniciar sesión";
 }
 
 async function authenticate(username: string, password: string) {
@@ -35,14 +53,14 @@ export async function POST(request: NextRequest) {
       const next = safeNextPath(form.get("next"));
 
       if (!username || !password) {
-        const url = new URL("/login", request.url);
+        const url = absoluteUrl(request, "/login");
         url.searchParams.set("error", "Usuario y contraseña son obligatorios");
         return NextResponse.redirect(url, 303);
       }
 
       const user = await authenticate(username, password);
       if (!user) {
-        const url = new URL("/login", request.url);
+        const url = absoluteUrl(request, "/login");
         url.searchParams.set("error", "Credenciales inválidas");
         url.searchParams.set("next", next);
         return NextResponse.redirect(url, 303);
@@ -54,7 +72,10 @@ export async function POST(request: NextRequest) {
         name: user.name,
       });
 
-      const response = NextResponse.redirect(new URL(next, request.url), 303);
+      const response = NextResponse.redirect(
+        absoluteUrl(request, next),
+        303
+      );
       return attachSessionCookie(response, token);
     }
 
@@ -96,17 +117,15 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("POST /api/auth/login", error);
+    const message = loginErrorMessage(error);
     if (
       contentType.includes("application/x-www-form-urlencoded") ||
       contentType.includes("multipart/form-data")
     ) {
-      const url = new URL("/login", request.url);
-      url.searchParams.set("error", "Error al iniciar sesión");
+      const url = absoluteUrl(request, "/login");
+      url.searchParams.set("error", message);
       return NextResponse.redirect(url, 303);
     }
-    return NextResponse.json(
-      { error: "Error al iniciar sesión" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -30,6 +30,8 @@ mkdir -p "$OUT/prisma" "$OUT/data"
 cp -a prisma/schema.prisma "$OUT/prisma/"
 cp -a prisma/migrations "$OUT/prisma/"
 cp -a prisma/seed.ts "$OUT/prisma/"
+mkdir -p "$OUT/scripts"
+cp "$ROOT/scripts/seed-admin.mjs" "$OUT/scripts/seed-admin.mjs"
 # Cliente Prisma ya viene en node_modules del standalone, pero aseguramos generate en destino
 
 # Scripts de arranque en hosting
@@ -55,6 +57,7 @@ fs.writeFileSync(
         start: "bash start.sh",
         "db:migrate": "prisma migrate deploy",
         "db:seed": "tsx prisma/seed.ts",
+        "db:seed-admin": "node scripts/seed-admin.mjs",
         "db:generate": "prisma generate",
       },
       dependencies: {

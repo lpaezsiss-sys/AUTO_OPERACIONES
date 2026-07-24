@@ -43,7 +43,14 @@ if (process.env.SKIP_DB_SETUP !== "true") {
 
 process.env.NODE_ENV = process.env.NODE_ENV || "production";
 process.env.PORT = process.env.PORT || "3000";
-process.env.HOSTNAME = process.env.HOSTNAME || "0.0.0.0";
+// En cPanel/Passenger NO fijar HOSTNAME=0.0.0.0 (rompe redirects a https://0.0.0.0:PORT).
+// Solo para VPS/PM2 local si hace falta escuchar en todas las interfaces:
+if (
+  process.env.HOSTNAME === "0.0.0.0" ||
+  process.env.HOSTNAME === "127.0.0.1"
+) {
+  delete process.env.HOSTNAME;
+}
 
 if (!existsSync(path.join(__dirname, "server.js"))) {
   console.error("No se encontró server.js (build standalone incompleto).");
