@@ -1,25 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { applyPendingMigrations } from "@/lib/apply-migrations";
 
 function setupEnabled() {
-  return Boolean(process.env.SETUP_TOKEN && process.env.SETUP_TOKEN.length >= 8);
+  return Boolean(process.env.SETUP_TOKEN && process.env.SETUP_TOKEN.trim().length >= 8);
+}
+
+function expectedToken() {
+  return (process.env.SETUP_TOKEN || "").trim();
 }
 
 function tokenOk(request: NextRequest, bodyToken?: string) {
-  const expected = process.env.SETUP_TOKEN || "";
-  const header = request.headers.get("x-setup-token") || "";
-  const provided = header || bodyToken || "";
+  const expected = expectedToken();
+  const header = (request.headers.get("x-setup-token") || "").trim();
+  const query = (request.nextUrl.searchParams.get("token") || "").trim();
+  const provided = (header || bodyToken || query || "").trim();
   return expected.length >= 8 && provided === expected;
 }
 
-/** Estado del servidor (sin secretos). Útil sin acceso a Terminal. */
-export async function GET() {
+/** Estado del servidor (sin secretos). */
+export async function GET(request: NextRequest) {
   const hasAuthSecret = Boolean(process.env.AUTH_SECRET);
   const setupReady = setupEnabled();
   let dbOk = false;
   let userCount: number | null = null;
   let dbError: string | null = null;
+  let migrated: { applied: string[]; skipped: string[] } | null = null;
+
+  // Si viene ?migrate=1&token=... aplica migraciones desde el navegador
+  const wantMigrate = request.nextUrl.searchParams.get("migrate") === "1";
+  if (wantMigrate) {
+    if (!tokenOk(request)) {
+      return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+    }
+    try {
+      migrated = await applyPendingMigrations();
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message.slice(0, 200)
+              : "Error al migrar",
+        },
+        { status: 500 }
+      );
+    }
+  }
 
   try {
     userCount = await prisma.user.count();
@@ -27,7 +55,7 @@ export async function GET() {
   } catch (error) {
     dbError =
       error instanceof Error
-        ? error.message.slice(0, 160)
+        ? error.message.slice(0, 200)
         : "Error de base de datos";
   }
 
@@ -38,20 +66,18 @@ export async function GET() {
     dbOk,
     userCount,
     dbError,
+    migrated,
     hint: !hasAuthSecret
-      ? "Define AUTH_SECRET en .env o en Variables de entorno de Node.js"
+      ? "Define AUTH_SECRET en .env"
       : !dbOk
-        ? "Reinicia la app (app.js corre migrate). Revisa DATABASE_URL=file:../data/prod.db"
+        ? "Abre /api/setup?migrate=1&token=TU_SETUP_TOKEN  (el de tu .env)"
         : userCount === 0
-          ? "No hay usuarios. Pon RUN_SEED=true y reinicia, o POST /api/setup con SETUP_TOKEN"
-          : "Base lista. Prueba login admin / inventario2026",
+          ? "POST /api/setup con SETUP_TOKEN para crear admin"
+          : "Base lista. Login admin / inventario2026",
   });
 }
 
-/**
- * Crea/actualiza admin sin Terminal.
- * Requiere SETUP_TOKEN en .env y el mismo valor en header x-setup-token o body.token
- */
+/** Migra (si hace falta) y crea/actualiza admin. */
 export async function POST(request: NextRequest) {
   if (!setupEnabled()) {
     return NextResponse.json(
@@ -76,12 +102,33 @@ export async function POST(request: NextRequest) {
   }
 
   if (!tokenOk(request, body.token)) {
-    return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+    return NextResponse.json(
+      {
+        error: "Token inválido",
+        hint: "Usa el mismo SETUP_TOKEN que está en tu .env del hosting",
+      },
+      { status: 401 }
+    );
   }
 
   if (!process.env.AUTH_SECRET) {
     return NextResponse.json(
       { error: "Falta AUTH_SECRET en el servidor" },
+      { status: 500 }
+    );
+  }
+
+  let migrated: { applied: string[]; skipped: string[] } | null = null;
+  try {
+    migrated = await applyPendingMigrations();
+  } catch (error) {
+    console.error("migrate via setup", error);
+    return NextResponse.json(
+      {
+        error:
+          "No se pudieron aplicar migraciones: " +
+          (error instanceof Error ? error.message.slice(0, 180) : "error"),
+      },
       { status: 500 }
     );
   }
@@ -100,19 +147,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
+      migrated,
       user: { id: user.id, username: user.username, name: user.name },
       message:
-        "Usuario listo. Quita SETUP_TOKEN del .env, reinicia, e inicia sesión.",
+        "Usuario listo. Quita SETUP_TOKEN del .env, pon RUN_SEED=false, reinicia e inicia sesión.",
     });
   } catch (error) {
     console.error("POST /api/setup", error);
     const msg = error instanceof Error ? error.message : "Error";
     return NextResponse.json(
-      {
-        error:
-          "No se pudo crear usuario. ¿Corriste migrate? Reinicia con app.js. " +
-          msg.slice(0, 160),
-      },
+      { error: "No se pudo crear usuario. " + msg.slice(0, 180), migrated },
       { status: 500 }
     );
   }
