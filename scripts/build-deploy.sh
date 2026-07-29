@@ -41,6 +41,25 @@ cp "$ROOT/scripts/hosting/app.js" "$OUT/app.js"
 cp "$ROOT/.env.production.example" "$OUT/.env.example"
 chmod +x "$OUT/start.sh"
 
+# Dependencias runtime que el standalone a veces no copia (cPanel / seed / migrate)
+mkdir -p "$OUT/node_modules"
+for pkg in jose bcryptjs dotenv prisma tsx; do
+  if [ -d "$ROOT/node_modules/$pkg" ]; then
+    rm -rf "$OUT/node_modules/$pkg"
+    cp -a "$ROOT/node_modules/$pkg" "$OUT/node_modules/$pkg"
+  fi
+done
+if [ -d "$ROOT/node_modules/@prisma/engines" ]; then
+  mkdir -p "$OUT/node_modules/@prisma"
+  cp -a "$ROOT/node_modules/@prisma/engines" "$OUT/node_modules/@prisma/"
+fi
+mkdir -p "$OUT/node_modules/.bin"
+for bin in prisma tsx; do
+  if [ -e "$ROOT/node_modules/.bin/$bin" ]; then
+    cp -a "$ROOT/node_modules/.bin/$bin" "$OUT/node_modules/.bin/$bin"
+  fi
+done
+
 # package.json mínimo para prisma CLI en el servidor (seed / migrate)
 node <<'NODE'
 const fs = require("fs");
