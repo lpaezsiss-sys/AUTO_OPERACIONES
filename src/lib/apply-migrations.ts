@@ -3,14 +3,8 @@ import path from "path";
 import { prisma } from "@/lib/prisma";
 
 function migrationsDir(): string {
-  const candidates = [
-    path.join(process.cwd(), "prisma", "migrations"),
-    path.join(__dirname, "..", "..", "prisma", "migrations"),
-  ];
-  for (const dir of candidates) {
-    if (existsSync(dir)) return dir;
-  }
-  return candidates[0];
+  // Ruta fija bajo cwd (app root en cPanel) — evita trazar todo el proyecto en el build
+  return path.join(/*turbopackIgnore: true*/ process.cwd(), "prisma", "migrations");
 }
 
 async function ensureMigrationsTable() {
