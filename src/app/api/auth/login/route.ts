@@ -22,11 +22,14 @@ function loginErrorMessage(error: unknown): string {
     msg.includes("P1001") ||
     msg.includes("P1003") ||
     msg.includes("no such table") ||
-    msg.includes("P2021")
+    msg.includes("P2021") ||
+    msg.includes("does not exist")
   ) {
-    return "Base de datos no lista. Ejecuta migrate y seed.";
+    return "Base de datos no lista. Pon RUN_SEED=true, reinicia (app.js) o usa /api/setup";
   }
-  return "Error al iniciar sesión";
+  // Mensaje corto para diagnosticar en hosting sin Terminal
+  const short = msg.replace(/\s+/g, " ").slice(0, 140);
+  return short ? `Error al iniciar sesión: ${short}` : "Error al iniciar sesión";
 }
 
 async function authenticate(username: string, password: string) {

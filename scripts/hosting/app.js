@@ -33,11 +33,20 @@ if (process.env.SKIP_DB_SETUP !== "true") {
     console.warn("Aviso: prisma migrate deploy falló; revisa DATABASE_URL.");
   }
   if (process.env.RUN_SEED === "true") {
-    spawnSync("npx", ["tsx", "prisma/seed.ts"], {
+    // Preferir seed completo; si falta tsx, crear solo admin
+    const full = spawnSync("npx", ["tsx", "prisma/seed.ts"], {
       cwd: __dirname,
       stdio: "inherit",
       shell: true,
     });
+    if (full.status !== 0) {
+      console.warn("Seed completo falló; intentando scripts/seed-admin.mjs…");
+      spawnSync("node", ["scripts/seed-admin.mjs"], {
+        cwd: __dirname,
+        stdio: "inherit",
+        shell: true,
+      });
+    }
   }
 }
 
