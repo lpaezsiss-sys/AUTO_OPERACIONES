@@ -30,10 +30,13 @@ export async function GET(request: NextRequest) {
 
   // Si viene ?migrate=1&token=... aplica migraciones desde el navegador
   const wantMigrate = request.nextUrl.searchParams.get("migrate") === "1";
-  if (wantMigrate) {
+  const wantSeed = request.nextUrl.searchParams.get("seed") === "1";
+  if (wantMigrate || wantSeed) {
     if (!tokenOk(request)) {
       return NextResponse.json({ error: "Token inválido" }, { status: 401 });
     }
+  }
+  if (wantMigrate) {
     try {
       migrated = await applyPendingMigrations();
     } catch (error) {
@@ -46,6 +49,33 @@ export async function GET(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+  }
+
+  let seeded: { ok: boolean; detail?: string } | null = null;
+  if (wantSeed) {
+    try {
+      const { spawnSync } = await import("child_process");
+      const full = spawnSync("npx", ["tsx", "prisma/seed.ts"], {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        shell: true,
+        env: process.env,
+        timeout: 120_000,
+      });
+      if (full.status === 0) {
+        seeded = { ok: true, detail: (full.stdout || "").slice(-300) };
+      } else {
+        seeded = {
+          ok: false,
+          detail: ((full.stderr || full.stdout || "seed falló").slice(0, 300)),
+        };
+      }
+    } catch (error) {
+      seeded = {
+        ok: false,
+        detail: error instanceof Error ? error.message.slice(0, 200) : "error",
+      };
     }
   }
 
@@ -67,13 +97,14 @@ export async function GET(request: NextRequest) {
     userCount,
     dbError,
     migrated,
+    seeded,
     hint: !hasAuthSecret
       ? "Define AUTH_SECRET en .env"
       : !dbOk
         ? "Abre /api/setup?migrate=1&token=TU_SETUP_TOKEN  (el de tu .env)"
         : userCount === 0
           ? "POST /api/setup con SETUP_TOKEN para crear admin"
-          : "Base lista. Login admin / inventario2026",
+          : "Base lista. Para cargar artículos: /api/setup?seed=1&token=TU_SETUP_TOKEN",
   });
 }
 

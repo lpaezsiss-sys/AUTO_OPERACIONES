@@ -42,6 +42,7 @@ if (process.env.SKIP_DB_SETUP !== "true") {
       cwd: __dirname,
       stdio: "inherit",
       shell: true,
+      env: process.env,
     });
     if (full.status !== 0) {
       console.warn("Seed completo falló; intentando scripts/seed-admin.mjs…");
@@ -49,6 +50,7 @@ if (process.env.SKIP_DB_SETUP !== "true") {
         cwd: __dirname,
         stdio: "inherit",
         shell: true,
+        env: process.env,
       });
     }
   }
