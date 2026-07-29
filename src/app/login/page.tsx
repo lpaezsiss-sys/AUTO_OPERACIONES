@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/Button";
@@ -9,6 +10,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/";
   const error = searchParams.get("error");
+  const info = searchParams.get("info");
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -36,8 +38,7 @@ function LoginForm() {
             name="username"
             autoComplete="username"
             required
-            defaultValue="admin"
-            placeholder="admin"
+            placeholder="Tu usuario"
           />
         </Field>
 
@@ -49,8 +50,7 @@ function LoginForm() {
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               required
-              defaultValue="inventario2026"
-              placeholder="inventario2026"
+              placeholder="Tu contraseña"
               className="pr-24"
             />
             <button
@@ -73,14 +73,23 @@ function LoginForm() {
           </p>
         ) : null}
 
+        {info ? (
+          <p className="rounded-md bg-accent-soft px-3 py-2 text-sm text-accent">
+            {info}
+          </p>
+        ) : null}
+
         <Button type="submit" className="w-full">
           Ingresar
         </Button>
 
-        <p className="text-center text-xs text-ink-muted">
-          Usuario: <span className="font-medium text-ink">admin</span> ·
-          Contraseña:{" "}
-          <span className="font-medium text-ink">inventario2026</span>
+        <p className="text-center text-sm text-ink-muted">
+          <Link
+            href="/recuperar"
+            className="font-medium text-accent underline-offset-2 hover:underline"
+          >
+            ¿Olvidaste tu contraseña?
+          </Link>
         </p>
       </form>
     </div>

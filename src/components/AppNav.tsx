@@ -10,13 +10,14 @@ const links = [
   { href: "/articulos", label: "Artículos" },
   { href: "/documentos", label: "Documentos" },
   { href: "/movimientos", label: "Movimientos" },
+  { href: "/cuenta", label: "Cuenta" },
 ];
 
 export function AppNav() {
   const pathname = usePathname();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/recuperar") {
     return null;
   }
 

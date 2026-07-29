@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session-token";
 import { absoluteUrl } from "@/lib/request-origin";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/setup"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/recuperar",
+  "/api/auth/login",
+  "/api/auth/reset-password",
+  "/api/setup",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -20,8 +26,8 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const session = token ? await verifySessionToken(token) : null;
 
-  if (pathname === "/login") {
-    if (session) {
+  if (pathname === "/login" || pathname === "/recuperar") {
+    if (session && pathname === "/login") {
       return NextResponse.redirect(absoluteUrl(request, "/"));
     }
     return NextResponse.next();
