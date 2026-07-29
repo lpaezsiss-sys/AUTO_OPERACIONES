@@ -32,6 +32,7 @@ cp -a prisma/migrations "$OUT/prisma/"
 cp -a prisma/seed.ts "$OUT/prisma/"
 mkdir -p "$OUT/scripts"
 cp "$ROOT/scripts/seed-admin.mjs" "$OUT/scripts/seed-admin.mjs"
+cp "$ROOT/scripts/seed-inventory.cjs" "$OUT/scripts/seed-inventory.cjs"
 # Cliente Prisma ya viene en node_modules del standalone, pero aseguramos generate en destino
 
 # Scripts de arranque en hosting

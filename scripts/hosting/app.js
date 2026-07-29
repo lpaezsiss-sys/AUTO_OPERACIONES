@@ -37,21 +37,28 @@ if (process.env.SKIP_DB_SETUP !== "true") {
     console.warn("Aviso: prisma migrate deploy falló; revisa DATABASE_URL.");
   }
   if (process.env.RUN_SEED === "true") {
-    // Preferir seed completo; si falta tsx, crear solo admin
-    const full = spawnSync("npx", ["tsx", "prisma/seed.ts"], {
-      cwd: __dirname,
-      stdio: "inherit",
-      shell: true,
-      env: process.env,
-    });
-    if (full.status !== 0) {
-      console.warn("Seed completo falló; intentando scripts/seed-admin.mjs…");
-      spawnSync("node", ["scripts/seed-admin.mjs"], {
+    const attempts = [
+      ["node", ["scripts/seed-inventory.cjs"]],
+      ["node", ["node_modules/tsx/dist/cli.mjs", "prisma/seed.ts"]],
+      ["npx", ["tsx", "prisma/seed.ts"]],
+      ["node", ["scripts/seed-admin.mjs"]],
+    ];
+    let seeded = false;
+    for (const [cmd, args] of attempts) {
+      const result = spawnSync(cmd, args, {
         cwd: __dirname,
         stdio: "inherit",
         shell: true,
         env: process.env,
       });
+      if (result.status === 0) {
+        seeded = true;
+        break;
+      }
+      console.warn(`Seed intento falló: ${cmd} ${args.join(" ")}`);
+    }
+    if (!seeded) {
+      console.warn("No se pudo ejecutar ningún seed.");
     }
   }
 }

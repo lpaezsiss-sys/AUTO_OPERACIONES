@@ -56,21 +56,29 @@ export async function GET(request: NextRequest) {
   if (wantSeed) {
     try {
       const { spawnSync } = await import("child_process");
-      const full = spawnSync("npx", ["tsx", "prisma/seed.ts"], {
-        cwd: process.cwd(),
-        encoding: "utf8",
-        shell: true,
-        env: process.env,
-        timeout: 120_000,
-      });
-      if (full.status === 0) {
-        seeded = { ok: true, detail: (full.stdout || "").slice(-300) };
-      } else {
-        seeded = {
-          ok: false,
-          detail: ((full.stderr || full.stdout || "seed falló").slice(0, 300)),
-        };
+      const attempts: Array<{ cmd: string; args: string[] }> = [
+        { cmd: "node", args: ["scripts/seed-inventory.cjs"] },
+        { cmd: "node", args: ["node_modules/tsx/dist/cli.mjs", "prisma/seed.ts"] },
+        { cmd: "npx", args: ["tsx", "prisma/seed.ts"] },
+      ];
+      let lastDetail = "seed falló";
+      let ok = false;
+      for (const attempt of attempts) {
+        const full = spawnSync(attempt.cmd, attempt.args, {
+          cwd: process.cwd(),
+          encoding: "utf8",
+          shell: true,
+          env: process.env,
+          timeout: 120_000,
+        });
+        if (full.status === 0) {
+          seeded = { ok: true, detail: (full.stdout || "").slice(-400) };
+          ok = true;
+          break;
+        }
+        lastDetail = (full.stderr || full.stdout || lastDetail).slice(0, 400);
       }
+      if (!ok) seeded = { ok: false, detail: lastDetail };
     } catch (error) {
       seeded = {
         ok: false,
