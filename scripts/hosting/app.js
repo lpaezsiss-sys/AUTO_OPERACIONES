@@ -8,7 +8,11 @@ const path = require("path");
 
 // Cargar .env si existe (dotenv puede no estar en standalone mínimo)
 try {
-  require("dotenv").config({ path: path.join(__dirname, ".env") });
+  // override: true — en cPanel las env del panel no deben pisar un .env corregido
+  require("dotenv").config({
+    path: path.join(__dirname, ".env"),
+    override: true,
+  });
 } catch {
   // ignore
 }
