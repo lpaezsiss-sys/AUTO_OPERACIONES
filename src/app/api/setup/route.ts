@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { applyPendingMigrations } from "@/lib/apply-migrations";
+import { seedInventoryInProcess } from "@/lib/seed-inventory";
 
 function setupEnabled() {
-  return Boolean(process.env.SETUP_TOKEN && process.env.SETUP_TOKEN.trim().length >= 8);
+  return Boolean(
+    process.env.SETUP_TOKEN && process.env.SETUP_TOKEN.trim().length >= 8
+  );
 }
 
 function expectedToken() {
@@ -28,7 +31,6 @@ export async function GET(request: NextRequest) {
   let dbError: string | null = null;
   let migrated: { applied: string[]; skipped: string[] } | null = null;
 
-  // Si viene ?migrate=1&token=... aplica migraciones desde el navegador
   const wantMigrate = request.nextUrl.searchParams.get("migrate") === "1";
   const wantSeed = request.nextUrl.searchParams.get("seed") === "1";
   if (wantMigrate || wantSeed) {
@@ -36,6 +38,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Token inválido" }, { status: 401 });
     }
   }
+
   if (wantMigrate) {
     try {
       migrated = await applyPendingMigrations();
@@ -52,37 +55,22 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  let seeded: { ok: boolean; detail?: string } | null = null;
+  let seeded: {
+    ok: boolean;
+    products?: number;
+    totalUnits?: number;
+    inventoryValue?: number;
+    detail?: string;
+  } | null = null;
+
   if (wantSeed) {
     try {
-      const { spawnSync } = await import("child_process");
-      const attempts: Array<{ cmd: string; args: string[] }> = [
-        { cmd: "node", args: ["scripts/seed-inventory.cjs"] },
-        { cmd: "node", args: ["node_modules/tsx/dist/cli.mjs", "prisma/seed.ts"] },
-        { cmd: "npx", args: ["tsx", "prisma/seed.ts"] },
-      ];
-      let lastDetail = "seed falló";
-      let ok = false;
-      for (const attempt of attempts) {
-        const full = spawnSync(attempt.cmd, attempt.args, {
-          cwd: process.cwd(),
-          encoding: "utf8",
-          shell: true,
-          env: process.env,
-          timeout: 120_000,
-        });
-        if (full.status === 0) {
-          seeded = { ok: true, detail: (full.stdout || "").slice(-400) };
-          ok = true;
-          break;
-        }
-        lastDetail = (full.stderr || full.stdout || lastDetail).slice(0, 400);
-      }
-      if (!ok) seeded = { ok: false, detail: lastDetail };
+      const result = await seedInventoryInProcess();
+      seeded = { ok: true, ...result };
     } catch (error) {
       seeded = {
         ok: false,
-        detail: error instanceof Error ? error.message.slice(0, 200) : "error",
+        detail: error instanceof Error ? error.message.slice(0, 300) : "error",
       };
     }
   }
@@ -109,14 +97,12 @@ export async function GET(request: NextRequest) {
     hint: !hasAuthSecret
       ? "Define AUTH_SECRET en .env"
       : !dbOk
-        ? "Abre /api/setup?migrate=1&token=TU_SETUP_TOKEN  (el de tu .env)"
-        : userCount === 0
-          ? "POST /api/setup con SETUP_TOKEN para crear admin"
-          : "Base lista. Para cargar artículos: /api/setup?seed=1&token=TU_SETUP_TOKEN",
+        ? "Abre /api/setup?migrate=1&token=TU_SETUP_TOKEN"
+        : "Para cargar artículos: /api/setup?seed=1&token=TU_SETUP_TOKEN",
   });
 }
 
-/** Migra (si hace falta) y crea/actualiza admin. */
+/** Migra, crea admin y siembra inventario (sin tsx/esbuild). */
 export async function POST(request: NextRequest) {
   if (!setupEnabled()) {
     return NextResponse.json(
@@ -133,6 +119,7 @@ export async function POST(request: NextRequest) {
     username?: string;
     password?: string;
     name?: string;
+    seed?: boolean;
   } = {};
   try {
     body = await request.json();
@@ -184,18 +171,24 @@ export async function POST(request: NextRequest) {
       update: { passwordHash, name },
     });
 
+    let seeded = null;
+    if (body.seed !== false) {
+      seeded = await seedInventoryInProcess();
+    }
+
     return NextResponse.json({
       ok: true,
       migrated,
+      seeded,
       user: { id: user.id, username: user.username, name: user.name },
       message:
-        "Usuario listo. Quita SETUP_TOKEN del .env, pon RUN_SEED=false, reinicia e inicia sesión.",
+        "Listo. Quita SETUP_TOKEN del .env, pon RUN_SEED=false, reinicia e inicia sesión.",
     });
   } catch (error) {
     console.error("POST /api/setup", error);
     const msg = error instanceof Error ? error.message : "Error";
     return NextResponse.json(
-      { error: "No se pudo crear usuario. " + msg.slice(0, 180), migrated },
+      { error: "No se pudo completar setup. " + msg.slice(0, 180), migrated },
       { status: 500 }
     );
   }
