@@ -199,7 +199,9 @@ Sin esto, la sesión puede no guardarse en el navegador.
 |---------|----------|
 | `ERR_CONNECTION_REFUSED` en PC local | El hosting es remoto: usa tu **dominio**, no `localhost`. |
 | Login no mantiene sesión | `COOKIE_SECURE=true` + HTTPS; revisa que no mezcles `http`/`https`. |
-| Error Prisma / base de datos | Permisos en `data/` o `DATABASE_URL` incorrecta. |
+| Error Prisma / base de datos | Permisos en `data/` o `DATABASE_URL` incorrecta. En BlueHosting antiguo puede faltar el engine `debian-openssl-1.0.x` (ya incluido en `binaryTargets` del schema). |
+| `/api/setup` → `No autenticado` | Build viejo: vuelve a generar `npm run build:deploy`, sube y reinicia con `app.js`. |
+| Login: Query Engine openssl | Regenera con `binaryTargets` y sube `node_modules/.prisma/client` completo. |
 | Página en blanco / 503 | Revisa logs de la app Node en cPanel; confirma `start.sh` / `server.js`. |
 | Módulo no encontrado | Ejecuta `npm install --omit=dev` y `npx prisma generate` en el servidor. |
 

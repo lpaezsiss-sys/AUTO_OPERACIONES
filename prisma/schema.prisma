@@ -2,7 +2,9 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // BlueHosting/cPanel suele ser debian-openssl-1.0.x
+  binaryTargets = ["native", "debian-openssl-1.0.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {

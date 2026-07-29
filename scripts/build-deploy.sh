@@ -49,6 +49,17 @@ for pkg in jose bcryptjs dotenv prisma tsx; do
     cp -a "$ROOT/node_modules/$pkg" "$OUT/node_modules/$pkg"
   fi
 done
+# Query engines (BlueHosting: debian-openssl-1.0.x)
+if [ -d "$ROOT/node_modules/.prisma/client" ]; then
+  mkdir -p "$OUT/node_modules/.prisma"
+  rm -rf "$OUT/node_modules/.prisma/client"
+  cp -a "$ROOT/node_modules/.prisma/client" "$OUT/node_modules/.prisma/"
+fi
+if [ -d "$ROOT/node_modules/@prisma/client" ]; then
+  mkdir -p "$OUT/node_modules/@prisma"
+  rm -rf "$OUT/node_modules/@prisma/client"
+  cp -a "$ROOT/node_modules/@prisma/client" "$OUT/node_modules/@prisma/"
+fi
 if [ -d "$ROOT/node_modules/@prisma/engines" ]; then
   mkdir -p "$OUT/node_modules/@prisma"
   cp -a "$ROOT/node_modules/@prisma/engines" "$OUT/node_modules/@prisma/"
