@@ -3,6 +3,9 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function recoverySecret(): string {
   return (
     process.env.RECOVERY_TOKEN?.trim() ||

@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { applyPendingMigrations } from "@/lib/apply-migrations";
 import { seedInventoryInProcess } from "@/lib/seed-inventory";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function setupEnabled() {
   return Boolean(
     process.env.SETUP_TOKEN && process.env.SETUP_TOKEN.trim().length >= 8

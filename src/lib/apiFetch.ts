@@ -8,6 +8,7 @@ export async function apiFetch(
   const res = await fetch(input, {
     ...init,
     credentials: "same-origin",
+    cache: "no-store",
     headers: init.headers,
   });
 

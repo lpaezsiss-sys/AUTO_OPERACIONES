@@ -3,6 +3,9 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /** Cambiar contraseña estando autenticado (pide la actual). */
 export async function POST(request: NextRequest) {
   try {

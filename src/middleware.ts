@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session-token";
 import { absoluteUrl } from "@/lib/request-origin";
+import { NO_STORE_HEADERS } from "@/lib/api-response";
 
 const PUBLIC_PATHS = [
   "/login",
@@ -39,11 +40,26 @@ export async function middleware(request: NextRequest) {
 
   if (!session) {
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json(
+        { error: "No autenticado" },
+        { status: 401, headers: NO_STORE_HEADERS }
+      );
     }
     const loginUrl = absoluteUrl(request, "/login");
     loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    const redirect = NextResponse.redirect(loginUrl);
+    Object.entries(NO_STORE_HEADERS).forEach(([k, v]) =>
+      redirect.headers.set(k, v)
+    );
+    return redirect;
+  }
+
+  if (pathname.startsWith("/api/")) {
+    const res = NextResponse.next();
+    Object.entries(NO_STORE_HEADERS).forEach(([k, v]) =>
+      res.headers.set(k, v)
+    );
+    return res;
   }
 
   return NextResponse.next();

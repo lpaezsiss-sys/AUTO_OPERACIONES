@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import {
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
   attachSessionCookie,
   createSessionToken,
 } from "@/lib/auth";

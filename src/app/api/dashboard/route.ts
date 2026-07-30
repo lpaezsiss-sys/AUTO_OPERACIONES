@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
+import { jsonNoStore } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET() {
   try {
@@ -31,7 +35,7 @@ export async function GET() {
       prisma.movement.count({ where: { type: "SALIDA" } }),
     ]);
 
-    return NextResponse.json({
+    return jsonNoStore({
       items,
       summary: {
         totalSku,
@@ -43,7 +47,7 @@ export async function GET() {
     });
   } catch (error) {
     console.error("GET /api/dashboard", error);
-    return NextResponse.json(
+    return jsonNoStore(
       { error: "Error al obtener dashboard" },
       { status: 500 }
     );
