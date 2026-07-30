@@ -11,6 +11,7 @@ import {
   downloadInventoryCsv,
   matchesProductSearch,
 } from "@/lib/exportCsv";
+import { apiFetch } from "@/lib/apiFetch";
 
 type DashboardItem = {
   id: string;
@@ -115,7 +116,7 @@ export default function DashboardPage() {
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch("/api/dashboard");
+        const res = await apiFetch("/api/dashboard");
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Error al cargar");
         if (!cancelled) setData(json);

@@ -11,6 +11,7 @@ import {
   downloadInventoryCsv,
   matchesProductSearch,
 } from "@/lib/exportCsv";
+import { apiFetch } from "@/lib/apiFetch";
 
 type Product = {
   id: string;
@@ -45,7 +46,7 @@ export default function ArticulosPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/products");
+      const res = await apiFetch("/api/products");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error al listar");
       setProducts(json);
@@ -110,7 +111,7 @@ export default function ArticulosPage() {
             lowStockThreshold: Number(form.lowStockThreshold),
           };
 
-      const res = await fetch(
+      const res = await apiFetch(
         editing ? `/api/products/${editing.id}` : "/api/products",
         {
           method: editing ? "PUT" : "POST",
@@ -133,7 +134,7 @@ export default function ArticulosPage() {
   async function onDelete(product: Product) {
     if (!confirm(`¿Eliminar el artículo "${product.name}"?`)) return;
     try {
-      const res = await fetch(`/api/products/${product.id}`, {
+      const res = await apiFetch(`/api/products/${product.id}`, {
         method: "DELETE",
       });
       const json = await res.json();

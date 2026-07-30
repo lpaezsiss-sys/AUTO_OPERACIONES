@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/Button";
 import { Field, Input, Select } from "@/components/FormFields";
 import { formatCurrency, formatNumber } from "@/lib/format";
+import { apiFetch } from "@/lib/apiFetch";
 
 type Product = {
   id: string;
@@ -37,7 +38,7 @@ export default function DocumentosPage() {
   const selected = products.find((p) => p.id === productId);
 
   const loadProducts = useCallback(async () => {
-    const res = await fetch("/api/products");
+    const res = await apiFetch("/api/products");
     const json = await res.json();
     if (res.ok) {
       setProducts(json);
@@ -68,7 +69,7 @@ export default function DocumentosPage() {
     setMessage(null);
 
     try {
-      const res = await fetch("/api/movements", {
+      const res = await apiFetch("/api/movements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

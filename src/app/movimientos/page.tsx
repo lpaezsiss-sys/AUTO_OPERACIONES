@@ -6,6 +6,7 @@ import { Button } from "@/components/Button";
 import { Select } from "@/components/FormFields";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { downloadMovementsCsv } from "@/lib/exportCsv";
+import { apiFetch } from "@/lib/apiFetch";
 
 type Movement = {
   id: string;
@@ -41,7 +42,7 @@ export default function MovimientosPage() {
     let cancelled = false;
     async function loadProducts() {
       try {
-        const res = await fetch("/api/products");
+        const res = await apiFetch("/api/products");
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Error al cargar productos");
         if (!cancelled) {
@@ -70,7 +71,7 @@ export default function MovimientosPage() {
       if (typeFilter !== "ALL") params.set("type", typeFilter);
       if (productId !== "ALL") params.set("productId", productId);
       const qs = params.toString();
-      const res = await fetch(`/api/movements${qs ? `?${qs}` : ""}`);
+      const res = await apiFetch(`/api/movements${qs ? `?${qs}` : ""}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error al listar");
       setMovements(json);
