@@ -1,17 +1,58 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg"
-     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-     width="512" height="512" viewBox="0 0 512 512" version="1.1" id="lpaez_SF">
-  <sodipodi:namedview id="namedview" pagecolor="#ffffff" bordercolor="#666666"
-     inkscape:pageopacity="0" inkscape:pagecheckerboard="true"
-     inkscape:document-units="px" inkscape:current-layer="layer_fondo"/>
-  <defs id="defs"/>
-  <g id="mark" transform="translate(16,46) scale(0.94)">
-    <path d="M 82,34 L 458,34 L 430,386 L 54,386 Z" style="fill:#0A0A0A;stroke:none"/>
-    
-    <path d="M 120,70 L 395,70 L 350,126 L 180,126 L 180,168 L 322,168 L 282,224 L 120,224 Z" style="fill:#FFFFFF;stroke:none"/>
-    <path d="M 295 175 L 300 295 L 319.41992 283.34766 C 301.82686 317.85916 262.16443 337.95828 204.70703 326.4668 C 173.90521 320.30643 161.82059 305.79265 154.57812 292.13281 C 147.33567 278.47299 146.99023 267.2832 146.99023 267.2832 L 99.009766 268.7168 C 99.009766 268.7168 99.664371 291.02709 112.17188 314.61719 C 124.67937 338.20727 151.09493 364.6936 195.29297 373.5332 C 273.79444 389.2335 342.61652 355.12596 367.16016 294.18359 C 373.2737 279.91813 375.61901 264.8731 374.10156 250.53906 L 400 235 L 358.63281 211.36133 C 352.57456 202.99871 345.11479 195.50116 336.63281 188.97656 L 331.38867 195.79297 L 295 175 z" style="fill:#FFFFFF;stroke:none"/>
-    <path d="M 82,34 L 458,34 L 430,386 L 54,386 Z" style="fill:none;stroke:#0A0A0A;stroke-width:5;stroke-linejoin:miter"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+ width="512" height="512" viewBox="0 0 512 512" version="1.1">
+
+<g transform="translate(30.72,57.19) scale(1.231)">
+
+
+  <defs
+     id="defs20" />
+  <sodipodi:namedview
+     id="namedview18"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1" />
+  <g
+     id="layer_fondo">
+    <path
+       d="M 96,48 L 325,48 L 248,265 L 21,265 Z"
+       style="fill:#050505;stroke:none"
+       id="path2" />
   </g>
+  <g
+     id="layer_sombra">
+    <path
+       d="M 147,108 L 139,126 L 183,128 L 181,148 L 176,154 L 133,154 L 125,178 L 172,180 L 169,198 L 180,203 L 166,202 L 175,152 L 184,130 L 182,126 L 137,125 L 145,104 Z"
+       style="fill:#000000;fill-opacity:0.0;stroke:none"
+       id="path5" />
+  </g>
+  <g
+     id="layer_blanco">
+    <path
+       id="marca_blanca"
+       d="M 284,106 L 224,105 L 221,99 L 228,85 L 226,81 L 207,81 L 203,86 L 203,92 L 197,104 L 145,104 L 137,125 L 182,126 L 184,130 L 179,146 L 175,152 L 129,152 L 120,177 L 171,178 L 173,184 L 170,188 L 166,202 L 180,203 L 186,182 Z"
+       style="fill:#FFFFFF;stroke:none" />
+  </g>
+  <g
+     id="layer_flecha">
+    <!-- centerline of yellow swoosh from original silhouette -->
+    <path
+       id="flecha_centro"
+       style="color:#000000;fill:#FFFFFF;stroke-linejoin:round;-inkscape-stroke:none"
+       d="M 250 138 L 243.96094 171.21484 C 223.00591 193.2896 196.41731 213.40641 168.12109 220.48047 C 130.00819 230.00869 92.375058 223.41412 75.480469 206.51953 L 64.519531 217.48047 C 87.624862 240.5858 129.99197 245.99127 171.87891 235.51953 C 214.73883 224.80455 250.51028 190.54976 274.15039 159.71484 L 273.41602 159.15234 L 286 150 L 250 138 z " />
+  </g>
+  <g
+     id="layer_contorno">
+    <path
+       d="M 96,48 L 325,48 L 248,265 L 21,265 Z"
+       style="fill:none;stroke:#050505;stroke-width:3;stroke-linejoin:miter"
+       id="path13" />
+  </g>
+
+
+</g>
 </svg>

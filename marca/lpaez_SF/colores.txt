@@ -1,39 +1,20 @@
-LPAEZ / LPM COMERCIAL — Sistema de marca (Inkscape)
-====================================================
+LPAEZ / LPM COMERCIAL — Sistema de marca (fiel a LogoPaez_SF.png)
+================================================================
 
-PALETA
-  Azul marino  #0A2A5C   fondo isotipo / tipografia color
-  Amarillo     #F5C400   flecha / acento
-  Blanco       #FFFFFF   E estilizada / negativo fondo
-  Negro        #0A0A0A   mono / contorno
-  Subtexto neg #C8D2E0   "LPM COMERCIAL" en negativo
+ORIGINAL
+  marca/lpaez_SF/original/LogoPaez_SF.png
+  (tambien en raiz del repo: LogoPaez_SF.png)
+
+PALETA (muestreada del original)
+  Azul marino  #05294B
+  Amarillo     #FEC001
+  Blanco       #FFFFFF
+  Negro        #050505
 
 TIPOGRAFIA
-  Familia: Space Grotesk (OFL)
-  Wordmark:  Bold 700  — LPAEZ
-  Soporte:   Medium 500 — LPM COMERCIAL (tracking amplio)
-  Fuentes en: fuentes/SpaceGrotesk-*.ttf
+  Space Grotesk Bold/Medium — LPAEZ / LPM COMERCIAL
 
-CAPAS ISOTIPO (SVG)
-  01_fondo            paralelogramo
-  02_sombra_E         sombra barra superior (solo color)
-  03_E_blanca         E / tope del 5 estilizado
-  04_flecha_amarilla  swoosh unificado (trazado limpio)
-  05_contorno         borde
-
-ESTRUCTURA DE CARPETAS
-  isotipo/      masters SVG color | mono | negativo
-  variantes/    copia de variantes de isotipo
-  favicon/      SVG + PNG 16/32/48/180/512
-  tipografia/   wordmark (texto convertido a trazados)
-  lockups/      horizontal + stacked (isotipo + tipografia)
-  exports/      PNG + PDF de todo el sistema
-  fuentes/      Space Grotesk TTF
-
-USO RAPIDO
-  Web header:     lockups/lockup_horizontal_color.*
-  Firma / docs:   lockups/lockup_stacked_color.*
-  Icono app:      favicon/favicon_color_512.png
-  Favicon site:   exports/favicon/favicon.png (32)
-  Impresion B/N:  isotipo_mono / lockup_*_mono
-  Fondo oscuro:   *_negativo
+VARIANTES
+  color | mono | negativo
+  isotipo + favicon + wordmark + lockups horizontal/stacked
+  exports/: SVG + PNG + PDF
