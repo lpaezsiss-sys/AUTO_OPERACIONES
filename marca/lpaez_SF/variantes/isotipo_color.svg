@@ -1,60 +1,19 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   width="366"
-   height="323"
-   viewBox="0 0 366 323"
-   version="1.1"
-   id="svg16"
-   sodipodi:docname="logo_stroke_yellow.svg"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg">
-  <defs
-     id="defs20" />
-  <sodipodi:namedview
-     id="namedview18"
-     pagecolor="#ffffff"
-     bordercolor="#000000"
-     borderopacity="0.25"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1" />
-  <g
-     id="layer_fondo">
-    <path
-       d="M 96,48 L 325,48 L 248,265 L 21,265 Z"
-       style="fill:#05294B;stroke:none"
-       id="path2" />
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+     width="366" height="323" viewBox="0 0 366 323" version="1.1" id="LogoPaez_SF">
+  <sodipodi:namedview id="nv" pagecolor="#ffffff" inkscape:pageopacity="0" inkscape:document-units="px"/>
+  <g inkscape:groupmode="layer" id="layer_fondo" inkscape:label="01_fondo">
+    <path id="fondo_paralelo" d="M 96,48 L 325,48 L 248,265 L 21,265 Z" style="fill:#05294B;stroke:none"/>
   </g>
-  <g
-     id="layer_sombra">
-    <path
-       d="M 147,108 L 139,126 L 183,128 L 181,148 L 176,154 L 133,154 L 125,178 L 172,180 L 169,198 L 180,203 L 166,202 L 175,152 L 184,130 L 182,126 L 137,125 L 145,104 Z"
-       style="fill:#000000;fill-opacity:0.28;stroke:none"
-       id="path5" />
+  <g inkscape:groupmode="layer" id="layer_blanco" inkscape:label="03_marca_blanca">
+    <path id="marca_blanca" d="M 284,106 L 224,105 L 221,99 L 228,85 L 226,81 L 207,81 L 203,86 L 203,92 L 197,104 L 145,104 L 137,125 L 182,126 L 184,130 L 179,146 L 175,152 L 129,152 L 120,177 L 171,178 L 173,184 L 170,188 L 166,202 L 180,203 L 186,182 Z" style="fill:#FFFFFF;stroke:none"/>
   </g>
-  <g
-     id="layer_blanco">
-    <path
-       id="marca_blanca"
-       d="M 284,106 L 224,105 L 221,99 L 228,85 L 226,81 L 207,81 L 203,86 L 203,92 L 197,104 L 145,104 L 137,125 L 182,126 L 184,130 L 179,146 L 175,152 L 129,152 L 120,177 L 171,178 L 173,184 L 170,188 L 166,202 L 180,203 L 186,182 Z"
-       style="fill:#FFFFFF;stroke:none" />
+  <g inkscape:groupmode="layer" id="layer_flecha" inkscape:label="04_flecha_amarilla">
+    <path id="flecha_amarilla" d="M 61,200 L 77,200 C 90,218 125,230 160,226 C 195,222 220,200 240,175 L 232.27,161.71 L 271.00,142.00 L 258.31,183.57 C 230,195 200,225 165,234 C 125,244 90,236 76,218 L 76,224 L 61,224 Z" style="fill:#FEC001;stroke:none"/>
   </g>
-  <g
-     id="layer_flecha">
-    <!-- centerline of yellow swoosh from original silhouette -->
-    <path
-       id="flecha_centro"
-       style="color:#000000;fill:#fec001;stroke-linejoin:round;-inkscape-stroke:none"
-       d="M 250 138 L 243.96094 171.21484 C 223.00591 193.2896 196.41731 213.40641 168.12109 220.48047 C 130.00819 230.00869 92.375058 223.41412 75.480469 206.51953 L 64.519531 217.48047 C 87.624862 240.5858 129.99197 245.99127 171.87891 235.51953 C 214.73883 224.80455 250.51028 190.54976 274.15039 159.71484 L 273.41602 159.15234 L 286 150 L 250 138 z " />
-  </g>
-  <g
-     id="layer_contorno">
-    <path
-       d="M 96,48 L 325,48 L 248,265 L 21,265 Z"
-       style="fill:none;stroke:#050505;stroke-width:3;stroke-linejoin:miter"
-       id="path13" />
+  <g inkscape:groupmode="layer" id="layer_contorno" inkscape:label="05_contorno">
+    <path id="contorno" d="M 96,48 L 325,48 L 248,265 L 21,265 Z" style="fill:none;stroke:#050505;stroke-width:3;stroke-linejoin:miter"/>
   </g>
 </svg>
