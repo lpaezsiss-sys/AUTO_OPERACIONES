@@ -1,0 +1,20 @@
+LPAEZ / LPM COMERCIAL — Sistema de marca (fiel a LogoPaez_SF.png)
+================================================================
+
+ORIGINAL
+  marca/lpaez_SF/original/LogoPaez_SF.png
+  (tambien en raiz del repo: LogoPaez_SF.png)
+
+PALETA (muestreada del original)
+  Azul marino  #05294B
+  Amarillo     #FEC001
+  Blanco       #FFFFFF
+  Negro        #050505
+
+TIPOGRAFIA
+  Space Grotesk Bold/Medium — LPAEZ / LPM COMERCIAL
+
+VARIANTES
+  color | mono | negativo
+  isotipo + favicon + wordmark + lockups horizontal/stacked
+  exports/: SVG + PNG + PDF

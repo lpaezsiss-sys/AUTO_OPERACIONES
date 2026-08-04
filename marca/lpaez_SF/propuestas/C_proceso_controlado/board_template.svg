@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+ width="1400" height="780" viewBox="0 0 1400 780">
+  <rect width="1400" height="780" fill="#F3F4F6"/>
+  <text x="40" y="48" style="font-family:'Space Grotesk';sans-serif;font-weight:700;font-size:28px;fill:#05294B">Propuesta C — Flecha de proceso controlado</text>
+  <text x="40" y="78" style="font-family:'Space Grotesk';sans-serif;font-weight:500;font-size:16px;fill:#4A5A6A">Evolución industrial: menos inclinación · canal de precisión · flecha angular 45°</text>
+
+  <text x="40" y="130" style="font-family:'Space Grotesk';sans-serif;font-weight:700;font-size:18px;fill:#333">ACTUAL</text>
+  <text x="720" y="130" style="font-family:'Space Grotesk';sans-serif;font-weight:700;font-size:18px;fill:#333">PROPUESTA C</text>
+
+  <image xlink:href="file:///workspace/marca/lpaez_SF/exports/isotipo/isotipo_color.png" x="40" y="150" width="500" height="440" preserveAspectRatio="xMidYMid meet"/>
+  <!-- propuesta rendered separately and composited in PIL -->
+</svg>
