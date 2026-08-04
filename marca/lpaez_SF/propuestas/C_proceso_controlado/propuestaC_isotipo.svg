@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+ width="400" height="360" viewBox="0 0 400 360" version="1.1" id="LPAEZ_PropuestaC">
+  
+  <g inkscape:label="01_fondo" inkscape:groupmode="layer" id="fondo">
+    <path d="M 70,40 L 370,40 L 336,320 L 36,320 Z" style="fill:#05294B;stroke:none"/>
+  </g>
+  <g inkscape:label="02_marca" inkscape:groupmode="layer" id="marca">
+    <path id="marca_blanca" d="M 140,92 L 225,92 L 235,92 L 318,92 L 305,125 L 345,125 L 255,240 L 200,240 L 208,200 L 175,200 L 168,230 L 118,230 L 128,175 L 170,175 L 175,155 L 130,155 L 135,120 L 185,120 L 190,100 L 145,100 Z" style="fill:#FFFFFF;stroke:none"/>
+    <path id="canal_precision" d="M 208,105 L 220,105 L 198,225 L 186,225 Z" style="fill:#05294B;stroke:none"/>
+  </g>
+  <g inkscape:label="03_flecha" inkscape:groupmode="layer" id="flecha">
+    <path id="flecha_proceso" d="M 92,246 L 150,246 L 235,161 L 222,148 L 295,115 L 255,175 L 168,268 L 92,268 Z" style="fill:#F5C400;stroke:none"/>
+  </g>
+  <g inkscape:label="04_contorno" inkscape:groupmode="layer" id="contorno">
+    <path d="M 70,40 L 370,40 L 336,320 L 36,320 Z" style="fill:none;stroke:#0A0A0A;stroke-width:3.5;stroke-linejoin:miter"/>
+  </g>
+</svg>
