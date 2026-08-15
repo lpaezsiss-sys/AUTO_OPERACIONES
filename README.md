@@ -21,10 +21,13 @@ Módulo CRM para **LPAEZsis** en `crm.lpaezsis.cl`.
 
 ```bash
 cp .env.example .env
-# en .env: CRM_DB_DRIVER=sqlite
+# en .env: CRM_DB_DRIVER=sqlite  y  CRM_SQLITE_PATH=data/crm.sqlite
 php sql/install.php
-php -S 127.0.0.1:8080
+php scripts/test_local.php    # PASS / FAIL
+./server.sh                   # http://localhost:8000
 ```
+
+Checklist manual antes de producción: `CHECKLIST_LOCAL.md`.
 
 Usuario seed (solo entorno local / primera instalación):
 
@@ -62,5 +65,7 @@ Si la tabla ya existe en la misma base (inventario.lpaezsis.cl), no se recrea (`
 ## Tests
 
 ```bash
+php tests/php74_scan.php
 php tests/run.php
+php scripts/test_local.php
 ```

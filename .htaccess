@@ -2,7 +2,7 @@ DirectoryIndex index.php login.php
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule ^(config|src|includes|sql|tests|data)/ - [F]
+    RewriteRule ^(config|src|includes|sql|tests|data|database|scripts)/ - [F]
     RewriteRule ^\.env - [F]
 </IfModule>
 

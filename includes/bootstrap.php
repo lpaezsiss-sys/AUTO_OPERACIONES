@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/includes/polyfills.php';
+require_once dirname(__DIR__) . '/includes/cors.php';
 require_once dirname(__DIR__) . '/config/db.php';
 
 date_default_timezone_set('America/Santiago');
@@ -19,7 +20,12 @@ spl_autoload_register(static function ($class) {
     }
 });
 
-if (session_status() !== PHP_SESSION_ACTIVE) {
+if (PHP_SAPI !== 'cli') {
+    crm_cors_headers();
+    crm_cors_preflight();
+}
+
+if (PHP_SAPI !== 'cli' && session_status() !== PHP_SESSION_ACTIVE) {
     $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || ((int) (isset($_SERVER['SERVER_PORT']) ? $_SERVER['SERVER_PORT'] : 0) === 443);
     session_name('crm_lpaezsis');

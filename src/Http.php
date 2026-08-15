@@ -11,6 +11,9 @@ final class Http
         header('Content-Type: application/json; charset=utf-8');
         header('X-Content-Type-Options: nosniff');
         header('Cache-Control: no-store');
+        if (function_exists('crm_cors_headers')) {
+            crm_cors_headers();
+        }
     }
 
     /**
