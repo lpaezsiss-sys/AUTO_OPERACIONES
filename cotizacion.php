@@ -47,7 +47,7 @@ crm_layout_start($id ? 'Cotización' : 'Nueva cotización', 'cotizaciones', $use
     </div>
     <div class="table-responsive">
         <table class="table" id="items">
-            <thead><tr><th>Tipo</th><th>Código</th><th>Descripción</th><th>Stock</th><th>Cant.</th><th>Precio</th><th>% Desc.</th><th></th></tr></thead>
+            <thead><tr><th>Tipo</th><th>Código</th><th>Descripción</th><th>Stock</th><th>Cant.</th><th>Precio</th><th>% Desc.</th><th>Subtotal</th><th></th></tr></thead>
             <tbody></tbody>
         </table>
     </div>
@@ -66,8 +66,11 @@ function renderItems() {
   tb.innerHTML = items.map(function (it, i) {
     var warn = it.tipo_item !== "servicio" && it.stock_actual != null && Number(it.stock_actual) < Number(it.cantidad);
     var serv = it.tipo_item === "servicio";
-    return '<tr><td>'+(serv?'Servicio':'Producto')+'</td><td>'+(serv?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+it.codigo+'">':it.codigo)+'</td><td>'+(serv?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+it.descripcion+'">':it.descripcion)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(serv||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="number" min="1" value="'+it.cantidad+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="number" min="0" value="'+it.precio_unitario+'"></td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="number" min="0" max="100" value="'+it.descuento_pct+'"></td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>';
+    return '<tr><td>'+(serv?'Servicio':'Producto')+'</td><td>'+(serv?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+it.codigo+'">':it.codigo)+'</td><td>'+(serv?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+it.descripcion+'">':it.descripcion)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(serv||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="number" min="1" value="'+it.cantidad+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="number" min="0" value="'+it.precio_unitario+'"></td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="number" min="0" max="100" value="'+it.descuento_pct+'"></td><td class="text-end line-sub">'+crmClp(lineSub(it))+'</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>';
   }).join("");
+  updateTotalesCot();
+}
+function updateTotalesCot() {
   var sub = items.reduce(function (s, it) { return s + lineSub(it); }, 0);
   var desc = Number(document.querySelector('[name=descuento]').value || 0);
   var neto = Math.max(0, sub - desc);
@@ -106,6 +109,7 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
   });
   renderItems();
 });
+document.querySelector('[name=descuento]').addEventListener("input", updateTotalesCot);
 document.getElementById("btnAddServ").addEventListener("click", function () {
   items.push({ tipo_item: "servicio", producto_id: null, codigo: "SERV", descripcion: "", cantidad: 1, precio_unitario: 0, descuento_pct: 0, stock_actual: null });
   renderItems();
@@ -121,7 +125,12 @@ document.querySelector("#items tbody").addEventListener("input", function (ev) {
   var k = ev.target.getAttribute("data-k");
   if (i == null) return;
   items[i][k] = ev.target.value;
-  renderItems();
+  var row = ev.target.closest("tr");
+  if (row) {
+    var subCell = row.querySelector(".line-sub");
+    if (subCell) subCell.textContent = crmClp(lineSub(items[i]));
+  }
+  updateTotalesCot();
 });
 document.querySelector("#items tbody").addEventListener("click", function (ev) {
   var del = ev.target.getAttribute("data-del");

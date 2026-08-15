@@ -112,10 +112,14 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         '<td><input class="form-control form-control-sm" type="number" min="1" value="' + it.cantidad + '" data-i="' + i + '" data-k="cantidad"></td>' +
         '<td><input class="form-control form-control-sm" type="number" min="0" value="' + it.precio_unitario + '" data-i="' + i + '" data-k="precio_unitario"></td>' +
         '<td><input class="form-control form-control-sm" type="number" min="0" max="100" value="' + it.descuento_pct + '" data-i="' + i + '" data-k="descuento_pct"></td>' +
-        '<td class="text-end">' + crmClp(lineSub(it)) + '</td>' +
+        '<td class="text-end line-sub">' + crmClp(lineSub(it)) + '</td>' +
         '<td><button class="btn btn-sm btn-outline-danger" type="button" data-del="' + i + '">x</button></td>' +
         '</tr>';
     }).join("");
+    updateTotales();
+  }
+
+  function updateTotales() {
     var sub = items.reduce(function (s, it) { return s + lineSub(it); }, 0);
     var desc = Number(document.getElementById("descuento").value || 0);
     var neto = Math.max(0, sub - desc);
@@ -197,7 +201,14 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       return;
     }
     items[i][k] = ev.target.value;
-    render();
+    var row = ev.target.closest("tr");
+    if (row) {
+      var subCell = row.querySelector(".line-sub");
+      if (subCell) {
+        subCell.textContent = crmClp(lineSub(items[i]));
+      }
+    }
+    updateTotales();
   });
   document.querySelector("#tablaItems tbody").addEventListener("click", function (ev) {
     var del = ev.target.getAttribute("data-del");
