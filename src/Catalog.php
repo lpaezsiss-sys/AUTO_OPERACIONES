@@ -85,6 +85,14 @@ final class Catalog
     /**
      * @return string[]
      */
+    public static function itemTipos()
+    {
+        return array('producto', 'servicio');
+    }
+
+    /**
+     * @return string[]
+     */
     public static function actividadTipos()
     {
         return array('llamada', 'email', 'whatsapp', 'visita', 'reunion', 'nota', 'tarea');
@@ -117,6 +125,7 @@ final class Catalog
             'canales' => self::canales(),
             'etapas' => self::etapas(),
             'cotizacion_estados' => self::cotizacionEstados(),
+            'item_tipos' => self::itemTipos(),
             'actividad_tipos' => self::actividadTipos(),
             'iva_pct' => crm_iva_pct(),
         );

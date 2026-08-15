@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS crm_cotizaciones (
 CREATE TABLE IF NOT EXISTS crm_cotizacion_items (
                 id INT UNSIGNED NOT NULL AUTO_INCREMENT,
                 cotizacion_id INT UNSIGNED NOT NULL,
+                tipo_item ENUM('producto','servicio') NOT NULL DEFAULT 'producto',
                 producto_id INT UNSIGNED NULL,
                 codigo VARCHAR(50) NOT NULL,
                 descripcion VARCHAR(300) NOT NULL,

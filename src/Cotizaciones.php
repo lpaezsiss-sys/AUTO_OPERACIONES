@@ -164,66 +164,27 @@ final class Cotizaciones
 
             $subtotal = 0.0;
             $insItem = $pdo->prepare(
-                'INSERT INTO crm_cotizacion_items (cotizacion_id, producto_id, codigo, descripcion, cantidad, precio_unitario, descuento_pct, subtotal, stock_al_cotizar)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            );
-            $findProd = $pdo->prepare(
-                'SELECT id, codigo, nombre, stock, precio_unitario FROM productos WHERE id = ? LIMIT 1'
+                'INSERT INTO crm_cotizacion_items (cotizacion_id, tipo_item, producto_id, codigo, descripcion, cantidad, precio_unitario, descuento_pct, subtotal, stock_al_cotizar)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
 
             foreach ($itemsIn as $raw) {
                 if (!is_array($raw)) {
                     continue;
                 }
-                $productoId = crm_int(isset($raw['producto_id']) ? $raw['producto_id'] : 0, 0);
-                $codigo = crm_str(isset($raw['codigo']) ? $raw['codigo'] : '', 50);
-                $descripcion = crm_str(isset($raw['descripcion']) ? $raw['descripcion'] : '', 300);
-                $cantidad = crm_float(isset($raw['cantidad']) ? $raw['cantidad'] : 1, 1);
-                $precio = crm_float(isset($raw['precio_unitario']) ? $raw['precio_unitario'] : 0, 0);
-                $descPct = crm_float(isset($raw['descuento_pct']) ? $raw['descuento_pct'] : 0, 0);
-                $stockSnap = null;
-
-                if ($productoId > 0) {
-                    $findProd->execute(array($productoId));
-                    $prod = $findProd->fetch(PDO::FETCH_ASSOC);
-                    if (!$prod) {
-                        Http::fail('Producto de inventario no encontrado: id ' . $productoId);
-                    }
-                    if ($codigo === '') {
-                        $codigo = (string) $prod['codigo'];
-                    }
-                    if ($descripcion === '') {
-                        $descripcion = (string) $prod['nombre'];
-                    }
-                    if ($precio <= 0) {
-                        $precio = (float) $prod['precio_unitario'];
-                    }
-                    $stockSnap = (float) $prod['stock'];
-                }
-                if ($codigo === '' || $descripcion === '') {
-                    Http::fail('Cada ítem requiere código y descripción');
-                }
-                if ($cantidad <= 0) {
-                    Http::fail('La cantidad debe ser mayor a 0');
-                }
-                if ($descPct < 0) {
-                    $descPct = 0;
-                }
-                if ($descPct > 100) {
-                    $descPct = 100;
-                }
-                $line = round($cantidad * $precio * (1 - ($descPct / 100)), 2);
-                $subtotal += $line;
+                $item = self::normalizarItem($pdo, $raw);
+                $subtotal += $item['subtotal'];
                 $insItem->execute(array(
                     $id,
-                    $productoId > 0 ? $productoId : null,
-                    $codigo,
-                    $descripcion,
-                    $cantidad,
-                    $precio,
-                    $descPct,
-                    $line,
-                    $stockSnap,
+                    $item['tipo_item'],
+                    $item['producto_id'],
+                    $item['codigo'],
+                    $item['descripcion'],
+                    $item['cantidad'],
+                    $item['precio_unitario'],
+                    $item['descuento_pct'],
+                    $item['subtotal'],
+                    $item['stock_al_cotizar'],
                 ));
             }
 
@@ -268,5 +229,85 @@ final class Cotizaciones
         }
 
         return self::show($id);
+    }
+
+    /**
+     * Normaliza un ítem: producto de inventario o servicio libre (producto_id NULL).
+     *
+     * @param array $raw
+     * @return array
+     */
+    public static function normalizarItem(PDO $pdo, array $raw)
+    {
+        $tipo = crm_lower(crm_str(isset($raw['tipo_item']) ? $raw['tipo_item'] : 'producto', 20));
+        if ($tipo === '') {
+            $tipo = 'producto';
+        }
+        if (!in_array($tipo, Catalog::itemTipos(), true)) {
+            Http::fail('tipo_item inválido');
+        }
+
+        $productoId = crm_int(isset($raw['producto_id']) ? $raw['producto_id'] : 0, 0);
+        $codigo = crm_str(isset($raw['codigo']) ? $raw['codigo'] : '', 50);
+        $descripcion = crm_str(isset($raw['descripcion']) ? $raw['descripcion'] : '', 300);
+        $cantidad = crm_float(isset($raw['cantidad']) ? $raw['cantidad'] : 1, 1);
+        $precio = crm_float(isset($raw['precio_unitario']) ? $raw['precio_unitario'] : 0, 0);
+        $descPct = crm_float(isset($raw['descuento_pct']) ? $raw['descuento_pct'] : 0, 0);
+        $stockSnap = null;
+
+        if ($tipo === 'servicio') {
+            $productoId = 0;
+            if ($codigo === '') {
+                $codigo = 'SERV';
+            }
+            if ($descripcion === '') {
+                Http::fail('El servicio requiere una descripción');
+            }
+        } elseif ($productoId > 0) {
+            $findProd = $pdo->prepare(
+                'SELECT id, codigo, nombre, stock, precio_unitario FROM productos WHERE id = ? LIMIT 1'
+            );
+            $findProd->execute(array($productoId));
+            $prod = $findProd->fetch(PDO::FETCH_ASSOC);
+            if (!$prod) {
+                Http::fail('Producto de inventario no encontrado: id ' . $productoId);
+            }
+            if ($codigo === '') {
+                $codigo = (string) $prod['codigo'];
+            }
+            if ($descripcion === '') {
+                $descripcion = (string) $prod['nombre'];
+            }
+            if ($precio <= 0) {
+                $precio = (float) $prod['precio_unitario'];
+            }
+            $stockSnap = (float) $prod['stock'];
+        }
+
+        if ($codigo === '' || $descripcion === '') {
+            Http::fail('Cada ítem requiere código y descripción');
+        }
+        if ($cantidad <= 0) {
+            Http::fail('La cantidad debe ser mayor a 0');
+        }
+        if ($descPct < 0) {
+            $descPct = 0;
+        }
+        if ($descPct > 100) {
+            $descPct = 100;
+        }
+        $line = round($cantidad * $precio * (1 - ($descPct / 100)), 2);
+
+        return array(
+            'tipo_item' => $tipo,
+            'producto_id' => $productoId > 0 ? $productoId : null,
+            'codigo' => $codigo,
+            'descripcion' => $descripcion,
+            'cantidad' => $cantidad,
+            'precio_unitario' => $precio,
+            'descuento_pct' => $descPct,
+            'subtotal' => $line,
+            'stock_al_cotizar' => $stockSnap,
+        );
     }
 }

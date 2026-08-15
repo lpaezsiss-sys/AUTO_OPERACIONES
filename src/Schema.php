@@ -41,6 +41,17 @@ final class Schema
                 $pdo->exec('ALTER TABLE crm_cotizaciones ADD COLUMN vendedor_id INT UNSIGNED NULL');
             }
         }
+        if (!self::hasColumn($pdo, 'crm_cotizacion_items', 'tipo_item')) {
+            $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'sqlite') {
+                $pdo->exec("ALTER TABLE crm_cotizacion_items ADD COLUMN tipo_item TEXT NOT NULL DEFAULT 'producto'");
+            } else {
+                $pdo->exec(
+                    "ALTER TABLE crm_cotizacion_items
+                     ADD COLUMN tipo_item ENUM('producto','servicio') NOT NULL DEFAULT 'producto' AFTER cotizacion_id"
+                );
+            }
+        }
     }
 
     /**
@@ -279,6 +290,7 @@ final class Schema
             "CREATE TABLE IF NOT EXISTS crm_cotizacion_items (
                 id INT UNSIGNED NOT NULL AUTO_INCREMENT,
                 cotizacion_id INT UNSIGNED NOT NULL,
+                tipo_item ENUM('producto','servicio') NOT NULL DEFAULT 'producto',
                 producto_id INT UNSIGNED NULL,
                 codigo VARCHAR(50) NOT NULL,
                 descripcion VARCHAR(300) NOT NULL,
@@ -483,6 +495,7 @@ final class Schema
             "CREATE TABLE IF NOT EXISTS crm_cotizacion_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cotizacion_id INTEGER NOT NULL,
+                tipo_item TEXT NOT NULL DEFAULT 'producto',
                 producto_id INTEGER,
                 codigo TEXT NOT NULL,
                 descripcion TEXT NOT NULL,

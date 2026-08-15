@@ -266,6 +266,47 @@ $comRow->execute(array($aceptId));
 $comision2 = $comRow->fetch(PDO::FETCH_ASSOC);
 assert_true(is_array($comision2) && (string) $comision2['estado'] === 'anulada', 'Rechazo anula comisión pendiente');
 
+$serv = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'borrador',
+    'items' => array(
+        array(
+            'tipo_item' => 'servicio',
+            'descripcion' => 'Instalación y puesta en marcha',
+            'cantidad' => 1,
+            'precio_unitario' => 150000,
+        ),
+        array(
+            'tipo_item' => 'producto',
+            'producto_id' => (int) $prod['id'],
+            'cantidad' => 1,
+        ),
+    ),
+), $login);
+$servItems = $serv['cotizacion']['items'];
+assert_true(count($servItems) === 2, 'Cotización mixta producto + servicio');
+assert_true((string) $servItems[0]['tipo_item'] === 'servicio', 'Primer ítem es servicio');
+assert_true($servItems[0]['producto_id'] === null || $servItems[0]['producto_id'] === '', 'Servicio deja producto_id NULL');
+assert_true((string) $servItems[0]['codigo'] === 'SERV', 'Código por defecto SERV');
+assert_true((string) $servItems[1]['tipo_item'] === 'producto', 'Segundo ítem es producto');
+assert_true((int) $servItems[1]['producto_id'] === (int) $prod['id'], 'Producto mantiene FK de inventario');
+
+$servFail = false;
+try {
+    \Crm\Cotizaciones::store(array(
+        'empresa_id' => $empId,
+        'items' => array(
+            array('tipo_item' => 'servicio', 'cantidad' => 1, 'precio_unitario' => 10),
+        ),
+    ), $login);
+} catch (\Crm\ApiException $e) {
+    $servFail = strpos($e->getMessage(), 'descripción') !== false;
+}
+assert_true($servFail, 'Servicio sin descripción se rechaza');
+
+$pdfServ = \Crm\CotizacionPdf::generar($serv['cotizacion']);
+assert_true(strpos($pdfServ, '[Servicio]') !== false, 'PDF marca ítems de servicio');
+
 $beforeCom = (int) $pdo->query('SELECT COUNT(*) FROM crm_comisiones')->fetchColumn();
 $pdo->beginTransaction();
 \Crm\Comisiones::registrarDesdeCotizacion($pdo, $cotId, (int) $adminVend['id'], 9999.00);

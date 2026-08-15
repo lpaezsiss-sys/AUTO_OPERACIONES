@@ -137,10 +137,6 @@ function crm_guardar_cotizacion(array $user)
         : null;
     $ejecutivoId = isset($user['id']) ? (int) $user['id'] : null;
 
-    $findProd = $pdo->prepare(
-        'SELECT id, codigo, nombre, stock, precio_unitario FROM productos WHERE id = ? LIMIT 1'
-    );
-
     $pdo->beginTransaction();
     try {
         $year = date('Y');
@@ -179,8 +175,8 @@ function crm_guardar_cotizacion(array $user)
 
         $insItem = $pdo->prepare(
             'INSERT INTO crm_cotizacion_items
-                (cotizacion_id, producto_id, codigo, descripcion, cantidad, precio_unitario, descuento_pct, subtotal, stock_al_cotizar)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                (cotizacion_id, tipo_item, producto_id, codigo, descripcion, cantidad, precio_unitario, descuento_pct, subtotal, stock_al_cotizar)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         $subtotal = 0.0;
@@ -192,48 +188,19 @@ function crm_guardar_cotizacion(array $user)
             if (!is_array($rawItem)) {
                 continue;
             }
-
-            $productoId = isset($rawItem['producto_id']) ? (int) $rawItem['producto_id'] : 0;
-            $codigo = isset($rawItem['codigo']) ? trim((string) $rawItem['codigo']) : '';
-            $descripcion = isset($rawItem['descripcion']) ? trim((string) $rawItem['descripcion']) : '';
-            $cantidad = isset($rawItem['cantidad']) ? (float) $rawItem['cantidad'] : 1.0;
-            $precio = isset($rawItem['precio_unitario']) ? (float) $rawItem['precio_unitario'] : 0.0;
-            $descPct = isset($rawItem['descuento_pct']) ? (float) $rawItem['descuento_pct'] : 0.0;
-            $stockSnap = null;
-
-            if ($productoId > 0) {
-                $findProd->execute(array($productoId));
-                $prod = $findProd->fetch(PDO::FETCH_ASSOC);
-                if (!$prod) {
-                    throw new RuntimeException('Producto de inventario no encontrado: id ' . $productoId);
-                }
-                $codigo = $codigo !== '' ? $codigo : (string) $prod['codigo'];
-                $descripcion = $descripcion !== '' ? $descripcion : (string) $prod['nombre'];
-                $precio = $precio > 0 ? $precio : (float) $prod['precio_unitario'];
-                $stockSnap = (float) $prod['stock'];
-            }
-
-            if ($codigo === '' || $descripcion === '') {
-                throw new RuntimeException('Cada ítem requiere código y descripción');
-            }
-            if ($cantidad <= 0) {
-                throw new RuntimeException('La cantidad debe ser mayor a 0');
-            }
-            $descPct = $descPct < 0 ? 0.0 : $descPct;
-            $descPct = $descPct > 100 ? 100.0 : $descPct;
-            $line = round($cantidad * $precio * (1 - ($descPct / 100)), 2);
-            $subtotal += $line;
-
+            $item = \Crm\Cotizaciones::normalizarItem($pdo, $rawItem);
+            $subtotal += $item['subtotal'];
             $insItem->execute(array(
                 $cotizacionId,
-                $productoId > 0 ? $productoId : null,
-                $codigo,
-                $descripcion,
-                $cantidad,
-                $precio,
-                $descPct,
-                $line,
-                $stockSnap,
+                $item['tipo_item'],
+                $item['producto_id'],
+                $item['codigo'],
+                $item['descripcion'],
+                $item['cantidad'],
+                $item['precio_unitario'],
+                $item['descuento_pct'],
+                $item['subtotal'],
+                $item['stock_al_cotizar'],
             ));
         }
 

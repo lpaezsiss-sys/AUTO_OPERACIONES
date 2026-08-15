@@ -38,12 +38,15 @@ crm_layout_start('Cotizador', 'cotizador', $user);
             <label class="form-label">Descuento CLP</label>
             <input class="form-control" id="descuento" type="number" min="0" value="0">
         </div>
-        <div class="col-12">
+        <div class="col-md-8">
             <label class="form-label">Buscar producto (SKU o nombre)</label>
             <div class="position-relative">
                 <input class="form-control" id="buscar" autocomplete="off" placeholder="Escriba para buscar en inventario…">
                 <div id="sugerencias" class="list-group position-absolute w-100 shadow" style="z-index:20;display:none;max-height:260px;overflow:auto;"></div>
             </div>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-outline-primary w-100" id="btnServicio" type="button">Agregar servicio</button>
         </div>
     </div>
 
@@ -51,6 +54,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         <table class="table align-middle" id="tablaItems">
             <thead>
                 <tr>
+                    <th>Tipo</th>
                     <th>SKU</th>
                     <th>Descripción</th>
                     <th>Stock</th>
@@ -98,11 +102,13 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   function render() {
     var tb = document.querySelector("#tablaItems tbody");
     tb.innerHTML = items.map(function (it, i) {
-      var warn = it.stock != null && Number(it.stock) < Number(it.cantidad);
+      var warn = it.tipo_item !== "servicio" && it.stock != null && Number(it.stock) < Number(it.cantidad);
+      var serv = it.tipo_item === "servicio";
       return '<tr>' +
-        '<td>' + it.codigo + '</td>' +
-        '<td>' + it.descripcion + '</td>' +
-        '<td><span class="badge badge-stock ' + (warn ? "low" : "") + '">' + (it.stock == null ? "n/d" : it.stock) + '</span></td>' +
+        '<td><span class="badge ' + (serv ? "text-bg-info" : "text-bg-light") + '">' + (serv ? "Servicio" : "Producto") + '</span></td>' +
+        '<td>' + (serv ? '<input class="form-control form-control-sm" value="' + it.codigo + '" data-i="' + i + '" data-k="codigo">' : it.codigo) + '</td>' +
+        '<td>' + (serv ? '<input class="form-control form-control-sm" value="' + it.descripcion + '" data-i="' + i + '" data-k="descripcion">' : it.descripcion) + '</td>' +
+        '<td><span class="badge badge-stock ' + (warn ? "low" : "") + '">' + (serv || it.stock == null ? "—" : it.stock) + '</span></td>' +
         '<td><input class="form-control form-control-sm" type="number" min="1" value="' + it.cantidad + '" data-i="' + i + '" data-k="cantidad"></td>' +
         '<td><input class="form-control form-control-sm" type="number" min="0" value="' + it.precio_unitario + '" data-i="' + i + '" data-k="precio_unitario"></td>' +
         '<td><input class="form-control form-control-sm" type="number" min="0" max="100" value="' + it.descuento_pct + '" data-i="' + i + '" data-k="descuento_pct"></td>' +
@@ -122,6 +128,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
 
   function addProducto(p) {
     items.push({
+      tipo_item: "producto",
       producto_id: p.id,
       codigo: p.sku || p.codigo,
       descripcion: p.nombre,
@@ -198,6 +205,19 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       return;
     }
     items.splice(Number(del), 1);
+    render();
+  });
+  document.getElementById("btnServicio").addEventListener("click", function () {
+    items.push({
+      tipo_item: "servicio",
+      producto_id: null,
+      codigo: "SERV",
+      descripcion: "",
+      cantidad: 1,
+      precio_unitario: 0,
+      descuento_pct: 0,
+      stock: null
+    });
     render();
   });
   document.getElementById("descuento").addEventListener("input", render);

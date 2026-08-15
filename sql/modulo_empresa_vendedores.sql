@@ -66,3 +66,18 @@ SET @crm_vend_sql := IF(
 PREPARE crm_vend_stmt FROM @crm_vend_sql;
 EXECUTE crm_vend_stmt;
 DEALLOCATE PREPARE crm_vend_stmt;
+
+SET @crm_tipo_col := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'crm_cotizacion_items'
+    AND COLUMN_NAME = 'tipo_item'
+);
+SET @crm_tipo_sql := IF(
+  @crm_tipo_col = 0,
+  'ALTER TABLE `crm_cotizacion_items` ADD COLUMN `tipo_item` ENUM(''producto'',''servicio'') NOT NULL DEFAULT ''producto'' AFTER `cotizacion_id`',
+  'SELECT 1'
+);
+PREPARE crm_tipo_stmt FROM @crm_tipo_sql;
+EXECUTE crm_tipo_stmt;
+DEALLOCATE PREPARE crm_tipo_stmt;

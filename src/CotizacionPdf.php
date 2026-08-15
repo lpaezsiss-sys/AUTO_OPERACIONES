@@ -107,8 +107,13 @@ final class CotizacionPdf
             if ($y < 90) {
                 break;
             }
+            $tipo = isset($it['tipo_item']) ? (string) $it['tipo_item'] : 'producto';
+            $descPdf = (string) (isset($it['descripcion']) ? $it['descripcion'] : '');
+            if ($tipo === 'servicio') {
+                $descPdf = '[Servicio] ' . $descPdf;
+            }
             $ops[] = self::textOp(46, $y, 8, (string) (isset($it['codigo']) ? $it['codigo'] : ''));
-            $ops[] = self::textOp(110, $y, 8, self::clip((string) (isset($it['descripcion']) ? $it['descripcion'] : ''), 42));
+            $ops[] = self::textOp(110, $y, 8, self::clip($descPdf, 42));
             $ops[] = self::textOp(330, $y, 8, self::num((float) (isset($it['cantidad']) ? $it['cantidad'] : 0), 2));
             $ops[] = self::textOp(380, $y, 8, self::clp((float) (isset($it['precio_unitario']) ? $it['precio_unitario'] : 0)));
             $ops[] = self::textOp(450, $y, 8, self::num((float) (isset($it['descuento_pct']) ? $it['descuento_pct'] : 0), 2));
