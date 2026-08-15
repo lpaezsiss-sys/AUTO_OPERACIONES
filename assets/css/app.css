@@ -1,0 +1,164 @@
+:root {
+  --navy: #05294b;
+  --navy-2: #0a3a66;
+  --yellow: #fec001;
+  --ink: #0e1a24;
+  --muted: #5b6b7a;
+  --bg: #f4f6f8;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  width: 250px;
+  background: linear-gradient(180deg, var(--navy) 0%, #03172c 100%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 0.9rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 1.5rem;
+}
+
+.brand:hover { color: var(--yellow); }
+
+.app-sidebar .nav-link {
+  color: rgba(255,255,255,0.78);
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.app-sidebar .nav-link:hover,
+.app-sidebar .nav-link.active {
+  background: rgba(254, 192, 1, 0.16);
+  color: var(--yellow);
+}
+
+.sidebar-user {
+  margin-top: auto;
+  padding: 0.9rem 0.4rem 0.2rem;
+  border-top: 1px solid rgba(255,255,255,0.12);
+}
+
+.app-main {
+  flex: 1;
+  padding: 1.5rem 1.75rem 2.5rem;
+  position: relative;
+}
+
+.page-title {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.kpi {
+  background: #fff;
+  border: 0;
+  border-radius: 0.9rem;
+  box-shadow: 0 8px 24px rgba(5, 41, 75, 0.06);
+}
+
+.kpi .kpi-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kpi .kpi-value {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.card-soft {
+  background: #fff;
+  border: 0;
+  border-radius: 0.9rem;
+  box-shadow: 0 8px 24px rgba(5, 41, 75, 0.06);
+}
+
+.badge-stock {
+  background: #e8f6ee;
+  color: #146c43;
+}
+
+.badge-stock.low {
+  background: #fff3cd;
+  color: #664d03;
+}
+
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(180px, 1fr));
+  gap: 0.75rem;
+  overflow-x: auto;
+}
+
+.kanban-col {
+  background: #eef2f6;
+  border-radius: 0.75rem;
+  padding: 0.7rem;
+  min-height: 280px;
+}
+
+.kanban-card {
+  background: #fff;
+  border-radius: 0.6rem;
+  padding: 0.7rem;
+  margin-bottom: 0.55rem;
+  cursor: pointer;
+  border-left: 3px solid var(--yellow);
+}
+
+.login-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at top left, #0a3a66, var(--navy));
+}
+
+.login-card {
+  width: min(420px, 92vw);
+  background: #fff;
+  border-radius: 1rem;
+  padding: 2rem;
+}
+
+#crmToast {
+  position: fixed;
+  right: 1.2rem;
+  top: 1.2rem;
+  z-index: 1080;
+}
+
+@media (max-width: 992px) {
+  .app-shell { display: block; }
+  .app-sidebar { width: 100%; height: auto; position: relative; }
+  .kanban { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+}

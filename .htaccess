@@ -1,0 +1,15 @@
+DirectoryIndex index.php login.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(config|src|includes|sql|tests|data)/ - [F]
+    RewriteRule ^\.env - [F]
+</IfModule>
+
+<Files ".env">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</Files>
+
+Options -Indexes
