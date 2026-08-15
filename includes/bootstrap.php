@@ -39,12 +39,14 @@ if (PHP_SAPI !== 'cli' && session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-if (crm_env('CRM_DB_DRIVER', 'mysql') === 'sqlite') {
-    try {
-        crm_pdo()->query('SELECT 1 FROM crm_usuarios LIMIT 1');
-    } catch (Exception $e) {
-        \Crm\Schema::install();
-    }
+try {
+    $pdoBoot = crm_pdo();
+    $pdoBoot->query('SELECT 1 FROM crm_usuarios LIMIT 1');
+    $pdoBoot->query('SELECT 1 FROM crm_configuracion_empresa LIMIT 1');
+    $pdoBoot->query('SELECT 1 FROM crm_vendedores LIMIT 1');
+    $pdoBoot->query('SELECT 1 FROM crm_comisiones LIMIT 1');
+} catch (Exception $e) {
+    \Crm\Schema::install();
 }
 
 function crm_now()

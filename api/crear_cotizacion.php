@@ -245,7 +245,17 @@ function crm_guardar_cotizacion(array $user)
         );
         $upd->execute(array($subtotal, $descuento, $iva, $total, $now, $cotizacionId));
 
+        $vendedorId = \Crm\Comisiones::resolverVendedorId($pdo, $data, $ejecutivoId ? $ejecutivoId : 0);
+        \Crm\Comisiones::sincronizarConCotizacion($pdo, $cotizacionId, $vendedorId, $neto, $estado);
+
         $pdo->commit();
+    } catch (\Crm\ApiException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        http_response_code((int) $e->status);
+        echo json_encode(array('ok' => false, 'error' => $e->getMessage()));
+        exit;
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();

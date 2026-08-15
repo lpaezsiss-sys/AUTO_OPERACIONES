@@ -18,19 +18,24 @@ crm_layout_start('Cotizador', 'cotizador', $user);
 
 <div class="card card-soft p-4">
     <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-5">
             <label class="form-label">Empresa</label>
             <select class="form-select" id="empresa_id"></select>
         </div>
         <div class="col-md-3">
+            <label class="form-label">Vendedor</label>
+            <select class="form-select" id="vendedor_id"></select>
+        </div>
+        <div class="col-md-2">
             <label class="form-label">Estado</label>
             <select class="form-select" id="estado">
                 <option value="borrador">Borrador</option>
                 <option value="enviada">Enviada</option>
+                <option value="aceptada">Aceptada</option>
             </select>
         </div>
-        <div class="col-md-3">
-            <label class="form-label">Descuento global CLP</label>
+        <div class="col-md-2">
+            <label class="form-label">Descuento CLP</label>
             <input class="form-control" id="descuento" type="number" min="0" value="0">
         </div>
         <div class="col-12">
@@ -136,6 +141,13 @@ crm_layout_start('Cotizador', 'cotizador', $user);
     }).join("");
   }).catch(function (e) { crmToast(e.message, true); });
 
+  crmApi("api/vendedores.php").then(function (d) {
+    document.getElementById("vendedor_id").innerHTML = '<option value="">(según usuario)</option>' +
+      (d.vendedores || []).filter(function (v) { return Number(v.activo) === 1; }).map(function (v) {
+        return '<option value="' + v.id + '">' + v.nombre_completo + ' · ' + Number(v.comision_porcentaje).toFixed(2) + '%</option>';
+      }).join("");
+  }).catch(function (e) { crmToast(e.message, true); });
+
   buscar.addEventListener("input", function () {
     var q = buscar.value;
     if (timer) {
@@ -199,6 +211,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
         empresa_id: Number(document.getElementById("empresa_id").value || 0),
+        vendedor_id: Number(document.getElementById("vendedor_id").value || 0),
         estado: document.getElementById("estado").value,
         descuento: Number(document.getElementById("descuento").value || 0),
         notas: document.getElementById("notas").value,

@@ -46,7 +46,7 @@ $phpBin = defined('PHP_BINARY') && PHP_BINARY !== '' ? PHP_BINARY : 'php';
 
 /* a) php -l en config/, api/ y raíz */
 $targets = array();
-foreach (array($root . '/config', $root . '/api', $root) as $dir) {
+foreach (array($root . '/config', $root . '/api', $root . '/src', $root) as $dir) {
     $list = glob($dir . '/*.php');
     if (!is_array($list)) {
         $list = array();
@@ -75,7 +75,7 @@ foreach (array_keys($targets) as $file) {
 }
 crm_local_report(
     $lintFail === 0,
-    'Escaneo de sintaxis php -l (config/, api/, raíz)',
+    'Escaneo de sintaxis php -l (config/, api/, src/, raíz)',
     $lintOk . ' archivo(s) OK' . ($lintFail > 0 ? ', ' . $lintFail . ' con error' : '')
 );
 

@@ -164,5 +164,76 @@ assert_true($dash['kpis']['empresas'] >= 4, 'Dashboard cuenta empresas');
 $readonly = \Crm\Productos::index();
 assert_true(count($readonly['productos']) >= 18, 'Listado read-only de productos');
 
+$cfg = \Crm\ConfiguracionEmpresa::obtener($pdo);
+assert_true((int) $cfg['id'] === 1, 'Configuración empresa singleton id=1');
+assert_true(strpos((string) $cfg['razon_social'], 'LPAEZsis') !== false, 'Seed empresa emisora LPAEZsis');
+
+$cfgSaved = \Crm\ConfiguracionEmpresa::guardar(array(
+    'rut' => '76.987.654-5',
+    'razon_social' => 'LPAEZsis-Soluciones Industriales SpA',
+    'nombre_fantasia' => 'LPAEZsis',
+    'giro' => 'Maquinaria industrial',
+    'direccion' => 'Santiago, Chile',
+    'ciudad' => 'Santiago',
+    'email' => 'ventas@lpaezsis.cl',
+), $pdo);
+assert_true((int) $cfgSaved['configuracion']['id'] === 1, 'Guardar configuración mantiene id=1');
+$cfgCount = (int) $pdo->query('SELECT COUNT(*) FROM crm_configuracion_empresa')->fetchColumn();
+assert_true($cfgCount === 1, 'Una sola fila de configuración');
+
+$singletonRejected = false;
+try {
+    $pdo->exec("INSERT INTO crm_configuracion_empresa (id, rut, razon_social, direccion) VALUES (2, '1-9', 'Otra', 'X')");
+} catch (PDOException $e) {
+    $singletonRejected = true;
+}
+assert_true($singletonRejected, 'CHECK/PK impide segunda fila de configuración');
+
+$vendRows = $pdo->query('SELECT * FROM crm_vendedores ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
+assert_true(count($vendRows) >= 2, 'Seed de vendedores desde usuarios');
+$adminVend = \Crm\Vendedores::porUsuario($pdo, (int) $login['id']);
+assert_true(is_array($adminVend), 'Vendedor vinculado al usuario admin');
+assert_true(abs((float) $adminVend['comision_porcentaje'] - 2.50) < 0.001, 'Comisión admin 2.50%');
+assert_true(abs(\Crm\Comisiones::calcularMonto(1000, 3.5) - 35.0) < 0.001, 'Cálculo comisión 3.5% de 1000');
+
+$acept = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'aceptada',
+    'descuento' => 100,
+    'items' => array(
+        array(
+            'producto_id' => (int) $prod['id'],
+            'cantidad' => 2,
+        ),
+    ),
+), $login);
+$aceptId = (int) $acept['cotizacion']['id'];
+$netoAcept = (float) $acept['cotizacion']['subtotal'] - (float) $acept['cotizacion']['descuento'];
+$comRow = $pdo->prepare('SELECT * FROM crm_comisiones WHERE cotizacion_id = ? LIMIT 1');
+$comRow->execute(array($aceptId));
+$comision = $comRow->fetch(PDO::FETCH_ASSOC);
+assert_true(is_array($comision), 'Comisión creada al aceptar cotización');
+$esperado = \Crm\Comisiones::calcularMonto($netoAcept, $adminVend['comision_porcentaje']);
+assert_true(abs((float) $comision['monto_comision'] - $esperado) < 0.001, 'Monto comisión = neto × %');
+assert_true((string) $comision['estado'] === 'pendiente', 'Comisión inicial pendiente');
+
+\Crm\Cotizaciones::update($aceptId, array(
+    'empresa_id' => $empId,
+    'estado' => 'rechazada',
+    'items' => array(
+        array('producto_id' => (int) $prod['id'], 'cantidad' => 2),
+    ),
+), $login);
+$comRow->execute(array($aceptId));
+$comision2 = $comRow->fetch(PDO::FETCH_ASSOC);
+assert_true(is_array($comision2) && (string) $comision2['estado'] === 'anulada', 'Rechazo anula comisión pendiente');
+
+$beforeCom = (int) $pdo->query('SELECT COUNT(*) FROM crm_comisiones')->fetchColumn();
+$pdo->beginTransaction();
+\Crm\Comisiones::registrarDesdeCotizacion($pdo, $cotId, (int) $adminVend['id'], 9999.00);
+$pdo->rollBack();
+$afterCom = (int) $pdo->query('SELECT COUNT(*) FROM crm_comisiones')->fetchColumn();
+assert_true($beforeCom === $afterCom, 'Rollback de comisión en la misma transacción');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

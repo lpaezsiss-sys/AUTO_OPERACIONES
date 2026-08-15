@@ -42,6 +42,18 @@ final class Auth
     }
 
     /**
+     * @return array
+     */
+    public static function requireAdmin()
+    {
+        $user = self::requireUser();
+        if ((string) $user['rol'] !== 'admin') {
+            Http::fail('Requiere rol administrador', 403);
+        }
+        return $user;
+    }
+
+    /**
      * @param string $email
      * @param string $password
      * @return array

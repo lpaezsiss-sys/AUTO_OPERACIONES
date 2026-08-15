@@ -248,6 +248,9 @@ final class Cotizaciones
                 $id,
             ));
 
+            $vendedorId = Comisiones::resolverVendedorId($pdo, $body, $ejecutivoId);
+            Comisiones::sincronizarConCotizacion($pdo, $id, $vendedorId, $neto, $estado);
+
             $pdo->commit();
         } catch (\Throwable $e) {
             if ($pdo->inTransaction()) {

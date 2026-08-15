@@ -49,6 +49,49 @@ final class Schema
         if ($empCount === 0) {
             self::seedDemoCrm($pdo);
         }
+
+        $cfg = (int) $pdo->query('SELECT COUNT(*) FROM crm_configuracion_empresa')->fetchColumn();
+        if ($cfg === 0) {
+            $insCfg = $pdo->prepare(
+                'INSERT INTO crm_configuracion_empresa
+                    (id, rut, razon_social, nombre_fantasia, giro, direccion, ciudad, region, telefono, email, sitio_web, logo_path)
+                 VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $insCfg->execute(array(
+                '76.987.654-5',
+                'LPAEZsis-Soluciones Industriales SpA',
+                'LPAEZsis',
+                'Maquinaria industrial, soplado, secado y fin de línea',
+                'Santiago, Chile',
+                'Santiago',
+                'Metropolitana de Santiago',
+                '+56 9 6823 2745',
+                'ventas@lpaezsis.cl',
+                'https://lpaezsis.cl',
+                'uploads/logo.png',
+            ));
+        }
+
+        $vendCount = (int) $pdo->query('SELECT COUNT(*) FROM crm_vendedores')->fetchColumn();
+        if ($vendCount === 0) {
+            $users = $pdo->query('SELECT id, nombre, email FROM crm_usuarios ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
+            $insV = $pdo->prepare(
+                'INSERT INTO crm_vendedores (usuario_id, nombre_completo, email, telefono, comision_porcentaje, activo)
+                 VALUES (?, ?, ?, ?, ?, 1)'
+            );
+            if (is_array($users)) {
+                foreach ($users as $u) {
+                    $pct = (isset($u['email']) && strpos((string) $u['email'], 'ventas@') === 0) ? 3.50 : 2.50;
+                    $insV->execute(array(
+                        (int) $u['id'],
+                        (string) $u['nombre'],
+                        (string) $u['email'],
+                        null,
+                        $pct,
+                    ));
+                }
+            }
+        }
     }
 
     /** @return list<string> */
@@ -203,6 +246,56 @@ final class Schema
                 CONSTRAINT fk_crm_cot_items_producto FOREIGN KEY (producto_id) REFERENCES productos (id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+            "CREATE TABLE IF NOT EXISTS crm_configuracion_empresa (
+                id TINYINT UNSIGNED NOT NULL,
+                rut VARCHAR(20) NOT NULL,
+                razon_social VARCHAR(150) NOT NULL,
+                nombre_fantasia VARCHAR(150) NULL,
+                giro VARCHAR(255) NULL,
+                direccion TEXT NOT NULL,
+                ciudad VARCHAR(100) NULL,
+                region VARCHAR(100) NULL,
+                telefono VARCHAR(50) NULL,
+                email VARCHAR(150) NULL,
+                sitio_web VARCHAR(150) NULL,
+                logo_path VARCHAR(255) NULL,
+                actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                CONSTRAINT chk_crm_config_singleton CHECK (id = 1)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            "CREATE TABLE IF NOT EXISTS crm_vendedores (
+                id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                usuario_id INT UNSIGNED NULL,
+                nombre_completo VARCHAR(150) NOT NULL,
+                email VARCHAR(150) NOT NULL,
+                telefono VARCHAR(50) NULL,
+                comision_porcentaje DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+                activo TINYINT(1) NOT NULL DEFAULT 1,
+                creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_crm_vendedores_email (email),
+                UNIQUE KEY uq_crm_vendedores_usuario (usuario_id),
+                CONSTRAINT fk_crm_vendedores_usuario FOREIGN KEY (usuario_id) REFERENCES crm_usuarios (id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            "CREATE TABLE IF NOT EXISTS crm_comisiones (
+                id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                cotizacion_id INT UNSIGNED NOT NULL,
+                vendedor_id INT UNSIGNED NOT NULL,
+                monto_venta_neto DECIMAL(12,2) NOT NULL,
+                porcentaje_aplicado DECIMAL(5,2) NOT NULL,
+                monto_comision DECIMAL(12,2) NOT NULL,
+                estado ENUM('pendiente','aprobada','pagada','anulada') NOT NULL DEFAULT 'pendiente',
+                fecha_liquidacion DATE NULL,
+                creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_crm_comision_cot_vend (cotizacion_id, vendedor_id),
+                KEY ix_crm_comisiones_vendedor (vendedor_id),
+                CONSTRAINT fk_crm_comisiones_cot FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones (id) ON DELETE CASCADE,
+                CONSTRAINT fk_crm_comisiones_vendedor FOREIGN KEY (vendedor_id) REFERENCES crm_vendedores (id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
             "CREATE TABLE IF NOT EXISTS crm_actividades (
                 id INT UNSIGNED NOT NULL AUTO_INCREMENT,
                 empresa_id INT UNSIGNED NULL,
@@ -352,6 +445,47 @@ final class Schema
                 FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones(id) ON DELETE CASCADE,
                 FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE SET NULL
             )",
+            "CREATE TABLE IF NOT EXISTS crm_configuracion_empresa (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                rut TEXT NOT NULL,
+                razon_social TEXT NOT NULL,
+                nombre_fantasia TEXT,
+                giro TEXT,
+                direccion TEXT NOT NULL,
+                ciudad TEXT,
+                region TEXT,
+                telefono TEXT,
+                email TEXT,
+                sitio_web TEXT,
+                logo_path TEXT,
+                actualizado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
+            "CREATE TABLE IF NOT EXISTS crm_vendedores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario_id INTEGER,
+                nombre_completo TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                telefono TEXT,
+                comision_porcentaje REAL NOT NULL DEFAULT 0,
+                activo INTEGER NOT NULL DEFAULT 1,
+                creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (usuario_id) REFERENCES crm_usuarios(id) ON DELETE SET NULL
+            )",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_crm_vendedores_usuario ON crm_vendedores (usuario_id)",
+            "CREATE TABLE IF NOT EXISTS crm_comisiones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cotizacion_id INTEGER NOT NULL,
+                vendedor_id INTEGER NOT NULL,
+                monto_venta_neto REAL NOT NULL,
+                porcentaje_aplicado REAL NOT NULL,
+                monto_comision REAL NOT NULL,
+                estado TEXT NOT NULL DEFAULT 'pendiente',
+                fecha_liquidacion TEXT,
+                creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones(id) ON DELETE CASCADE,
+                FOREIGN KEY (vendedor_id) REFERENCES crm_vendedores(id)
+            )",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_crm_comision_cot_vend ON crm_comisiones (cotizacion_id, vendedor_id)",
             "CREATE TABLE IF NOT EXISTS crm_actividades (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 empresa_id INTEGER,

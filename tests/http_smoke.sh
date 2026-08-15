@@ -47,4 +47,8 @@ saved="$(json -X POST "$base/api/crear_cotizacion.php?action=guardar" -d "$paylo
 echo "$saved" | grep -q '"folio":"COT-'
 echo "$saved" | grep -q '"ok":true'
 
+json "$base/api/configuracion_empresa.php" | grep -q '"razon_social"'
+json "$base/api/vendedores.php" | grep -q '"comision_porcentaje"'
+json "$base/api/comisiones.php" | grep -q '"comisiones"'
+
 echo "HTTP smoke OK"

@@ -39,8 +39,11 @@ function crm_layout_start($title, $page, array $user)
             <a class="nav-link<?php echo $page === 'oportunidades' ? ' active' : ''; ?>" href="oportunidades.php">Oportunidades</a>
             <a class="nav-link<?php echo $page === 'cotizaciones' ? ' active' : ''; ?>" href="cotizaciones.php">Cotizaciones</a>
             <a class="nav-link<?php echo $page === 'cotizador' ? ' active' : ''; ?>" href="cotizador.php">Cotizador</a>
+            <a class="nav-link<?php echo $page === 'vendedores' ? ' active' : ''; ?>" href="vendedores.php">Vendedores</a>
+            <a class="nav-link<?php echo $page === 'comisiones' ? ' active' : ''; ?>" href="comisiones.php">Comisiones</a>
             <a class="nav-link<?php echo $page === 'actividades' ? ' active' : ''; ?>" href="actividades.php">Omnicanal</a>
             <a class="nav-link<?php echo $page === 'productos' ? ' active' : ''; ?>" href="productos.php">Inventario</a>
+            <a class="nav-link<?php echo $page === 'configuracion' ? ' active' : ''; ?>" href="configuracion.php">Empresa</a>
         </nav>
         <div class="sidebar-user">
             <div class="small text-uppercase opacity-75">Sesión</div>
