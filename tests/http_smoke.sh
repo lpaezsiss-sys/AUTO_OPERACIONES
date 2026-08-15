@@ -27,4 +27,24 @@ echo "$prod" | grep -q '"codigo":"13451"'
 code="$(curl -sS -o /tmp/crm-prod-post.json -w "%{http_code}" -c "$COOKIE" -b "$COOKIE" -H "Content-Type: application/json" -X POST "$base/api/productos.php" -d '{}')"
 test "$code" = "405"
 
+search="$(json "$base/api/crear_cotizacion.php?action=buscar_producto&q=13451")"
+echo "$search" | grep -q '"sku":"13451"'
+echo "$search" > /tmp/crm-buscar.json
+json "$base/api/empresas.php" > /tmp/crm-empresas.json
+payload="$(python3 - <<'PY'
+import json
+search = json.load(open("/tmp/crm-buscar.json"))
+emps = json.load(open("/tmp/crm-empresas.json"))
+prod = [p for p in search["productos"] if p.get("sku") == "13451"][0]
+print(json.dumps({
+    "empresa_id": int(emps["empresas"][0]["id"]),
+    "estado": "borrador",
+    "items": [{"producto_id": int(prod["id"]), "cantidad": 1}],
+}))
+PY
+)"
+saved="$(json -X POST "$base/api/crear_cotizacion.php?action=guardar" -d "$payload")"
+echo "$saved" | grep -q '"folio":"COT-'
+echo "$saved" | grep -q '"ok":true'
+
 echo "HTTP smoke OK"

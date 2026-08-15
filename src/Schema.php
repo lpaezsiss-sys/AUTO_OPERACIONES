@@ -199,7 +199,8 @@ final class Schema
                 PRIMARY KEY (id),
                 KEY ix_crm_cot_items_cot (cotizacion_id),
                 KEY ix_crm_cot_items_prod (producto_id),
-                CONSTRAINT fk_crm_cot_items_cot FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones (id) ON DELETE CASCADE
+                CONSTRAINT fk_crm_cot_items_cot FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones (id) ON DELETE CASCADE,
+                CONSTRAINT fk_crm_cot_items_producto FOREIGN KEY (producto_id) REFERENCES productos (id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
             "CREATE TABLE IF NOT EXISTS crm_actividades (
@@ -348,7 +349,8 @@ final class Schema
                 descuento_pct REAL NOT NULL DEFAULT 0,
                 subtotal REAL NOT NULL DEFAULT 0,
                 stock_al_cotizar REAL,
-                FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones(id) ON DELETE CASCADE
+                FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones(id) ON DELETE CASCADE,
+                FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE SET NULL
             )",
             "CREATE TABLE IF NOT EXISTS crm_actividades (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

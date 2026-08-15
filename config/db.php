@@ -5,7 +5,9 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/includes/polyfills.php';
 
 /**
- * Conexión PDO única para el CRM.
+ * Conexión PDO única para el CRM (PHP 7.4 / MySQL utf8mb4).
+ * ATTR_EMULATE_PREPARES = false (prepared statements nativos).
+ * ATTR_ERRMODE = PDO::ERRMODE_EXCEPTION.
  * Producción BlueHosting: MySQL/MariaDB. Preview/tests: SQLite.
  */
 function crm_pdo()
@@ -111,12 +113,12 @@ function crm_env($key, $default = null)
         }
     }
 
-    if (array_key_exists($key, $map) && $map[$key] !== '') {
-        return $map[$key];
-    }
     $fromEnv = getenv($key);
     if ($fromEnv !== false && $fromEnv !== '') {
         return $fromEnv;
+    }
+    if (array_key_exists($key, $map) && $map[$key] !== '') {
+        return $map[$key];
     }
     return $default;
 }

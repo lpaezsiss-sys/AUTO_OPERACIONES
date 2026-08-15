@@ -136,7 +136,8 @@ CREATE TABLE IF NOT EXISTS crm_cotizacion_items (
                 PRIMARY KEY (id),
                 KEY ix_crm_cot_items_cot (cotizacion_id),
                 KEY ix_crm_cot_items_prod (producto_id),
-                CONSTRAINT fk_crm_cot_items_cot FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones (id) ON DELETE CASCADE
+                CONSTRAINT fk_crm_cot_items_cot FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones (id) ON DELETE CASCADE,
+                CONSTRAINT fk_crm_cot_items_producto FOREIGN KEY (producto_id) REFERENCES productos (id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS crm_actividades (

@@ -7,8 +7,10 @@ declare(strict_types=1);
  */
 $root = dirname(__DIR__);
 $tmp = $root . '/data/test-crm.sqlite';
-if (is_file($tmp)) {
-    unlink($tmp);
+foreach (array($tmp, $tmp . '-wal', $tmp . '-shm', $tmp . '-journal') as $f) {
+    if (is_file($f)) {
+        unlink($f);
+    }
 }
 
 putenv('CRM_DB_DRIVER=sqlite');

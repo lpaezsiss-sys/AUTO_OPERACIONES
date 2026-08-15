@@ -8,6 +8,15 @@ Módulo CRM para **LPAEZsis** en `crm.lpaezsis.cl`.
 - Tablas CRM con prefijo `crm_`.
 - Stock y precio se **leen** de la tabla existente `productos` (inventario). El CRM no escribe inventario.
 
+## Estructura pedida (PHP 7.4)
+
+| Archivo | Rol |
+|---|---|
+| `database/schema.sql` | `crm_empresas`, `crm_contactos`, `crm_oportunidades`, `crm_cotizaciones`, `crm_cotizacion_items` + FK a `productos` |
+| `config/db.php` | PDO utf8mb4, `ATTR_EMULATE_PREPARES=false`, `ERRMODE_EXCEPTION` |
+| `api/crear_cotizacion.php` | `GET ?action=buscar_producto` (LIKE nombre/SKU) · `POST ?action=guardar` (JSON + transacción + correlativo) |
+| `cotizador.php` | Bootstrap 5 + Fetch: búsqueda en vivo, tabla dinámica, IVA 19% |
+
 ## Arranque local (preview)
 
 ```bash
@@ -38,6 +47,7 @@ Todos los endpoints responden JSON (`Content-Type: application/json`).
 | `api/actividades.php` | GET/POST/PUT |
 | `api/productos.php` | GET (solo lectura) |
 | `api/catalogos.php` | GET |
+| `api/crear_cotizacion.php` | GET `buscar_producto`, POST `guardar` |
 
 Las escrituras multi-tabla (cotización + ítems) usan transacción PDO y `rollBack()` ante error.
 

@@ -10,7 +10,7 @@ crm_layout_start('Cotizaciones', 'cotizaciones', $user);
 ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="page-title h3 mb-0">Cotizaciones</h1>
-    <a class="btn" style="background:#fec001;color:#05294B;font-weight:700" href="cotizacion.php">Nueva cotización</a>
+    <a class="btn" style="background:#fec001;color:#05294B;font-weight:700" href="cotizador.php">Nueva cotización</a>
 </div>
 <div class="card card-soft p-3">
     <div class="table-responsive">

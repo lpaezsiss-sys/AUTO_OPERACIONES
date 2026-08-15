@@ -38,6 +38,7 @@ function crm_layout_start($title, $page, array $user)
             <a class="nav-link<?php echo $page === 'contactos' ? ' active' : ''; ?>" href="contactos.php">Contactos</a>
             <a class="nav-link<?php echo $page === 'oportunidades' ? ' active' : ''; ?>" href="oportunidades.php">Oportunidades</a>
             <a class="nav-link<?php echo $page === 'cotizaciones' ? ' active' : ''; ?>" href="cotizaciones.php">Cotizaciones</a>
+            <a class="nav-link<?php echo $page === 'cotizador' ? ' active' : ''; ?>" href="cotizador.php">Cotizador</a>
             <a class="nav-link<?php echo $page === 'actividades' ? ' active' : ''; ?>" href="actividades.php">Omnicanal</a>
             <a class="nav-link<?php echo $page === 'productos' ? ' active' : ''; ?>" href="productos.php">Inventario</a>
         </nav>
