@@ -48,6 +48,11 @@ try {
 } catch (Exception $e) {
     \Crm\Schema::install();
 }
+try {
+    \Crm\Schema::ensureUpgrades();
+} catch (Exception $e) {
+    // La instalación inicial cubre el esquema; un ALTER fallido no impide el arranque.
+}
 
 function crm_now()
 {

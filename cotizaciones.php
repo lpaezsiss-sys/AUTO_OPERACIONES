@@ -15,7 +15,7 @@ crm_layout_start('Cotizaciones', 'cotizaciones', $user);
 <div class="card card-soft p-3">
     <div class="table-responsive">
         <table class="table align-middle">
-            <thead><tr><th>Folio</th><th>Empresa</th><th>Estado</th><th>Emisión</th><th class="text-end">Total</th></tr></thead>
+            <thead><tr><th>Folio</th><th>Empresa</th><th>Estado</th><th>Emisión</th><th class="text-end">Total</th><th></th></tr></thead>
             <tbody id="rows"></tbody>
         </table>
     </div>
@@ -23,7 +23,7 @@ crm_layout_start('Cotizaciones', 'cotizaciones', $user);
 <script>
 crmApi("api/cotizaciones.php").then(function (d) {
   document.getElementById("rows").innerHTML = (d.cotizaciones||[]).map(function (c) {
-    return '<tr><td><a href="cotizacion.php?id='+c.id+'">'+c.folio+'</a></td><td>'+c.razon_social+'</td><td>'+c.estado+'</td><td>'+c.fecha_emision+'</td><td class="text-end">'+crmClp(c.total)+'</td></tr>';
+    return '<tr><td><a href="cotizacion.php?id='+c.id+'">'+c.folio+'</a></td><td>'+c.razon_social+'</td><td>'+c.estado+'</td><td>'+c.fecha_emision+'</td><td class="text-end">'+crmClp(c.total)+'</td><td><a class="btn btn-sm btn-outline-primary" href="api/cotizacion_pdf.php?id='+c.id+'" target="_blank">PDF</a></td></tr>';
   }).join("");
 }).catch(function (e) { crmToast(e.message, true); });
 </script>

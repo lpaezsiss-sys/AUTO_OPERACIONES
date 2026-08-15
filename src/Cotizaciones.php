@@ -37,9 +37,11 @@ final class Cotizaciones
     {
         $pdo = crm_pdo();
         $stmt = $pdo->prepare(
-            'SELECT c.*, e.razon_social, e.rut, e.direccion, e.giro
+            'SELECT c.*, e.razon_social, e.rut, e.direccion, e.giro,
+                    v.nombre_completo AS vendedor_nombre, v.email AS vendedor_email, v.telefono AS vendedor_telefono
              FROM crm_cotizaciones c
              INNER JOIN crm_empresas e ON e.id = c.empresa_id
+             LEFT JOIN crm_vendedores v ON v.id = c.vendedor_id
              WHERE c.id = ? LIMIT 1'
         );
         $stmt->execute(array((int) $id));
@@ -63,6 +65,9 @@ final class Cotizaciones
         unset($row);
         $cot['items'] = $rows;
         $cot['iva_pct'] = crm_iva_pct();
+        $cot['emisora'] = ConfiguracionEmpresa::obtener($pdo);
+        $vendId = crm_int(isset($cot['vendedor_id']) ? $cot['vendedor_id'] : 0, 0);
+        $cot['vendedor'] = $vendId > 0 ? Vendedores::obtener($pdo, $vendId) : null;
         return array('cotizacion' => $cot);
     }
 
@@ -121,9 +126,11 @@ final class Cotizaciones
         $fechaValidez = crm_str(isset($body['fecha_validez']) ? $body['fecha_validez'] : '', 10);
         $notas = crm_str(isset($body['notas']) ? $body['notas'] : '', 4000) ?: null;
         $ejecutivoId = crm_int(isset($body['ejecutivo_id']) ? $body['ejecutivo_id'] : $user['id'], (int) $user['id']);
+        $vendedorId = 0;
 
         $pdo->beginTransaction();
         try {
+            $vendedorId = Comisiones::resolverVendedorId($pdo, $body, $ejecutivoId);
             if ($id > 0) {
                 $exists = $pdo->prepare('SELECT id FROM crm_cotizaciones WHERE id = ? LIMIT 1');
                 $exists->execute(array($id));
@@ -133,8 +140,8 @@ final class Cotizaciones
             } else {
                 $folio = Codes::next('crm_cotizaciones', 'folio', 'COT');
                 $ins = $pdo->prepare(
-                    'INSERT INTO crm_cotizaciones (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, estado, fecha_emision, fecha_validez, subtotal, descuento, iva, total, notas, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
+                    'INSERT INTO crm_cotizaciones (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, vendedor_id, estado, fecha_emision, fecha_validez, subtotal, descuento, iva, total, notas, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
                 );
                 $ins->execute(array(
                     $folio,
@@ -142,6 +149,7 @@ final class Cotizaciones
                     $contactoId > 0 ? $contactoId : null,
                     $oppId > 0 ? $oppId : null,
                     $ejecutivoId,
+                    $vendedorId > 0 ? $vendedorId : null,
                     $estado,
                     $fechaEmision,
                     $fechaValidez !== '' ? $fechaValidez : null,
@@ -228,7 +236,7 @@ final class Cotizaciones
 
             $upd = $pdo->prepare(
                 'UPDATE crm_cotizaciones
-                 SET empresa_id=?, contacto_id=?, oportunidad_id=?, ejecutivo_id=?, estado=?, fecha_emision=?, fecha_validez=?, subtotal=?, descuento=?, iva=?, total=?, notas=?, updated_at=?
+                 SET empresa_id=?, contacto_id=?, oportunidad_id=?, ejecutivo_id=?, vendedor_id=?, estado=?, fecha_emision=?, fecha_validez=?, subtotal=?, descuento=?, iva=?, total=?, notas=?, updated_at=?
                  WHERE id=?'
             );
             $upd->execute(array(
@@ -236,6 +244,7 @@ final class Cotizaciones
                 $contactoId > 0 ? $contactoId : null,
                 $oppId > 0 ? $oppId : null,
                 $ejecutivoId,
+                $vendedorId > 0 ? $vendedorId : null,
                 $estado,
                 $fechaEmision,
                 $fechaValidez !== '' ? $fechaValidez : null,
@@ -248,7 +257,6 @@ final class Cotizaciones
                 $id,
             ));
 
-            $vendedorId = Comisiones::resolverVendedorId($pdo, $body, $ejecutivoId);
             Comisiones::sincronizarConCotizacion($pdo, $id, $vendedorId, $neto, $estado);
 
             $pdo->commit();

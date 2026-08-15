@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS `crm_cotizaciones` (
   `contacto_id` INT UNSIGNED NULL,
   `oportunidad_id` INT UNSIGNED NULL,
   `ejecutivo_id` INT UNSIGNED NULL,
+  `vendedor_id` INT UNSIGNED NULL,
   `estado` VARCHAR(40) NOT NULL DEFAULT 'borrador',
   `fecha_emision` DATE NOT NULL,
   `fecha_validez` DATE NULL,

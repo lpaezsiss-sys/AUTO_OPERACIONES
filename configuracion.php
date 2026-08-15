@@ -38,8 +38,8 @@ crm_layout_start('Empresa emisora', 'configuracion', $user);
             <img id="logoPreview" alt="Logo empresa" class="img-fluid mb-3 border rounded bg-white p-2" style="max-height:140px;display:none">
             <div class="small text-secondary mb-2" id="logoPath"></div>
             <form id="formLogo">
-                <input class="form-control" type="file" name="logo" accept="image/png,image/jpeg,image/gif,image/webp" required>
-                <button class="btn btn-outline-primary mt-2 w-100" type="submit">Subir logo</button>
+                <input class="form-control" type="file" name="logo" accept="image/png,image/jpeg" required>
+                <button class="btn btn-outline-primary mt-2 w-100" type="submit">Subir logo PNG/JPG</button>
             </form>
         </div>
     </div>
@@ -59,18 +59,24 @@ crm_layout_start('Empresa emisora', 'configuracion', $user);
       img.style.display = "block";
     }
   }
-  crmApi("api/configuracion_empresa.php").then(function (d) { fill(d.configuracion || {}); })
+  crmApi("api/configuracion.php").then(function (d) { fill(d.configuracion || {}); })
     .catch(function (e) { crmToast(e.message, true); });
   document.getElementById("formConfig").addEventListener("submit", function (ev) {
     ev.preventDefault();
-    crmApi("api/configuracion_empresa.php", { method: "PUT", body: crmForm("formConfig") })
-      .then(function (d) { fill(d.configuracion || {}); crmToast("Configuración guardada"); })
+    var fd = new FormData(ev.currentTarget);
+    fetch("api/configuracion.php", { method: "POST", credentials: "same-origin", body: fd })
+      .then(function (r) { return r.json().then(function (d) { return { r: r, d: d }; }); })
+      .then(function (pack) {
+        if (!pack.r.ok || pack.d.ok === false) throw new Error(pack.d.error || "No se pudo guardar");
+        fill(pack.d.configuracion || {});
+        crmToast("Configuración guardada");
+      })
       .catch(function (e) { crmToast(e.message, true); });
   });
   document.getElementById("formLogo").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var fd = new FormData(ev.currentTarget);
-    fetch("api/configuracion_empresa.php?action=logo", { method: "POST", credentials: "same-origin", body: fd })
+    fetch("api/configuracion.php", { method: "POST", credentials: "same-origin", body: fd })
       .then(function (r) { return r.json().then(function (d) { return { r: r, d: d }; }); })
       .then(function (pack) {
         if (!pack.r.ok || pack.d.ok === false) throw new Error(pack.d.error || "No se pudo subir");

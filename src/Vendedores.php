@@ -117,4 +117,23 @@ final class Vendedores
         $newId = (int) $pdo->lastInsertId();
         return array('vendedor' => self::obtener($pdo, $newId));
     }
+
+    /**
+     * @param int $id
+     * @return array
+     */
+    public static function eliminar($id)
+    {
+        $pdo = crm_pdo();
+        $id = (int) $id;
+        if (!self::obtener($pdo, $id)) {
+            Http::fail('Vendedor no encontrado', 404);
+        }
+        try {
+            $pdo->prepare('DELETE FROM crm_vendedores WHERE id = ?')->execute(array($id));
+        } catch (\PDOException $e) {
+            Http::fail('No se puede eliminar: el vendedor tiene comisiones asociadas.');
+        }
+        return array('deleted' => true, 'id' => $id);
+    }
 }

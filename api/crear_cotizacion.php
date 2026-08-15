@@ -158,15 +158,17 @@ function crm_guardar_cotizacion(array $user)
 
         $insCot = $pdo->prepare(
             'INSERT INTO crm_cotizaciones
-                (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, estado, fecha_emision, fecha_validez, subtotal, descuento, iva, total, notas, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
+                (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, vendedor_id, estado, fecha_emision, fecha_validez, subtotal, descuento, iva, total, notas, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
         );
+        $vendedorIdPre = \Crm\Comisiones::resolverVendedorId($pdo, $data, $ejecutivoId ? $ejecutivoId : 0);
         $insCot->execute(array(
             $folio,
             $empresaId,
             $contactoId > 0 ? $contactoId : null,
             $oportunidadId > 0 ? $oportunidadId : null,
             $ejecutivoId,
+            $vendedorIdPre > 0 ? $vendedorIdPre : null,
             $estado,
             $fechaEmision,
             $fechaValidez,
@@ -241,12 +243,11 @@ function crm_guardar_cotizacion(array $user)
         $total = round($neto + $iva, 2);
 
         $upd = $pdo->prepare(
-            'UPDATE crm_cotizaciones SET subtotal = ?, descuento = ?, iva = ?, total = ?, updated_at = ? WHERE id = ?'
+            'UPDATE crm_cotizaciones SET subtotal = ?, descuento = ?, iva = ?, total = ?, vendedor_id = ?, updated_at = ? WHERE id = ?'
         );
-        $upd->execute(array($subtotal, $descuento, $iva, $total, $now, $cotizacionId));
+        $upd->execute(array($subtotal, $descuento, $iva, $total, $vendedorIdPre > 0 ? $vendedorIdPre : null, $now, $cotizacionId));
 
-        $vendedorId = \Crm\Comisiones::resolverVendedorId($pdo, $data, $ejecutivoId ? $ejecutivoId : 0);
-        \Crm\Comisiones::sincronizarConCotizacion($pdo, $cotizacionId, $vendedorId, $neto, $estado);
+        \Crm\Comisiones::sincronizarConCotizacion($pdo, $cotizacionId, $vendedorIdPre, $neto, $estado);
 
         $pdo->commit();
     } catch (\Crm\ApiException $e) {

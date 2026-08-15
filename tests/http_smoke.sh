@@ -47,8 +47,13 @@ saved="$(json -X POST "$base/api/crear_cotizacion.php?action=guardar" -d "$paylo
 echo "$saved" | grep -q '"folio":"COT-'
 echo "$saved" | grep -q '"ok":true'
 
-json "$base/api/configuracion_empresa.php" | grep -q '"razon_social"'
+json "$base/api/configuracion.php" | grep -q '"razon_social"'
 json "$base/api/vendedores.php" | grep -q '"comision_porcentaje"'
 json "$base/api/comisiones.php" | grep -q '"comisiones"'
+
+echo "$saved" > /tmp/crm-cot-saved.json
+pdf_id="$(python3 -c 'import json; print(json.load(open("/tmp/crm-cot-saved.json"))["id"])')"
+pdf_head="$(curl -sS -b "$COOKIE" -c "$COOKIE" "$base/api/cotizacion_pdf.php?id=${pdf_id}" | head -c 8)"
+test "$pdf_head" = "%PDF-1.4"
 
 echo "HTTP smoke OK"

@@ -222,7 +222,8 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         if (!pack.r.ok || pack.d.ok === false) {
           throw new Error(pack.d.error || "No se pudo guardar");
         }
-        okMsg.textContent = "Guardada " + pack.d.folio + " · Total " + crmClp(pack.d.total);
+        okMsg.innerHTML = "Guardada " + pack.d.folio + " · Total " + crmClp(pack.d.total) +
+          ' · <a href="api/cotizacion_pdf.php?id=' + pack.d.id + '" target="_blank">Descargar PDF</a>';
         okMsg.hidden = false;
         crmToast("Cotización " + pack.d.folio + " creada");
         items = [];

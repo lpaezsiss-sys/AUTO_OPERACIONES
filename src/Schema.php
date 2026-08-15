@@ -20,6 +20,53 @@ final class Schema
         if ($seed) {
             self::seed($pdo);
         }
+
+        self::ensureUpgrades($pdo);
+    }
+
+    /**
+     * Columnas añadidas tras el CREATE inicial (bases ya instaladas).
+     *
+     * @param PDO|null $pdo
+     * @return void
+     */
+    public static function ensureUpgrades($pdo = null)
+    {
+        $pdo = $pdo instanceof PDO ? $pdo : crm_pdo();
+        if (!self::hasColumn($pdo, 'crm_cotizaciones', 'vendedor_id')) {
+            $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'sqlite') {
+                $pdo->exec('ALTER TABLE crm_cotizaciones ADD COLUMN vendedor_id INTEGER');
+            } else {
+                $pdo->exec('ALTER TABLE crm_cotizaciones ADD COLUMN vendedor_id INT UNSIGNED NULL');
+            }
+        }
+    }
+
+    /**
+     * @param string $table
+     * @param string $column
+     * @return bool
+     */
+    private static function hasColumn(PDO $pdo, $table, $column)
+    {
+        $table = (string) $table;
+        $column = (string) $column;
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
+            $stmt = $pdo->query('PRAGMA table_info(' . $table . ')');
+            $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : array();
+            foreach ($rows as $col) {
+                if (isset($col['name']) && (string) $col['name'] === $column) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        $sql = 'SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(array($table, $column));
+        return (int) $stmt->fetchColumn() > 0;
     }
 
     public static function seed(PDO $pdo): void
@@ -209,6 +256,7 @@ final class Schema
                 contacto_id INT UNSIGNED NULL,
                 oportunidad_id INT UNSIGNED NULL,
                 ejecutivo_id INT UNSIGNED NULL,
+                vendedor_id INT UNSIGNED NULL,
                 estado VARCHAR(40) NOT NULL DEFAULT 'borrador',
                 fecha_emision DATE NOT NULL,
                 fecha_validez DATE NULL,
@@ -416,6 +464,7 @@ final class Schema
                 contacto_id INTEGER,
                 oportunidad_id INTEGER,
                 ejecutivo_id INTEGER,
+                vendedor_id INTEGER,
                 estado TEXT NOT NULL DEFAULT 'borrador',
                 fecha_emision TEXT NOT NULL,
                 fecha_validez TEXT,

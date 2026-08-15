@@ -102,4 +102,70 @@ final class ConfiguracionEmpresa
         $pdo->prepare('UPDATE crm_configuracion_empresa SET logo_path = ? WHERE id = 1')->execute(array($logoPath));
         return array('configuracion' => self::obtener($pdo));
     }
+
+    /**
+     * Guarda el logo siempre en uploads/logo.png. Solo PNG o JPG.
+     *
+     * @param array $file Entrada estilo $_FILES['logo']
+     * @param bool $requireUpload
+     * @return string
+     */
+    public static function guardarArchivoLogo(array $file, $requireUpload = true)
+    {
+        $err = isset($file['error']) ? (int) $file['error'] : UPLOAD_ERR_NO_FILE;
+        if ($err !== UPLOAD_ERR_OK && $err !== 0) {
+            Http::fail('No se pudo cargar el logo.');
+        }
+        $tmp = isset($file['tmp_name']) ? (string) $file['tmp_name'] : '';
+        $size = isset($file['size']) ? (int) $file['size'] : 0;
+        if ($tmp === '' || !is_file($tmp)) {
+            Http::fail('Archivo de logo inválido.');
+        }
+        if ($requireUpload && function_exists('is_uploaded_file') && !is_uploaded_file($tmp)) {
+            Http::fail('Archivo de logo inválido.');
+        }
+        if ($size <= 0) {
+            $size = (int) filesize($tmp);
+        }
+        if ($size <= 0 || $size > 2097152) {
+            Http::fail('El logo no debe superar 2 MB.');
+        }
+        $info = @getimagesize($tmp);
+        if (!is_array($info) || empty($info['mime'])) {
+            Http::fail('El archivo no es una imagen válida.');
+        }
+        $mime = (string) $info['mime'];
+        if ($mime !== 'image/png' && $mime !== 'image/jpeg') {
+            Http::fail('El logo debe ser PNG o JPG.');
+        }
+
+        $dir = dirname(__DIR__) . '/uploads';
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            Http::fail('No se pudo crear el directorio de uploads.', 500);
+        }
+        $rel = 'uploads/logo.png';
+        $dest = dirname(__DIR__) . '/' . $rel;
+
+        if ($mime === 'image/png') {
+            $ok = @copy($tmp, $dest);
+            if (!$ok) {
+                Http::fail('No se pudo guardar el logo.', 500);
+            }
+            return $rel;
+        }
+
+        if (!function_exists('imagecreatefromjpeg') || !function_exists('imagepng')) {
+            Http::fail('No se pudo convertir JPG a PNG (GD no disponible).', 500);
+        }
+        $im = @imagecreatefromjpeg($tmp);
+        if ($im === false) {
+            Http::fail('JPG de logo inválido.');
+        }
+        $ok = @imagepng($im, $dest, 6);
+        imagedestroy($im);
+        if (!$ok) {
+            Http::fail('No se pudo guardar el logo.', 500);
+        }
+        return $rel;
+    }
 }

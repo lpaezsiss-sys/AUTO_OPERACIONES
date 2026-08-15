@@ -11,12 +11,18 @@ crm_layout_start($id ? 'Cotización' : 'Nueva cotización', 'cotizaciones', $use
 ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <a href="cotizaciones.php" class="text-decoration-none">← Cotizaciones</a>
-    <h1 class="page-title h4 mb-0" id="title"><?php echo $id ? 'Editar cotización' : 'Nueva cotización'; ?></h1>
+    <div class="d-flex gap-2 align-items-center">
+        <h1 class="page-title h4 mb-0" id="title"><?php echo $id ? 'Editar cotización' : 'Nueva cotización'; ?></h1>
+        <?php if ($id) { ?>
+        <a class="btn btn-sm btn-outline-primary" href="api/cotizacion_pdf.php?id=<?php echo (int) $id; ?>" target="_blank">PDF</a>
+        <?php } ?>
+    </div>
 </div>
 <form id="formCot" class="card card-soft p-4">
     <input type="hidden" name="id" value="<?php echo (int) $id; ?>">
     <div class="row g-2">
         <div class="col-md-6"><label class="form-label">Empresa</label><select class="form-select" name="empresa_id" id="selEmpresa" required></select></div>
+        <div class="col-md-3"><label class="form-label">Vendedor</label><select class="form-select" name="vendedor_id" id="selVendedor"></select></div>
         <div class="col-md-3"><label class="form-label">Estado</label>
             <select class="form-select" name="estado">
                 <option value="borrador">Borrador</option>
@@ -70,10 +76,14 @@ function addProducto(p) {
   items.push({ producto_id: p.id, codigo: p.codigo, descripcion: p.nombre, cantidad: 1, precio_unitario: p.precio_unitario, descuento_pct: 0, stock_actual: p.stock });
   renderItems();
 }
-Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php")]).then(function (arr) {
+Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("api/vendedores.php")]).then(function (arr) {
   document.getElementById("selEmpresa").innerHTML = (arr[0].empresas||[]).map(function (e) {
     return '<option value="'+e.id+'">'+e.razon_social+'</option>';
   }).join("");
+  document.getElementById("selVendedor").innerHTML = '<option value="">(según usuario)</option>' +
+    (arr[2].vendedores||[]).filter(function (v) { return Number(v.activo) === 1; }).map(function (v) {
+      return '<option value="'+v.id+'">'+v.nombre_completo+' · '+Number(v.comision_porcentaje).toFixed(2)+'%</option>';
+    }).join("");
   productos = arr[1].productos || [];
   if (cotId) {
     return crmApi("api/cotizaciones.php?id="+cotId);
@@ -84,6 +94,7 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php")]).then(func
   var c = d.cotizacion;
   document.getElementById("title").textContent = c.folio;
   document.querySelector('[name=empresa_id]').value = c.empresa_id;
+  document.querySelector('[name=vendedor_id]').value = c.vendedor_id || "";
   document.querySelector('[name=estado]').value = c.estado;
   document.querySelector('[name=fecha_validez]').value = c.fecha_validez || "";
   document.querySelector('[name=descuento]').value = c.descuento || 0;

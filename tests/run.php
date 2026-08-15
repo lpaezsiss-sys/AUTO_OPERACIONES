@@ -216,6 +216,44 @@ assert_true(is_array($comision), 'Comisión creada al aceptar cotización');
 $esperado = \Crm\Comisiones::calcularMonto($netoAcept, $adminVend['comision_porcentaje']);
 assert_true(abs((float) $comision['monto_comision'] - $esperado) < 0.001, 'Monto comisión = neto × %');
 assert_true((string) $comision['estado'] === 'pendiente', 'Comisión inicial pendiente');
+assert_true((int) $acept['cotizacion']['vendedor_id'] === (int) $adminVend['id'], 'Cotización guarda vendedor_id');
+assert_true(is_array($acept['cotizacion']['vendedor']), 'Ficha de vendedor en cotización');
+assert_true(is_array($acept['cotizacion']['emisora']), 'Datos empresa emisora en cotización');
+
+$pdf = \Crm\CotizacionPdf::generar($acept['cotizacion']);
+assert_true(strpos($pdf, '%PDF-1.4') === 0, 'PDF de cotización válido');
+assert_true(strpos($pdf, '76.987.654-5') !== false, 'PDF incluye RUT de empresa emisora');
+assert_true(strpos($pdf, 'LPAEZsis') !== false, 'PDF incluye razón social emisora');
+assert_true(strpos($pdf, 'Luis') !== false, 'PDF incluye nombre del vendedor');
+
+$png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+$tmpPng = sys_get_temp_dir() . '/crm-logo-test.png';
+file_put_contents($tmpPng, $png);
+$logoRel = \Crm\ConfiguracionEmpresa::guardarArchivoLogo(array(
+    'tmp_name' => $tmpPng,
+    'size' => strlen($png),
+    'error' => 0,
+    'name' => 'logo.png',
+    'type' => 'image/png',
+), false);
+assert_true($logoRel === 'uploads/logo.png', 'Logo se guarda en uploads/logo.png');
+assert_true(is_file(dirname(__DIR__) . '/uploads/logo.png'), 'Archivo logo.png existe');
+
+$gifRejected = false;
+$tmpGif = sys_get_temp_dir() . '/crm-logo-test.gif';
+file_put_contents($tmpGif, 'GIF89a');
+try {
+    \Crm\ConfiguracionEmpresa::guardarArchivoLogo(array(
+        'tmp_name' => $tmpGif,
+        'size' => 6,
+        'error' => 0,
+        'name' => 'x.gif',
+        'type' => 'image/gif',
+    ), false);
+} catch (\Crm\ApiException $e) {
+    $gifRejected = strpos($e->getMessage(), 'PNG') !== false || strpos($e->getMessage(), 'imagen') !== false;
+}
+assert_true($gifRejected, 'Logo GIF/no PNG-JPG rechazado');
 
 \Crm\Cotizaciones::update($aceptId, array(
     'empresa_id' => $empId,
