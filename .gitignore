@@ -12,3 +12,5 @@ vendor/
 uploads/*
 !uploads/.gitkeep
 !uploads/.htaccess
+downloads/*.zip
+sql/respaldo_completo_local.sql

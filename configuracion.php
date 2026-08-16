@@ -41,6 +41,13 @@ crm_layout_start('Empresa emisora', 'configuracion', $user);
                 <input class="form-control" type="file" name="logo" accept="image/png,image/jpeg" required>
                 <button class="btn btn-outline-primary mt-2 w-100" type="submit">Subir logo PNG/JPG</button>
             </form>
+            <?php if ((string) $user['rol'] === 'admin') { ?>
+            <hr>
+            <h2 class="h6">Respaldo del CRM</h2>
+            <p class="small text-secondary">Genera un ZIP con código, dump SQL y uploads (sin .env ni .git).</p>
+            <button class="btn btn-outline-secondary w-100" type="button" id="btnRespaldo">Descargar Respaldo ZIP</button>
+            <div class="small text-secondary mt-2" id="respaldoInfo"></div>
+            <?php } ?>
         </div>
     </div>
 </div>
@@ -85,6 +92,26 @@ crm_layout_start('Empresa emisora', 'configuracion', $user);
       })
       .catch(function (e) { crmToast(e.message, true); });
   });
+  var btnR = document.getElementById("btnRespaldo");
+  if (btnR) {
+    btnR.addEventListener("click", function () {
+      btnR.disabled = true;
+      btnR.textContent = "Generando…";
+      crmApi("api/respaldo.php?action=generar", { method: "POST", body: { action: "generar" } })
+        .then(function (d) {
+          var info = document.getElementById("respaldoInfo");
+          info.textContent = (d.archivo || "") + " · " + (d.mb || 0) + " MB"
+            + (d.incluye_sql ? " · incluye dump SQL" : "");
+          crmToast("Respaldo listo");
+          window.location.href = d.ruta || ("downloads/" + d.archivo);
+        })
+        .catch(function (e) { crmToast(e.message, true); })
+        .then(function () {
+          btnR.disabled = false;
+          btnR.textContent = "Descargar Respaldo ZIP";
+        });
+    });
+  }
 })();
 </script>
 <?php crm_layout_end(); ?>
