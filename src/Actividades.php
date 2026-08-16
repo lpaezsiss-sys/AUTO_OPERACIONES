@@ -17,6 +17,22 @@ final class Actividades
         if (count($filtros) === 0) {
             $filtros = $_GET;
         }
+        $actividades = self::consultar($filtros);
+        $filtrosResumen = $filtros;
+        unset($filtrosResumen['estado']);
+        $paraResumen = self::consultar($filtrosResumen);
+        return array(
+            'actividades' => $actividades,
+            'resumen' => self::resumenDeLista($paraResumen),
+        );
+    }
+
+    /**
+     * @param array $filtros
+     * @return array
+     */
+    private static function consultar(array $filtros)
+    {
         $pdo = crm_pdo();
         $sql = 'SELECT a.*, e.razon_social, u.nombre AS usuario_nombre,
                        v.nombre_completo AS vendedor_nombre, v.email AS vendedor_email,
@@ -81,11 +97,7 @@ final class Actividades
         foreach ($rows as $row) {
             $actividades[] = self::hidratar($row);
         }
-
-        return array(
-            'actividades' => $actividades,
-            'resumen' => self::resumenDeLista($actividades),
-        );
+        return $actividades;
     }
 
     /**

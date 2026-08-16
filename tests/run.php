@@ -493,5 +493,11 @@ $listRango = \Crm\Actividades::index(array(
 ));
 assert_true(isset($listRango['actividades']), 'GET con rango de fechas');
 
+$listPendKpi = \Crm\Actividades::index(array(
+    'vendedor_id' => (int) $adminVend['id'],
+    'estado' => 'pendiente',
+));
+assert_true((int) $listPendKpi['resumen']['realizadas'] >= 1, 'KPI realizadas no se anula al filtrar pendientes');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
