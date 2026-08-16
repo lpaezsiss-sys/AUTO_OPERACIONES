@@ -31,6 +31,7 @@ echo 'ZIP   ' . $r['ruta'] . PHP_EOL;
 echo 'SIZE  ' . number_format((float) $r['mb'], 2, '.', '') . ' MB (' . number_format((int) $r['bytes']) . ' bytes)' . PHP_EOL;
 echo 'FILES ' . (int) $r['archivos'] . PHP_EOL;
 echo 'SQL IN ZIP: ' . (!empty($r['incluye_sql']) ? 'OK sql/respaldo_completo_local.sql' : 'FAIL') . PHP_EOL;
+echo 'RAÍZ PLANA: ' . (!empty($r['raiz_plana']) ? 'OK index.php y .htaccess en la raíz del ZIP' : 'FAIL encapsulado') . PHP_EOL;
 echo PHP_EOL;
 echo 'URL de descarga local:' . PHP_EOL;
 echo '  ' . $r['url'] . PHP_EOL;

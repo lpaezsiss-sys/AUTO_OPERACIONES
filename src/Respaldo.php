@@ -39,8 +39,12 @@ final class Respaldo
 
         $bytesZip = is_file($zipPath) ? (int) filesize($zipPath) : 0;
         $incluyeSql = self::zipContiene($zipPath, 'sql/respaldo_completo_local.sql');
+        $raizPlana = self::zipContiene($zipPath, 'index.php') && self::zipContiene($zipPath, '.htaccess');
         if ($bytesZip <= 0 || !$incluyeSql) {
             Http::fail('El ZIP no se generó correctamente o falta el dump SQL.', 500);
+        }
+        if (!$raizPlana) {
+            Http::fail('El ZIP no tiene index.php/.htaccess en la raíz (quedaría encapsulado).', 500);
         }
 
         $url = self::urlDescarga($nombre);
@@ -53,6 +57,7 @@ final class Respaldo
             'sql' => 'sql/respaldo_completo_local.sql',
             'sql_bytes' => $bytesSql,
             'incluye_sql' => $incluyeSql,
+            'raiz_plana' => $raizPlana,
             'archivos' => count($archivos),
             'driver' => crm_pdo_driver(),
         );
