@@ -51,6 +51,11 @@ json "$base/api/configuracion.php" | grep -q '"razon_social"'
 json "$base/api/vendedores.php" | grep -q '"comision_porcentaje"'
 json "$base/api/comisiones.php" | grep -q '"comisiones"'
 
+json "$base/api/reportes.php?tipo=resumen_kpis" | grep -q '"monto_cotizado"'
+json "$base/api/reportes.php?tipo=pipeline" | grep -q '"etapas"'
+json "$base/api/reportes.php?tipo=vendedores" | grep -q '"tasa_cierre_pct"'
+json "$base/api/reportes.php?tipo=productos_top" | grep -q '"proporcion"'
+
 echo "$saved" > /tmp/crm-cot-saved.json
 pdf_id="$(python3 -c 'import json; print(json.load(open("/tmp/crm-cot-saved.json"))["id"])')"
 pdf_head="$(curl -sS -b "$COOKIE" -c "$COOKIE" "$base/api/cotizacion_pdf.php?id=${pdf_id}" | head -c 8)"

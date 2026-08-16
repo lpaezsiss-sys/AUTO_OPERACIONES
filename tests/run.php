@@ -361,5 +361,76 @@ $pdo->rollBack();
 $afterCom = (int) $pdo->query('SELECT COUNT(*) FROM crm_comisiones')->fetchColumn();
 assert_true($beforeCom === $afterCom, 'Rollback de comisión en la misma transacción');
 
+foreach (array('prospecto', 'negociacion', 'ganada', 'perdida') as $etReporte) {
+    $oppRep = \Crm\Oportunidades::store(array(
+        'empresa_id' => $empId,
+        'titulo' => 'Pipeline ' . $etReporte,
+        'etapa' => $etReporte,
+        'valor_estimado' => 250000,
+        'origen_canal' => 'web',
+    ), $login);
+    assert_true((string) $oppRep['oportunidad']['etapa'] === $etReporte, 'Oportunidad etapa ' . $etReporte);
+}
+
+$filtroMes = array(
+    'desde' => date('Y-m-01'),
+    'hasta' => date('Y-m-d'),
+);
+
+$kpis = \Crm\Reportes::obtener('resumen_kpis', $filtroMes);
+$kpisJson = json_encode($kpis);
+assert_true(is_string($kpisJson) && json_last_error() === JSON_ERROR_NONE, 'JSON válido resumen_kpis');
+$kpisDec = json_decode($kpisJson, true);
+assert_true(is_array($kpisDec) && isset($kpisDec['kpis']['monto_cotizado']), 'KPI monto_cotizado');
+assert_true(isset($kpisDec['kpis']['ventas_ganadas'], $kpisDec['kpis']['conversion_pct'], $kpisDec['kpis']['comisiones']), 'KPIs ventas, conversión y comisiones');
+assert_true((float) $kpisDec['kpis']['monto_cotizado'] > 0, 'Monto cotizado del mes > 0');
+assert_true((float) $kpisDec['kpis']['conversion_pct'] >= 0 && (float) $kpisDec['kpis']['conversion_pct'] <= 100, 'Conversión entre 0 y 100');
+
+$pipe = \Crm\Reportes::obtener('pipeline', $filtroMes);
+$pipeJson = json_encode($pipe);
+assert_true(is_string($pipeJson) && json_last_error() === JSON_ERROR_NONE, 'JSON válido pipeline');
+$pipeDec = json_decode($pipeJson, true);
+assert_true(is_array($pipeDec) && isset($pipeDec['etapas']) && count($pipeDec['etapas']) === 5, 'Pipeline tiene 5 etapas');
+$etapasKeys = array();
+foreach ($pipeDec['etapas'] as $et) {
+    $etapasKeys[] = (string) $et['etapa'];
+    assert_true(isset($et['label'], $et['cantidad'], $et['monto']), 'Etapa pipeline con cantidad y monto');
+}
+assert_true($etapasKeys === array('lead', 'cotizacion', 'negociacion', 'ganado', 'perdido'), 'Orden de etapas del pipeline');
+assert_true((int) $pipeDec['etapas'][0]['cantidad'] >= 1, 'Pipeline lead con oportunidades');
+assert_true((int) $pipeDec['etapas'][1]['cantidad'] >= 1, 'Pipeline cotización con oportunidades');
+
+$rank = \Crm\Reportes::obtener('vendedores', $filtroMes);
+$rankJson = json_encode($rank);
+assert_true(is_string($rankJson) && json_last_error() === JSON_ERROR_NONE, 'JSON válido vendedores');
+$rankDec = json_decode($rankJson, true);
+assert_true(is_array($rankDec) && isset($rankDec['vendedores']) && count($rankDec['vendedores']) >= 2, 'Ranking de vendedores');
+$rank0 = $rankDec['vendedores'][0];
+assert_true(isset($rank0['total_cotizado'], $rank0['total_cerrado'], $rank0['tasa_cierre_pct'], $rank0['comisiones']), 'Ranking con cotizado, cerrado, tasa y comisión');
+
+$top = \Crm\Reportes::obtener('productos_top', $filtroMes);
+$topJson = json_encode($top);
+assert_true(is_string($topJson) && json_last_error() === JSON_ERROR_NONE, 'JSON válido productos_top');
+$topDec = json_decode($topJson, true);
+assert_true(is_array($topDec) && isset($topDec['items']), 'Top productos/servicios');
+assert_true(count($topDec['items']) <= 10, 'Top 10 como máximo');
+assert_true(count($topDec['items']) >= 1, 'Al menos un ítem cotizado en el top');
+assert_true(isset($topDec['proporcion']['producto'], $topDec['proporcion']['servicio']), 'Proporción producto vs servicio');
+
+$filtroVend = $filtroMes;
+$filtroVend['vendedor_id'] = (int) $adminVend['id'];
+$kpisVend = \Crm\Reportes::obtener('resumen_kpis', $filtroVend);
+assert_true((int) $kpisVend['filtros']['vendedor_id'] === (int) $adminVend['id'], 'Filtro vendedor_id en KPIs');
+$rankVend = \Crm\Reportes::obtener('vendedores', $filtroVend);
+assert_true(count($rankVend['vendedores']) === 1, 'Ranking filtrado a un vendedor');
+
+$tipoInvalido = false;
+try {
+    \Crm\Reportes::obtener('no_existe', $filtroMes);
+} catch (\Crm\ApiException $e) {
+    $tipoInvalido = strpos($e->getMessage(), 'Tipo') !== false;
+}
+assert_true($tipoInvalido, 'Tipo de reporte inválido se rechaza');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
