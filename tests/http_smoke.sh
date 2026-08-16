@@ -56,6 +56,15 @@ json "$base/api/reportes.php?tipo=pipeline" | grep -q '"etapas"'
 json "$base/api/reportes.php?tipo=vendedores" | grep -q '"tasa_cierre_pct"'
 json "$base/api/reportes.php?tipo=productos_top" | grep -q '"proporcion"'
 
+crear_act="$(json -X POST "$base/api/actividades.php?action=crear" -d '{"titulo":"Llamada E2E agenda","tipo":"llamada","fecha_programada":"2030-01-15 10:00:00"}')"
+echo "$crear_act" | grep -q '"ok":true'
+echo "$crear_act" | grep -q '"estado":"pendiente"'
+echo "$crear_act" > /tmp/crm-act-saved.json
+act_id="$(python3 -c 'import json; print(json.load(open("/tmp/crm-act-saved.json"))["actividad"]["id"])')"
+comp_act="$(json -X POST "$base/api/actividades.php?action=completar&id=${act_id}" -d "{\"id\":${act_id}}")"
+echo "$comp_act" | grep -q '"estado":"realizada"'
+json "$base/api/actividades.php?estado=realizada" | grep -q '"actividades"'
+
 echo "$saved" > /tmp/crm-cot-saved.json
 pdf_id="$(python3 -c 'import json; print(json.load(open("/tmp/crm-cot-saved.json"))["id"])')"
 pdf_head="$(curl -sS -b "$COOKIE" -c "$COOKIE" "$base/api/cotizacion_pdf.php?id=${pdf_id}" | head -c 8)"

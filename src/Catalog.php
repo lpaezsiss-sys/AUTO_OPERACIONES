@@ -103,7 +103,15 @@ final class Catalog
      */
     public static function actividadTipos()
     {
-        return array('llamada', 'email', 'whatsapp', 'visita', 'reunion', 'nota', 'tarea');
+        return array('llamada', 'reunion', 'correo', 'nota', 'tarea', 'email', 'whatsapp', 'visita');
+    }
+
+    /**
+     * @return string[]
+     */
+    public static function actividadEstados()
+    {
+        return array('pendiente', 'realizada', 'completada', 'cancelada');
     }
 
     /**
@@ -136,6 +144,7 @@ final class Catalog
             'item_tipos' => self::itemTipos(),
             'monedas' => self::monedas(),
             'actividad_tipos' => self::actividadTipos(),
+            'actividad_estados' => self::actividadEstados(),
             'iva_pct' => crm_iva_pct(),
         );
     }

@@ -150,11 +150,11 @@ body {
   padding: 2rem;
 }
 
-#crmToast {
-  position: fixed;
-  right: 1.2rem;
-  top: 1.2rem;
-  z-index: 1080;
+.act-card.vencida {
+  border-left: 3px solid #b02a37;
+}
+.act-card.hoy {
+  border-left: 3px solid var(--yellow);
 }
 
 @media (max-width: 992px) {

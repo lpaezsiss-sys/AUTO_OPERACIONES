@@ -18,7 +18,7 @@ crm_layout_start('Dashboard', 'dashboard', $user);
 <div class="row g-3 mt-1">
     <div class="col-lg-7">
         <div class="card card-soft p-3">
-            <h2 class="h6" style="color:#05294B">Actividades omnicanal</h2>
+                        h2 class="h6" style="color:#05294B">Actividades recientes</h2>
             <div id="actList" class="small"></div>
         </div>
     </div>

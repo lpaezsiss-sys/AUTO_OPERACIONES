@@ -432,5 +432,66 @@ try {
 }
 assert_true($tipoInvalido, 'Tipo de reporte inválido se rechaza');
 
+$ayer = date('Y-m-d', time() - 86400) . ' 09:00:00';
+$seg = \Crm\Actividades::crear(array(
+    'titulo' => 'Llamada postventa secador',
+    'tipo' => 'llamada',
+    'fecha_programada' => $ayer,
+    'empresa_id' => $empId,
+    'cotizacion_id' => $cotId,
+    'vendedor_id' => (int) $adminVend['id'],
+    'descripcion' => 'Confirmar instalación',
+), $login);
+$segAct = $seg['actividad'];
+assert_true((int) $segAct['id'] > 0, 'Crear actividad de seguimiento');
+assert_true((string) $segAct['tipo'] === 'llamada', 'Tipo llamada');
+assert_true((string) $segAct['estado'] === 'pendiente', 'Estado inicial pendiente');
+assert_true((int) $segAct['vendedor_id'] === (int) $adminVend['id'], 'Actividad asignada al vendedor');
+assert_true((int) $segAct['cotizacion_id'] === $cotId, 'Actividad vinculada a cotización');
+assert_true(!empty($segAct['creado_en']), 'Campo creado_en poblado');
+assert_true(!empty($segAct['vencida']), 'Actividad de ayer queda vencida');
+
+$correoAct = \Crm\Actividades::crear(array(
+    'titulo' => 'Correo de seguimiento',
+    'tipo' => 'correo',
+    'vendedor_id' => (int) $adminVend['id'],
+    'empresa_id' => $empId,
+), $login);
+assert_true((string) $correoAct['actividad']['tipo'] === 'correo', 'Tipo correo');
+assert_true((string) $correoAct['actividad']['canal'] === 'email', 'Canal email para correo');
+
+$hoyAct = \Crm\Actividades::crear(array(
+    'titulo' => 'Reunión de cierre',
+    'tipo' => 'reunion',
+    'fecha_programada' => date('Y-m-d') . ' 16:00:00',
+    'vendedor_id' => (int) $adminVend['id'],
+), $login);
+assert_true(!empty($hoyAct['actividad']['es_hoy']), 'Reunión de hoy marcada es_hoy');
+
+$done = \Crm\Actividades::completar((int) $segAct['id'], array('resultado' => 'Cliente confirma'), $login);
+assert_true((string) $done['actividad']['estado'] === 'realizada', 'Completar pasa estado a realizada');
+assert_true(!empty($done['actividad']['fecha_completada']), 'Fecha de completado al realizar');
+
+$listReal = \Crm\Actividades::index(array(
+    'vendedor_id' => (int) $adminVend['id'],
+    'estado' => 'realizada',
+));
+$foundReal = false;
+foreach ($listReal['actividades'] as $aRow) {
+    if ((int) $aRow['id'] === (int) $segAct['id']) {
+        $foundReal = true;
+        break;
+    }
+}
+assert_true($foundReal, 'GET filtra actividades realizadas por vendedor');
+assert_true(isset($listReal['resumen']['realizadas']), 'Resumen de agenda en el listado');
+
+$listRango = \Crm\Actividades::index(array(
+    'desde' => date('Y-m-d', time() - 86400),
+    'hasta' => date('Y-m-d'),
+    'estado' => 'pendiente',
+));
+assert_true(isset($listRango['actividades']), 'GET con rango de fechas');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

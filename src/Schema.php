@@ -87,6 +87,23 @@ final class Schema
             'ALTER TABLE crm_cotizaciones ADD COLUMN lugar_entrega TEXT',
             'ALTER TABLE crm_cotizaciones ADD COLUMN lugar_entrega VARCHAR(255) NULL AFTER plazo_entrega'
         );
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_actividades',
+            'vendedor_id',
+            'ALTER TABLE crm_actividades ADD COLUMN vendedor_id INTEGER',
+            'ALTER TABLE crm_actividades ADD COLUMN vendedor_id INT UNSIGNED NULL'
+        );
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_actividades',
+            'creado_en',
+            'ALTER TABLE crm_actividades ADD COLUMN creado_en TEXT',
+            'ALTER TABLE crm_actividades ADD COLUMN creado_en DATETIME NULL'
+        );
+        if (self::hasColumn($pdo, 'crm_actividades', 'creado_en') && self::hasColumn($pdo, 'crm_actividades', 'created_at')) {
+            $pdo->exec('UPDATE crm_actividades SET creado_en = created_at WHERE creado_en IS NULL');
+        }
     }
 
     /**
@@ -418,6 +435,7 @@ final class Schema
                 contacto_id INT UNSIGNED NULL,
                 oportunidad_id INT UNSIGNED NULL,
                 cotizacion_id INT UNSIGNED NULL,
+                vendedor_id INT UNSIGNED NULL,
                 usuario_id INT UNSIGNED NULL,
                 tipo VARCHAR(40) NOT NULL DEFAULT 'nota',
                 canal VARCHAR(40) NOT NULL DEFAULT 'telefono',
@@ -427,6 +445,7 @@ final class Schema
                 fecha_completada DATETIME NULL,
                 estado VARCHAR(40) NOT NULL DEFAULT 'pendiente',
                 resultado VARCHAR(250) NULL,
+                creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 PRIMARY KEY (id),
@@ -615,6 +634,7 @@ final class Schema
                 contacto_id INTEGER,
                 oportunidad_id INTEGER,
                 cotizacion_id INTEGER,
+                vendedor_id INTEGER,
                 usuario_id INTEGER,
                 tipo TEXT NOT NULL DEFAULT 'nota',
                 canal TEXT NOT NULL DEFAULT 'telefono',
@@ -624,6 +644,7 @@ final class Schema
                 fecha_completada TEXT,
                 estado TEXT NOT NULL DEFAULT 'pendiente',
                 resultado TEXT,
+                creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (empresa_id) REFERENCES crm_empresas(id) ON DELETE SET NULL,
