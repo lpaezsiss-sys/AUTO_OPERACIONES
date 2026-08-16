@@ -242,20 +242,46 @@ crm_layout_start('Informes y reportes', 'reportes', $user);
       var metric = rankingRows.some(function (v) { return Number(v.total_cerrado) > 0; })
         ? "total_cerrado"
         : "total_cotizado";
+      var doughLabels = [];
+      var doughData = [];
+      var doughColors = [];
+      rankingRows.forEach(function (v, i) {
+        var val = Number(v[metric] || 0);
+        if (val > 0) {
+          doughLabels.push(v.nombre);
+          doughData.push(val);
+          doughColors.push(palette[i % palette.length]);
+        }
+      });
+      if (doughData.length === 0) {
+        doughLabels = ["Sin ventas en el período"];
+        doughData = [1];
+        doughColors = ["#d0d5db"];
+      }
       makeChart("vendedores", "chartVendedores", {
         type: "doughnut",
         data: {
-          labels: rankingRows.map(function (v) { return v.nombre; }),
+          labels: doughLabels,
           datasets: [{
-            data: rankingRows.map(function (v) { return v[metric]; }),
-            backgroundColor: rankingRows.map(function (_, i) { return palette[i % palette.length]; }),
+            data: doughData,
+            backgroundColor: doughColors,
             borderWidth: 1
           }]
         },
         options: {
           responsive: true,
           plugins: {
-            legend: { position: "bottom" }
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  if (doughLabels[0] === "Sin ventas en el período") {
+                    return "Sin datos";
+                  }
+                  return ctx.label + ": " + crmClp(ctx.parsed);
+                }
+              }
+            }
           }
         }
       });
@@ -277,21 +303,51 @@ crm_layout_start('Informes y reportes', 'reportes', $user);
       }).join("") || "<tr><td colspan=\"5\" class=\"text-secondary\">Sin ítems cotizados.</td></tr>";
 
       var prop = d.proporcion || {};
-      var prod = (prop.producto && prop.producto.monto) || 0;
-      var serv = (prop.servicio && prop.servicio.monto) || 0;
+      var prod = Number((prop.producto && prop.producto.monto) || 0);
+      var serv = Number((prop.servicio && prop.servicio.monto) || 0);
+      var mixLabels = [];
+      var mixData = [];
+      var mixColors = [];
+      if (prod > 0) {
+        mixLabels.push("Productos");
+        mixData.push(prod);
+        mixColors.push(navy);
+      }
+      if (serv > 0) {
+        mixLabels.push("Servicios");
+        mixData.push(serv);
+        mixColors.push(yellow);
+      }
+      if (mixData.length === 0) {
+        mixLabels = ["Sin montos en el período"];
+        mixData = [1];
+        mixColors = ["#d0d5db"];
+      }
       makeChart("mix", "chartMix", {
         type: "pie",
         data: {
-          labels: ["Productos", "Servicios"],
+          labels: mixLabels,
           datasets: [{
-            data: [prod, serv],
-            backgroundColor: [navy, yellow],
+            data: mixData,
+            backgroundColor: mixColors,
             borderWidth: 1
           }]
         },
         options: {
           responsive: true,
-          plugins: { legend: { position: "bottom" } }
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  if (mixLabels[0] === "Sin montos en el período") {
+                    return "Sin datos";
+                  }
+                  return ctx.label + ": " + crmClp(ctx.parsed);
+                }
+              }
+            }
+          }
         }
       });
     });
