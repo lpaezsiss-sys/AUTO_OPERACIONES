@@ -35,8 +35,33 @@ crm_layout_start('Cotizador', 'cotizador', $user);
             </select>
         </div>
         <div class="col-md-2">
-            <label class="form-label">Descuento CLP</label>
+            <label class="form-label">Descuento</label>
             <input class="form-control" id="descuento" type="number" min="0" value="0">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Moneda</label>
+            <select class="form-select" id="moneda">
+                <option value="CLP" selected>CLP</option>
+                <option value="USD">USD</option>
+                <option value="UF">UF</option>
+                <option value="EUR">EUR</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Validez de la oferta</label>
+            <input class="form-control" id="validez_oferta" placeholder="Ej: 30 días">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Condiciones de pago</label>
+            <input class="form-control" id="condiciones_pago" placeholder="Ej: 50% / 50%">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Plazo de entrega</label>
+            <input class="form-control" id="plazo_entrega" placeholder="Ej: 15 días hábiles">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Lugar de entrega</label>
+            <input class="form-control" id="lugar_entrega" placeholder="Ciudad / faena">
         </div>
         <div class="col-md-8">
             <label class="form-label">Buscar producto (SKU o nombre)</label>
@@ -245,6 +270,11 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         vendedor_id: Number(document.getElementById("vendedor_id").value || 0),
         estado: document.getElementById("estado").value,
         descuento: Number(document.getElementById("descuento").value || 0),
+        moneda: document.getElementById("moneda").value,
+        validez_oferta: document.getElementById("validez_oferta").value,
+        condiciones_pago: document.getElementById("condiciones_pago").value,
+        plazo_entrega: document.getElementById("plazo_entrega").value,
+        lugar_entrega: document.getElementById("lugar_entrega").value,
         notas: document.getElementById("notas").value,
         items: items
       })

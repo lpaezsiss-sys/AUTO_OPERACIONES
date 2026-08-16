@@ -124,6 +124,7 @@ final class Cotizaciones
             $fechaEmision = date('Y-m-d');
         }
         $fechaValidez = crm_str(isset($body['fecha_validez']) ? $body['fecha_validez'] : '', 10);
+        $comercial = self::condicionesComerciales($body);
         $notas = crm_str(isset($body['notas']) ? $body['notas'] : '', 4000) ?: null;
         $ejecutivoId = crm_int(isset($body['ejecutivo_id']) ? $body['ejecutivo_id'] : $user['id'], (int) $user['id']);
         $vendedorId = 0;
@@ -140,8 +141,8 @@ final class Cotizaciones
             } else {
                 $folio = Codes::next('crm_cotizaciones', 'folio', 'COT');
                 $ins = $pdo->prepare(
-                    'INSERT INTO crm_cotizaciones (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, vendedor_id, estado, fecha_emision, fecha_validez, subtotal, descuento, iva, total, notas, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
+                    'INSERT INTO crm_cotizaciones (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, vendedor_id, estado, fecha_emision, fecha_validez, validez_oferta, moneda, condiciones_pago, plazo_entrega, lugar_entrega, subtotal, descuento, iva, total, notas, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
                 );
                 $ins->execute(array(
                     $folio,
@@ -153,6 +154,11 @@ final class Cotizaciones
                     $estado,
                     $fechaEmision,
                     $fechaValidez !== '' ? $fechaValidez : null,
+                    $comercial['validez_oferta'],
+                    $comercial['moneda'],
+                    $comercial['condiciones_pago'],
+                    $comercial['plazo_entrega'],
+                    $comercial['lugar_entrega'],
                     $notas,
                     crm_now(),
                 ));
@@ -197,7 +203,7 @@ final class Cotizaciones
 
             $upd = $pdo->prepare(
                 'UPDATE crm_cotizaciones
-                 SET empresa_id=?, contacto_id=?, oportunidad_id=?, ejecutivo_id=?, vendedor_id=?, estado=?, fecha_emision=?, fecha_validez=?, subtotal=?, descuento=?, iva=?, total=?, notas=?, updated_at=?
+                 SET empresa_id=?, contacto_id=?, oportunidad_id=?, ejecutivo_id=?, vendedor_id=?, estado=?, fecha_emision=?, fecha_validez=?, validez_oferta=?, moneda=?, condiciones_pago=?, plazo_entrega=?, lugar_entrega=?, subtotal=?, descuento=?, iva=?, total=?, notas=?, updated_at=?
                  WHERE id=?'
             );
             $upd->execute(array(
@@ -209,6 +215,11 @@ final class Cotizaciones
                 $estado,
                 $fechaEmision,
                 $fechaValidez !== '' ? $fechaValidez : null,
+                $comercial['validez_oferta'],
+                $comercial['moneda'],
+                $comercial['condiciones_pago'],
+                $comercial['plazo_entrega'],
+                $comercial['lugar_entrega'],
                 $subtotal,
                 $descuentoGlobal,
                 $iva,
@@ -308,6 +319,32 @@ final class Cotizaciones
             'descuento_pct' => $descPct,
             'subtotal' => $line,
             'stock_al_cotizar' => $stockSnap,
+        );
+    }
+
+    /**
+     * @param array $body
+     * @return array
+     */
+    public static function condicionesComerciales(array $body)
+    {
+        $moneda = strtoupper(crm_str(isset($body['moneda']) ? $body['moneda'] : 'CLP', 10));
+        if ($moneda === '') {
+            $moneda = 'CLP';
+        }
+        if (!in_array($moneda, Catalog::monedas(), true)) {
+            Http::fail('Moneda inválida');
+        }
+        $validez = crm_str(isset($body['validez_oferta']) ? $body['validez_oferta'] : '', 100);
+        $pago = crm_str(isset($body['condiciones_pago']) ? $body['condiciones_pago'] : '', 150);
+        $plazo = crm_str(isset($body['plazo_entrega']) ? $body['plazo_entrega'] : '', 150);
+        $lugar = crm_str(isset($body['lugar_entrega']) ? $body['lugar_entrega'] : '', 255);
+        return array(
+            'validez_oferta' => $validez !== '' ? $validez : null,
+            'moneda' => $moneda,
+            'condiciones_pago' => $pago !== '' ? $pago : null,
+            'plazo_entrega' => $plazo !== '' ? $plazo : null,
+            'lugar_entrega' => $lugar !== '' ? $lugar : null,
         );
     }
 }

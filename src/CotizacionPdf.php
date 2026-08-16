@@ -89,6 +89,29 @@ final class CotizacionPdf
             $y -= 16;
         }
 
+        $ops[] = self::textOp(40, $y, 11, 'Condiciones comerciales');
+        $y -= 14;
+        $moneda = isset($cotizacion['moneda']) && (string) $cotizacion['moneda'] !== '' ? (string) $cotizacion['moneda'] : 'CLP';
+        $ops[] = self::textOp(40, $y, 9, 'Moneda: ' . $moneda);
+        $y -= 12;
+        if (!empty($cotizacion['validez_oferta'])) {
+            $ops[] = self::textOp(40, $y, 9, 'Validez de la oferta: ' . (string) $cotizacion['validez_oferta']);
+            $y -= 12;
+        }
+        if (!empty($cotizacion['condiciones_pago'])) {
+            $ops[] = self::textOp(40, $y, 9, 'Condiciones de pago: ' . (string) $cotizacion['condiciones_pago']);
+            $y -= 12;
+        }
+        if (!empty($cotizacion['plazo_entrega'])) {
+            $ops[] = self::textOp(40, $y, 9, 'Plazo de entrega: ' . (string) $cotizacion['plazo_entrega']);
+            $y -= 12;
+        }
+        if (!empty($cotizacion['lugar_entrega'])) {
+            $ops[] = self::textOp(40, $y, 9, 'Lugar de entrega: ' . (string) $cotizacion['lugar_entrega']);
+            $y -= 12;
+        }
+        $y -= 6;
+
         $ops[] = '0.05 0.16 0.29 rg 40 ' . sprintf('%.2F', $y) . ' 515 16 re f 1 1 1 rg';
         $ops[] = self::textOp(46, $y + 4, 8, 'SKU');
         $ops[] = self::textOp(110, $y + 4, 8, 'Descripción');

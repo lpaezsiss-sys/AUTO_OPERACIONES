@@ -93,6 +93,14 @@ final class Catalog
     /**
      * @return string[]
      */
+    public static function monedas()
+    {
+        return array('CLP', 'USD', 'UF', 'EUR');
+    }
+
+    /**
+     * @return string[]
+     */
     public static function actividadTipos()
     {
         return array('llamada', 'email', 'whatsapp', 'visita', 'reunion', 'nota', 'tarea');
@@ -126,6 +134,7 @@ final class Catalog
             'etapas' => self::etapas(),
             'cotizacion_estados' => self::cotizacionEstados(),
             'item_tipos' => self::itemTipos(),
+            'monedas' => self::monedas(),
             'actividad_tipos' => self::actividadTipos(),
             'iva_pct' => crm_iva_pct(),
         );

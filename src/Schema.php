@@ -52,6 +52,41 @@ final class Schema
                 );
             }
         }
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_cotizaciones',
+            'validez_oferta',
+            'ALTER TABLE crm_cotizaciones ADD COLUMN validez_oferta TEXT',
+            'ALTER TABLE crm_cotizaciones ADD COLUMN validez_oferta VARCHAR(100) NULL AFTER fecha_emision'
+        );
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_cotizaciones',
+            'moneda',
+            "ALTER TABLE crm_cotizaciones ADD COLUMN moneda TEXT NOT NULL DEFAULT 'CLP'",
+            "ALTER TABLE crm_cotizaciones ADD COLUMN moneda VARCHAR(10) NOT NULL DEFAULT 'CLP' AFTER validez_oferta"
+        );
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_cotizaciones',
+            'condiciones_pago',
+            'ALTER TABLE crm_cotizaciones ADD COLUMN condiciones_pago TEXT',
+            'ALTER TABLE crm_cotizaciones ADD COLUMN condiciones_pago VARCHAR(150) NULL AFTER moneda'
+        );
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_cotizaciones',
+            'plazo_entrega',
+            'ALTER TABLE crm_cotizaciones ADD COLUMN plazo_entrega TEXT',
+            'ALTER TABLE crm_cotizaciones ADD COLUMN plazo_entrega VARCHAR(150) NULL AFTER condiciones_pago'
+        );
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_cotizaciones',
+            'lugar_entrega',
+            'ALTER TABLE crm_cotizaciones ADD COLUMN lugar_entrega TEXT',
+            'ALTER TABLE crm_cotizaciones ADD COLUMN lugar_entrega VARCHAR(255) NULL AFTER plazo_entrega'
+        );
     }
 
     /**
@@ -78,6 +113,22 @@ final class Schema
         $stmt = $pdo->prepare($sql);
         $stmt->execute(array($table, $column));
         return (int) $stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * @param string $table
+     * @param string $column
+     * @param string $sqliteDdl
+     * @param string $mysqlDdl
+     * @return void
+     */
+    private static function addColumnIfMissing(PDO $pdo, $table, $column, $sqliteDdl, $mysqlDdl)
+    {
+        if (self::hasColumn($pdo, $table, $column)) {
+            return;
+        }
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $pdo->exec($driver === 'sqlite' ? $sqliteDdl : $mysqlDdl);
     }
 
     public static function seed(PDO $pdo): void
@@ -270,6 +321,11 @@ final class Schema
                 vendedor_id INT UNSIGNED NULL,
                 estado VARCHAR(40) NOT NULL DEFAULT 'borrador',
                 fecha_emision DATE NOT NULL,
+                validez_oferta VARCHAR(100) NULL,
+                moneda VARCHAR(10) NOT NULL DEFAULT 'CLP',
+                condiciones_pago VARCHAR(150) NULL,
+                plazo_entrega VARCHAR(150) NULL,
+                lugar_entrega VARCHAR(255) NULL,
                 fecha_validez DATE NULL,
                 subtotal DECIMAL(14,2) NOT NULL DEFAULT 0,
                 descuento DECIMAL(14,2) NOT NULL DEFAULT 0,
@@ -479,6 +535,11 @@ final class Schema
                 vendedor_id INTEGER,
                 estado TEXT NOT NULL DEFAULT 'borrador',
                 fecha_emision TEXT NOT NULL,
+                validez_oferta TEXT,
+                moneda TEXT NOT NULL DEFAULT 'CLP',
+                condiciones_pago TEXT,
+                plazo_entrega TEXT,
+                lugar_entrega TEXT,
                 fecha_validez TEXT,
                 subtotal REAL NOT NULL DEFAULT 0,
                 descuento REAL NOT NULL DEFAULT 0,

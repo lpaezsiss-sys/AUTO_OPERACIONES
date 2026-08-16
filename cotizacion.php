@@ -32,9 +32,21 @@ crm_layout_start($id ? 'Cotización' : 'Nueva cotización', 'cotizaciones', $use
                 <option value="vencida">Vencida</option>
             </select>
         </div>
-        <div class="col-md-3"><label class="form-label">Validez</label><input class="form-control" type="date" name="fecha_validez"></div>
-        <div class="col-md-4"><label class="form-label">Descuento global CLP</label><input class="form-control" type="number" min="0" name="descuento" value="0"></div>
-        <div class="col-md-8"><label class="form-label">Notas</label><input class="form-control" name="notas"></div>
+        <div class="col-md-3"><label class="form-label">Fecha validez</label><input class="form-control" type="date" name="fecha_validez"></div>
+        <div class="col-md-3"><label class="form-label">Moneda</label>
+            <select class="form-select" name="moneda">
+                <option value="CLP">CLP</option>
+                <option value="USD">USD</option>
+                <option value="UF">UF</option>
+                <option value="EUR">EUR</option>
+            </select>
+        </div>
+        <div class="col-md-3"><label class="form-label">Validez de la oferta</label><input class="form-control" name="validez_oferta" placeholder="Ej: 30 días"></div>
+        <div class="col-md-3"><label class="form-label">Condiciones de pago</label><input class="form-control" name="condiciones_pago"></div>
+        <div class="col-md-3"><label class="form-label">Plazo de entrega</label><input class="form-control" name="plazo_entrega"></div>
+        <div class="col-md-3"><label class="form-label">Lugar de entrega</label><input class="form-control" name="lugar_entrega"></div>
+        <div class="col-md-3"><label class="form-label">Descuento global</label><input class="form-control" type="number" min="0" name="descuento" value="0"></div>
+        <div class="col-md-6"><label class="form-label">Notas</label><input class="form-control" name="notas"></div>
     </div>
     <hr>
     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -102,6 +114,11 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
   document.querySelector('[name=vendedor_id]').value = c.vendedor_id || "";
   document.querySelector('[name=estado]').value = c.estado;
   document.querySelector('[name=fecha_validez]').value = c.fecha_validez || "";
+  document.querySelector('[name=moneda]').value = c.moneda || "CLP";
+  document.querySelector('[name=validez_oferta]').value = c.validez_oferta || "";
+  document.querySelector('[name=condiciones_pago]').value = c.condiciones_pago || "";
+  document.querySelector('[name=plazo_entrega]').value = c.plazo_entrega || "";
+  document.querySelector('[name=lugar_entrega]').value = c.lugar_entrega || "";
   document.querySelector('[name=descuento]').value = c.descuento || 0;
   document.querySelector('[name=notas]').value = c.notas || "";
   items = (c.items||[]).map(function (it) {

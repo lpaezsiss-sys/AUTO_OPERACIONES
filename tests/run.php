@@ -307,6 +307,53 @@ assert_true($servFail, 'Servicio sin descripción se rechaza');
 $pdfServ = \Crm\CotizacionPdf::generar($serv['cotizacion']);
 assert_true(strpos($pdfServ, '[Servicio]') !== false, 'PDF marca ítems de servicio');
 
+$com = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'enviada',
+    'moneda' => 'USD',
+    'validez_oferta' => '30 días',
+    'condiciones_pago' => '50% anticipo, 50% contra entrega',
+    'plazo_entrega' => '15 días hábiles',
+    'lugar_entrega' => 'Planta cliente, Talca',
+    'items' => array(
+        array(
+            'producto_id' => (int) $prod['id'],
+            'cantidad' => 1,
+        ),
+    ),
+), $login);
+$ccom = $com['cotizacion'];
+assert_true((string) $ccom['moneda'] === 'USD', 'Moneda USD persistida');
+assert_true((string) $ccom['validez_oferta'] === '30 días', 'Validez de oferta persistida');
+assert_true(strpos((string) $ccom['condiciones_pago'], 'anticipo') !== false, 'Condiciones de pago persistidas');
+assert_true((string) $ccom['plazo_entrega'] === '15 días hábiles', 'Plazo de entrega persistido');
+assert_true(strpos((string) $ccom['lugar_entrega'], 'Talca') !== false, 'Lugar de entrega persistido');
+$pdfCom = \Crm\CotizacionPdf::generar($ccom);
+assert_true(strpos($pdfCom, 'USD') !== false, 'PDF incluye moneda');
+assert_true(strpos($pdfCom, 'Validez') !== false, 'PDF incluye validez de oferta');
+
+$monedaFail = false;
+try {
+    \Crm\Cotizaciones::store(array(
+        'empresa_id' => $empId,
+        'moneda' => 'XXX',
+        'items' => array(
+            array('producto_id' => (int) $prod['id'], 'cantidad' => 1),
+        ),
+    ), $login);
+} catch (\Crm\ApiException $e) {
+    $monedaFail = strpos($e->getMessage(), 'Moneda') !== false;
+}
+assert_true($monedaFail, 'Moneda inválida se rechaza');
+
+$def = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'items' => array(
+        array('producto_id' => (int) $prod['id'], 'cantidad' => 1),
+    ),
+), $login);
+assert_true((string) $def['cotizacion']['moneda'] === 'CLP', 'Moneda por defecto CLP');
+
 $beforeCom = (int) $pdo->query('SELECT COUNT(*) FROM crm_comisiones')->fetchColumn();
 $pdo->beginTransaction();
 \Crm\Comisiones::registrarDesdeCotizacion($pdo, $cotId, (int) $adminVend['id'], 9999.00);

@@ -139,6 +139,7 @@ function crm_guardar_cotizacion(array $user)
 
     $pdo->beginTransaction();
     try {
+        $comercial = \Crm\Cotizaciones::condicionesComerciales($data);
         $year = date('Y');
         $likeFolio = 'COT-' . $year . '-%';
         $last = $pdo->prepare(
@@ -154,8 +155,8 @@ function crm_guardar_cotizacion(array $user)
 
         $insCot = $pdo->prepare(
             'INSERT INTO crm_cotizaciones
-                (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, vendedor_id, estado, fecha_emision, fecha_validez, subtotal, descuento, iva, total, notas, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
+                (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, vendedor_id, estado, fecha_emision, fecha_validez, validez_oferta, moneda, condiciones_pago, plazo_entrega, lugar_entrega, subtotal, descuento, iva, total, notas, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
         );
         $vendedorIdPre = \Crm\Comisiones::resolverVendedorId($pdo, $data, $ejecutivoId ? $ejecutivoId : 0);
         $insCot->execute(array(
@@ -168,6 +169,11 @@ function crm_guardar_cotizacion(array $user)
             $estado,
             $fechaEmision,
             $fechaValidez,
+            $comercial['validez_oferta'],
+            $comercial['moneda'],
+            $comercial['condiciones_pago'],
+            $comercial['plazo_entrega'],
+            $comercial['lugar_entrega'],
             $notas !== '' ? $notas : null,
             $now,
         ));
