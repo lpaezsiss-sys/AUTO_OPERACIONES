@@ -27,7 +27,9 @@ APP_DEBUG=0
 APP_URL=https://crm.lpaezsis.cl
 ```
 
-5. Crear el primer usuario:
+Checklist corto post-subida: `DEPLOY_CHECKLIST.md`.
+
+5. Crear el primer usuario (si la BD está vacía):
 
 ```bash
 php sql/install.php

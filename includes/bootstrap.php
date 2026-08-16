@@ -8,6 +8,16 @@ require_once dirname(__DIR__) . '/config/db.php';
 
 date_default_timezone_set('America/Santiago');
 
+$crmDisplay = crm_lower((string) crm_env('DISPLAY_ERRORS', ''));
+$crmShowErrors = in_array($crmDisplay, array('1', 'on', 'true', 'yes'), true);
+if (crm_is_production() || $crmDisplay === 'off' || $crmDisplay === '0') {
+    $crmShowErrors = false;
+}
+ini_set('display_errors', $crmShowErrors ? '1' : '0');
+ini_set('display_startup_errors', $crmShowErrors ? '1' : '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
+
 spl_autoload_register(static function ($class) {
     $prefix = 'Crm\\';
     if (!str_starts_with($class, $prefix)) {
@@ -27,7 +37,8 @@ if (PHP_SAPI !== 'cli') {
 
 if (PHP_SAPI !== 'cli' && session_status() !== PHP_SESSION_ACTIVE) {
     $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || ((int) (isset($_SERVER['SERVER_PORT']) ? $_SERVER['SERVER_PORT'] : 0) === 443);
+        || ((int) (isset($_SERVER['SERVER_PORT']) ? $_SERVER['SERVER_PORT'] : 0) === 443)
+        || str_starts_with((string) crm_env('APP_URL', ''), 'https://');
     session_name('crm_lpaezsis');
     session_set_cookie_params(array(
         'lifetime' => 0,

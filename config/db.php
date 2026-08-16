@@ -123,8 +123,16 @@ function crm_env($key, $default = null)
     return $default;
 }
 
+function crm_is_production()
+{
+    return crm_lower((string) crm_env('APP_ENV', '')) === 'production';
+}
+
 function crm_debug()
 {
+    if (crm_is_production()) {
+        return false;
+    }
     return in_array(crm_lower((string) crm_env('APP_DEBUG', '0')), array('1', 'true', 'yes'), true);
 }
 
