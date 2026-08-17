@@ -136,6 +136,8 @@ CREATE TABLE IF NOT EXISTS `crm_cotizacion_items` (
   `marca_nombre` VARCHAR(150) NULL,
   `codigo` VARCHAR(50) NOT NULL,
   `descripcion` VARCHAR(300) NOT NULL,
+  `descripcion_detallada` TEXT NULL,
+  `imagen_url` VARCHAR(500) NULL,
   `cantidad` DECIMAL(12,2) NOT NULL DEFAULT 1,
   `precio_unitario` DECIMAL(12,2) NOT NULL DEFAULT 0,
   `costo_unitario` DECIMAL(12,2) NOT NULL DEFAULT 0,

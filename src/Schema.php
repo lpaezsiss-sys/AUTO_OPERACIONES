@@ -83,6 +83,20 @@ final class Schema
         );
         self::addColumnIfMissing(
             $pdo,
+            'crm_cotizacion_items',
+            'descripcion_detallada',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN descripcion_detallada TEXT',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN descripcion_detallada TEXT NULL AFTER descripcion'
+        );
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_cotizacion_items',
+            'imagen_url',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN imagen_url TEXT',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN imagen_url VARCHAR(500) NULL AFTER descripcion_detallada'
+        );
+        self::addColumnIfMissing(
+            $pdo,
             'crm_cotizaciones',
             'validez_oferta',
             'ALTER TABLE crm_cotizaciones ADD COLUMN validez_oferta TEXT',
@@ -487,6 +501,8 @@ final class Schema
                 marca_nombre VARCHAR(150) NULL,
                 codigo VARCHAR(50) NOT NULL,
                 descripcion VARCHAR(300) NOT NULL,
+                descripcion_detallada TEXT NULL,
+                imagen_url VARCHAR(500) NULL,
                 cantidad DECIMAL(12,2) NOT NULL DEFAULT 1,
                 precio_unitario DECIMAL(12,2) NOT NULL DEFAULT 0,
                 costo_unitario DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -725,6 +741,8 @@ final class Schema
                 marca_nombre TEXT,
                 codigo TEXT NOT NULL,
                 descripcion TEXT NOT NULL,
+                descripcion_detallada TEXT,
+                imagen_url TEXT,
                 cantidad REAL NOT NULL DEFAULT 1,
                 precio_unitario REAL NOT NULL DEFAULT 0,
                 costo_unitario REAL NOT NULL DEFAULT 0,

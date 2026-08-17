@@ -74,6 +74,8 @@ final class Cotizaciones
             $row['marca_id'] = isset($row['marca_id']) && $row['marca_id'] !== '' ? (int) $row['marca_id'] : null;
             $row['marca_nombre'] = isset($row['marca_nombre']) ? (string) $row['marca_nombre'] : '';
             $row['costo_unitario'] = isset($row['costo_unitario']) ? (float) $row['costo_unitario'] : 0.0;
+            $row['descripcion_detallada'] = isset($row['descripcion_detallada']) ? (string) $row['descripcion_detallada'] : '';
+            $row['imagen_url'] = isset($row['imagen_url']) ? (string) $row['imagen_url'] : '';
         }
         unset($row);
         $cot['items'] = $rows;
@@ -196,8 +198,8 @@ final class Cotizaciones
 
             $subtotal = 0.0;
             $insItem = $pdo->prepare(
-                'INSERT INTO crm_cotizacion_items (cotizacion_id, tipo_item, es_a_pedido, producto_id, marca_id, marca_nombre, codigo, descripcion, cantidad, precio_unitario, costo_unitario, descuento_pct, subtotal, stock_al_cotizar)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO crm_cotizacion_items (cotizacion_id, tipo_item, es_a_pedido, producto_id, marca_id, marca_nombre, codigo, descripcion, descripcion_detallada, imagen_url, cantidad, precio_unitario, costo_unitario, descuento_pct, subtotal, stock_al_cotizar)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
 
             foreach ($itemsIn as $raw) {
@@ -215,6 +217,8 @@ final class Cotizaciones
                     $item['marca_nombre'],
                     $item['codigo'],
                     $item['descripcion'],
+                    $item['descripcion_detallada'],
+                    $item['imagen_url'],
                     $item['cantidad'],
                     $item['precio_unitario'],
                     $item['costo_unitario'],
@@ -318,6 +322,8 @@ final class Cotizaciones
         $productoId = crm_int(isset($raw['producto_id']) ? $raw['producto_id'] : 0, 0);
         $codigo = crm_str(isset($raw['codigo']) ? $raw['codigo'] : '', 50);
         $descripcion = crm_str(isset($raw['descripcion']) ? $raw['descripcion'] : '', 300);
+        $detalle = crm_str(isset($raw['descripcion_detallada']) ? $raw['descripcion_detallada'] : '', 2000);
+        $imagenUrl = isset($raw['imagen_url']) ? trim((string) $raw['imagen_url']) : '';
         $cantidad = crm_float(isset($raw['cantidad']) ? $raw['cantidad'] : 1, 1);
         $precio = crm_float(isset($raw['precio_unitario']) ? $raw['precio_unitario'] : 0, 0);
         $costo = crm_float(isset($raw['costo_unitario']) ? $raw['costo_unitario'] : 0, 0);
@@ -363,9 +369,13 @@ final class Cotizaciones
                 Http::fail('El servicio requiere una descripción');
             }
         } elseif ($productoId > 0) {
-            $findProd = $pdo->prepare(
-                'SELECT id, codigo, nombre, stock, precio_unitario FROM productos WHERE id = ? LIMIT 1'
-            );
+            $colImg = ItemImagen::columnaInventario($pdo);
+            $sqlProd = 'SELECT id, codigo, nombre, stock, precio_unitario';
+            if ($colImg !== '') {
+                $sqlProd .= ', ' . $colImg;
+            }
+            $sqlProd .= ' FROM productos WHERE id = ? LIMIT 1';
+            $findProd = $pdo->prepare($sqlProd);
             $findProd->execute(array($productoId));
             $prod = $findProd->fetch(PDO::FETCH_ASSOC);
             if (!$prod) {
@@ -382,7 +392,12 @@ final class Cotizaciones
             }
             $stockSnap = (float) $prod['stock'];
             $costo = 0;
+            if ($imagenUrl === '') {
+                $imagenUrl = ItemImagen::resolverInventario($prod);
+            }
         }
+
+        $imagenUrl = ItemImagen::normalizarEntrada($imagenUrl, null);
 
         if ($codigo === '' || $descripcion === '') {
             Http::fail('Cada ítem requiere código y descripción');
@@ -406,6 +421,8 @@ final class Cotizaciones
             'marca_nombre' => $marcaNombre !== '' ? $marcaNombre : null,
             'codigo' => $codigo,
             'descripcion' => $descripcion,
+            'descripcion_detallada' => $detalle !== '' ? $detalle : null,
+            'imagen_url' => $imagenUrl !== '' ? $imagenUrl : null,
             'cantidad' => $cantidad,
             'precio_unitario' => $precio,
             'costo_unitario' => $costo,

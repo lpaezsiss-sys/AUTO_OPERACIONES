@@ -63,6 +63,13 @@ final class CotizacionPdf
         }
 
         $marcas = self::marcasRepresentadas($root, $cotizacion);
+        foreach ($items as $idx => $it) {
+            if (!is_array($it)) {
+                continue;
+            }
+            $rel = isset($it['imagen_url']) ? (string) $it['imagen_url'] : '';
+            $items[$idx]['imagen_src'] = $rel !== '' ? self::rutaImagen($rel) : '';
+        }
         $h = static function ($v) {
             return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         };

@@ -157,7 +157,28 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       return '<option value="' + m.id + '"' + (Number(it.marca_id) === Number(m.id) ? " selected" : "") + '>' + m.nombre + '</option>';
     }).join("");
     return '<select class="form-select form-select-sm mb-1" data-i="' + i + '" data-k="marca_id">' + opts + '</select>' +
-      '<input class="form-control form-control-sm" data-i="' + i + '" data-k="marca_nombre" placeholder="Marca" value="' + (it.marca_nombre || "") + '">';
+      '<input class="form-control form-control-sm" data-i="' + i + '" data-k="marca_nombre" placeholder="Marca" value="' + crmEsc(it.marca_nombre || "") + '">';
+  }
+
+  function thumbHtml(it) {
+    if (!it.imagen_url) {
+      return '<span class="small text-secondary">Sin imagen</span>';
+    }
+    return '<img src="' + crmEsc(it.imagen_url) + '" alt="" style="max-height:40px;max-width:56px;object-fit:contain">';
+  }
+
+  function extraRow(it, i) {
+    var pedido = it.tipo_item === "a_pedido";
+    var ph = pedido ? "URL https:// o suba un archivo" : "URL opcional (si el inventario no tiene foto)";
+    return '<tr class="item-extra"><td></td><td colspan="9">' +
+      '<div class="d-flex gap-2 align-items-start">' +
+      '<div style="min-width:60px">' + thumbHtml(it) + '</div>' +
+      '<div class="flex-grow-1">' +
+      '<textarea class="form-control form-control-sm mb-1" rows="2" data-i="' + i + '" data-k="descripcion_detallada" placeholder="Descripción detallada / especificaciones (opcional)">' +
+      crmEsc(it.descripcion_detallada || "") + '</textarea>' +
+      '<input class="form-control form-control-sm mb-1" data-i="' + i + '" data-k="imagen_url" placeholder="' + ph + '" value="' + crmEsc(it.imagen_url || "") + '">' +
+      '<input class="form-control form-control-sm" type="file" accept="image/png,image/jpeg" data-img="' + i + '">' +
+      '</div></div></td><td></td></tr>';
   }
 
   function render() {
@@ -168,8 +189,8 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       var pedido = it.tipo_item === "a_pedido";
       return '<tr>' +
         '<td>' + tipoBadge(it) + '</td>' +
-        '<td>' + (libre ? '<input class="form-control form-control-sm" value="' + (it.codigo || "") + '" data-i="' + i + '" data-k="codigo">' : it.codigo) + '</td>' +
-        '<td>' + (libre ? '<input class="form-control form-control-sm" value="' + (it.descripcion || "") + '" data-i="' + i + '" data-k="descripcion">' : it.descripcion) + '</td>' +
+        '<td>' + (libre ? '<input class="form-control form-control-sm" value="' + crmEsc(it.codigo || "") + '" data-i="' + i + '" data-k="codigo">' : crmEsc(it.codigo || "")) + '</td>' +
+        '<td>' + (libre ? '<input class="form-control form-control-sm" value="' + crmEsc(it.descripcion || "") + '" data-i="' + i + '" data-k="descripcion">' : crmEsc(it.descripcion || "")) + '</td>' +
         '<td>' + marcaCell(it, i) + '</td>' +
         '<td><span class="badge badge-stock ' + (warn ? "low" : "") + '">' + (libre || it.stock == null ? "—" : it.stock) + '</span></td>' +
         '<td><input class="form-control form-control-sm" type="number" min="1" value="' + it.cantidad + '" data-i="' + i + '" data-k="cantidad"></td>' +
@@ -178,7 +199,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         '<td><input class="form-control form-control-sm" type="number" min="0" max="100" value="' + it.descuento_pct + '" data-i="' + i + '" data-k="descuento_pct"></td>' +
         '<td class="text-end line-sub">' + crmClp(lineSub(it)) + '</td>' +
         '<td><button class="btn btn-sm btn-outline-danger" type="button" data-del="' + i + '">x</button></td>' +
-        '</tr>';
+        '</tr>' + extraRow(it, i);
     }).join("");
     updateTotales();
   }
@@ -200,6 +221,8 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       producto_id: p.id,
       codigo: p.sku || p.codigo,
       descripcion: p.nombre,
+      descripcion_detallada: (p.descripcion && p.descripcion !== p.nombre) ? p.descripcion : "",
+      imagen_url: p.imagen_url || "",
       cantidad: 1,
       precio_unitario: p.precio_unitario,
       descuento_pct: 0,
@@ -323,6 +346,16 @@ crm_layout_start('Cotizador', 'cotizador', $user);
     if (ev.target.getAttribute("data-k") === "marca_id") {
       ev.target.dispatchEvent(new Event("input", { bubbles: true }));
     }
+    var idx = ev.target.getAttribute("data-img");
+    if (idx == null || !ev.target.files || !ev.target.files[0]) {
+      return;
+    }
+    var fd = new FormData();
+    fd.append("archivo", ev.target.files[0]);
+    crmApi("api/cotizacion_item_imagen.php", { method: "POST", body: fd }).then(function (d) {
+      items[Number(idx)].imagen_url = d.imagen_url;
+      render();
+    }).catch(function (e) { crmToast(e.message, true); });
   });
   document.getElementById("btnPedido").addEventListener("click", function () {
     items.push({
@@ -333,6 +366,8 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       marca_nombre: "",
       codigo: "PEDIDO",
       descripcion: "",
+      descripcion_detallada: "",
+      imagen_url: "",
       cantidad: 1,
       precio_unitario: 0,
       costo_unitario: 0,
@@ -347,6 +382,8 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       producto_id: null,
       codigo: "SERV",
       descripcion: "",
+      descripcion_detallada: "",
+      imagen_url: "",
       cantidad: 1,
       precio_unitario: 0,
       descuento_pct: 0,

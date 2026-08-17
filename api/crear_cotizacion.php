@@ -59,8 +59,12 @@ function crm_buscar_producto()
     }
 
     $like = '%' . $q . '%';
-    $sql = 'SELECT id, codigo, codigo AS sku, nombre, descripcion, stock, precio_unitario, unidad
-            FROM productos
+    $colImg = \Crm\ItemImagen::columnaInventario(crm_pdo());
+    $sql = 'SELECT id, codigo, codigo AS sku, nombre, descripcion, stock, precio_unitario, unidad';
+    if ($colImg !== '') {
+        $sql .= ', ' . $colImg;
+    }
+    $sql .= ' FROM productos
             WHERE activo = 1
               AND (nombre LIKE ? OR codigo LIKE ?)
             ORDER BY nombre ASC
@@ -71,6 +75,10 @@ function crm_buscar_producto()
     if (!is_array($rows)) {
         $rows = array();
     }
+    foreach ($rows as &$row) {
+        $row = \Crm\ItemImagen::anexarAProducto($row);
+    }
+    unset($row);
 
     echo json_encode(array('ok' => true, 'productos' => $rows));
     exit;
@@ -197,8 +205,8 @@ function crm_guardar_cotizacion(array $user)
 
         $insItem = $pdo->prepare(
             'INSERT INTO crm_cotizacion_items
-                (cotizacion_id, tipo_item, es_a_pedido, producto_id, marca_id, marca_nombre, codigo, descripcion, cantidad, precio_unitario, costo_unitario, descuento_pct, subtotal, stock_al_cotizar)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                (cotizacion_id, tipo_item, es_a_pedido, producto_id, marca_id, marca_nombre, codigo, descripcion, descripcion_detallada, imagen_url, cantidad, precio_unitario, costo_unitario, descuento_pct, subtotal, stock_al_cotizar)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         $subtotal = 0.0;
@@ -221,6 +229,8 @@ function crm_guardar_cotizacion(array $user)
                 $item['marca_nombre'],
                 $item['codigo'],
                 $item['descripcion'],
+                $item['descripcion_detallada'],
+                $item['imagen_url'],
                 $item['cantidad'],
                 $item['precio_unitario'],
                 $item['costo_unitario'],

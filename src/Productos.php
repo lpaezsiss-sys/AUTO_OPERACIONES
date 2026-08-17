@@ -19,8 +19,12 @@ final class Productos
     {
         $q = crm_str(isset($_GET['q']) ? $_GET['q'] : '', 120);
         $bajo = isset($_GET['bajo_stock']) && (string) $_GET['bajo_stock'] === '1';
-        $sql = 'SELECT id, codigo, nombre, descripcion, stock, precio_unitario, umbral_stock, unidad, activo, updated_at
-                FROM productos
+        $colImg = ItemImagen::columnaInventario(crm_pdo());
+        $sql = 'SELECT id, codigo, nombre, descripcion, stock, precio_unitario, umbral_stock, unidad, activo, updated_at';
+        if ($colImg !== '') {
+            $sql .= ', ' . $colImg;
+        }
+        $sql .= ' FROM productos
                 WHERE activo = 1';
         $params = array();
         if ($q !== '') {
@@ -42,6 +46,7 @@ final class Productos
             $row['precio_unitario'] = (float) $row['precio_unitario'];
             $row['umbral_stock'] = (float) $row['umbral_stock'];
             $row['bajo_stock'] = $row['stock'] <= $row['umbral_stock'];
+            $row = ItemImagen::anexarAProducto($row);
         }
         unset($row);
         return array('productos' => $rows);
@@ -53,16 +58,19 @@ final class Productos
      */
     public static function find($id)
     {
-        $stmt = crm_pdo()->prepare(
-            'SELECT id, codigo, nombre, descripcion, stock, precio_unitario, umbral_stock, unidad, activo
-             FROM productos WHERE id = ? LIMIT 1'
-        );
+        $colImg = ItemImagen::columnaInventario(crm_pdo());
+        $sql = 'SELECT id, codigo, nombre, descripcion, stock, precio_unitario, umbral_stock, unidad, activo';
+        if ($colImg !== '') {
+            $sql .= ', ' . $colImg;
+        }
+        $sql .= ' FROM productos WHERE id = ? LIMIT 1';
+        $stmt = crm_pdo()->prepare($sql);
         $stmt->execute(array((int) $id));
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
             Http::fail('Producto no encontrado en inventario', 404);
         }
-        return $row;
+        return ItemImagen::anexarAProducto($row);
     }
 
     /**

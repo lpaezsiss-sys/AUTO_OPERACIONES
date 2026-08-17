@@ -12,5 +12,11 @@ vendor/
 uploads/*
 !uploads/.gitkeep
 !uploads/.htaccess
+!uploads/cotizacion_items/
+uploads/cotizacion_items/*
+!uploads/cotizacion_items/.htaccess
+!uploads/productos/
+uploads/productos/*
+!uploads/productos/.htaccess
 downloads/*.zip
 sql/respaldo_completo_local.sql

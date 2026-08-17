@@ -115,6 +115,8 @@ table { border-collapse: collapse; }
 .box-doc .tipo { font-size: 7pt; letter-spacing: 1px; }
 .box-doc .num { font-size: 11pt; font-weight: bold; }
 .logo { max-width: 92px; max-height: 28px; }
+.item-thumb { width: 28px; height: 28px; }
+.item-detail { font-size: 6.5pt; color: #666666; margin-top: 1px; line-height: 1.2; font-weight: normal; }
 h1, h2, h3 { margin: 0; padding: 0; }
 .rule { height: 2px; background: #0b3c5d; font-size: 1px; line-height: 1px; padding: 0; }
 .rule-gold { height: 1px; background: #c9a227; font-size: 1px; line-height: 1px; padding: 0; }
@@ -222,14 +224,32 @@ h1, h2, h3 { margin: 0; padding: 0; }
         $pu = (float) (isset($it['precio_unitario']) ? $it['precio_unitario'] : 0);
         $lin = (float) (isset($it['subtotal']) ? $it['subtotal'] : ($cant * $pu));
         $alt = ($i % 2 === 0) ? ' td-alt' : '';
+        $detalle = isset($it['descripcion_detallada']) ? trim((string) $it['descripcion_detallada']) : '';
+        $imgSrc = isset($it['imagen_src']) ? (string) $it['imagen_src'] : '';
         ?>
         <tr>
-            <td class="td<?php echo $alt; ?>"><?php echo $h(isset($it['codigo']) ? $it['codigo'] : ''); ?></td>
-            <td class="td<?php echo $alt; ?>"><?php echo $h($desc); ?></td>
-            <td class="td num<?php echo $alt; ?>"><?php echo $h(number_format($cant, 0, ',', '.')); ?></td>
-            <td class="td<?php echo $alt; ?>"><?php echo $h($un); ?></td>
-            <td class="td num<?php echo $alt; ?>">$<?php echo $h(number_format($pu, 0, ',', '.')); ?></td>
-            <td class="td num<?php echo $alt; ?>">$<?php echo $h(number_format($lin, 0, ',', '.')); ?></td>
+            <td class="td<?php echo $alt; ?>" valign="top"><?php echo $h(isset($it['codigo']) ? $it['codigo'] : ''); ?></td>
+            <td class="td<?php echo $alt; ?>" valign="top">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <?php if ($imgSrc !== '') { ?>
+                        <td width="32" valign="top" style="padding:0 6px 0 0;">
+                            <img class="item-thumb" src="<?php echo $h($imgSrc); ?>" alt="">
+                        </td>
+                        <?php } ?>
+                        <td valign="top" style="padding:0;">
+                            <?php echo $h($desc); ?>
+                            <?php if ($detalle !== '') { ?>
+                            <div class="item-detail"><?php echo nl2br($h($detalle)); ?></div>
+                            <?php } ?>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+            <td class="td num<?php echo $alt; ?>" valign="top"><?php echo $h(number_format($cant, 0, ',', '.')); ?></td>
+            <td class="td<?php echo $alt; ?>" valign="top"><?php echo $h($un); ?></td>
+            <td class="td num<?php echo $alt; ?>" valign="top">$<?php echo $h(number_format($pu, 0, ',', '.')); ?></td>
+            <td class="td num<?php echo $alt; ?>" valign="top">$<?php echo $h(number_format($lin, 0, ',', '.')); ?></td>
         </tr>
     <?php } ?>
 </table>

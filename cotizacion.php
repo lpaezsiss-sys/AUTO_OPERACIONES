@@ -97,7 +97,23 @@ function marcaCell(it, i) {
     return '<option value="'+m.id+'"'+(Number(it.marca_id)===Number(m.id)?' selected':'')+'>'+m.nombre+'</option>';
   }).join("");
   return '<select class="form-select form-select-sm mb-1" data-i="'+i+'" data-k="marca_id">'+opts+'</select>' +
-    '<input class="form-control form-control-sm" data-i="'+i+'" data-k="marca_nombre" placeholder="Marca" value="'+(it.marca_nombre||"")+'">';
+    '<input class="form-control form-control-sm" data-i="'+i+'" data-k="marca_nombre" placeholder="Marca" value="'+crmEsc(it.marca_nombre||"")+'">';
+}
+function thumbHtml(it) {
+  if (!it.imagen_url) return '<span class="small text-secondary">Sin imagen</span>';
+  return '<img src="'+crmEsc(it.imagen_url)+'" alt="" style="max-height:40px;max-width:56px;object-fit:contain">';
+}
+function extraRow(it, i) {
+  var pedido = it.tipo_item === "a_pedido";
+  var ph = pedido ? "URL https:// o suba un archivo" : "URL opcional (si el inventario no tiene foto)";
+  return '<tr class="item-extra"><td></td><td colspan="9">'+
+    '<div class="d-flex gap-2 align-items-start">'+
+    '<div style="min-width:60px">'+thumbHtml(it)+'</div>'+
+    '<div class="flex-grow-1">'+
+    '<textarea class="form-control form-control-sm mb-1" rows="2" data-i="'+i+'" data-k="descripcion_detallada" placeholder="Descripción detallada / especificaciones (opcional)">'+crmEsc(it.descripcion_detallada||"")+'</textarea>'+
+    '<input class="form-control form-control-sm mb-1" data-i="'+i+'" data-k="imagen_url" placeholder="'+ph+'" value="'+crmEsc(it.imagen_url||"")+'">'+
+    '<input class="form-control form-control-sm" type="file" accept="image/png,image/jpeg" data-img="'+i+'">'+
+    '</div></div></td><td></td></tr>';
 }
 function renderItems() {
   var tb = document.querySelector("#items tbody");
@@ -105,7 +121,7 @@ function renderItems() {
     var warn = !esLibre(it) && it.stock_actual != null && Number(it.stock_actual) < Number(it.cantidad);
     var libre = esLibre(it);
     var pedido = it.tipo_item === "a_pedido";
-    return '<tr><td>'+tipoLabel(it)+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+it.codigo+'">':it.codigo)+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+it.descripcion+'">':it.descripcion)+'</td><td>'+marcaCell(it,i)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(libre||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="number" min="1" value="'+it.cantidad+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="number" min="0" value="'+it.precio_unitario+'"></td><td>'+(pedido?'<input data-i="'+i+'" data-k="costo_unitario" class="form-control form-control-sm" type="number" min="0" value="'+(it.costo_unitario||0)+'">':'—')+'</td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="number" min="0" max="100" value="'+it.descuento_pct+'"></td><td class="text-end line-sub">'+crmClp(lineSub(it))+'</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>';
+    return '<tr><td>'+tipoLabel(it)+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+crmEsc(it.codigo||"")+'">':crmEsc(it.codigo||""))+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+crmEsc(it.descripcion||"")+'">':crmEsc(it.descripcion||""))+'</td><td>'+marcaCell(it,i)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(libre||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="number" min="1" value="'+it.cantidad+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="number" min="0" value="'+it.precio_unitario+'"></td><td>'+(pedido?'<input data-i="'+i+'" data-k="costo_unitario" class="form-control form-control-sm" type="number" min="0" value="'+(it.costo_unitario||0)+'">':'—')+'</td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="number" min="0" max="100" value="'+it.descuento_pct+'"></td><td class="text-end line-sub">'+crmClp(lineSub(it))+'</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>'+extraRow(it,i);
   }).join("");
   updateTotalesCot();
 }
@@ -117,7 +133,18 @@ function updateTotalesCot() {
   document.getElementById("totales").innerHTML = '<div>Subtotal '+crmClp(sub)+'</div><div>IVA 19% '+crmClp(iva)+'</div><div class="fw-bold">Total '+crmClp(neto+iva)+'</div>';
 }
 function addProducto(p) {
-  items.push({ tipo_item: "producto", producto_id: p.id, codigo: p.codigo, descripcion: p.nombre, cantidad: 1, precio_unitario: p.precio_unitario, descuento_pct: 0, stock_actual: p.stock });
+  items.push({
+    tipo_item: "producto",
+    producto_id: p.id,
+    codigo: p.codigo,
+    descripcion: p.nombre,
+    descripcion_detallada: (p.descripcion && p.descripcion !== p.nombre) ? p.descripcion : "",
+    imagen_url: p.imagen_url || "",
+    cantidad: 1,
+    precio_unitario: p.precio_unitario,
+    descuento_pct: 0,
+    stock_actual: p.stock
+  });
   renderItems();
 }
 function renderMarcas(selectedIds) {
@@ -177,18 +204,18 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
   document.querySelector('[name=descuento]').value = c.descuento || 0;
   document.querySelector('[name=notas]').value = c.notas || "";
   items = (c.items||[]).map(function (it) {
-    return { tipo_item: it.tipo_item || "producto", es_a_pedido: it.es_a_pedido || 0, producto_id: it.producto_id, marca_id: it.marca_id || 0, marca_nombre: it.marca_nombre || "", codigo: it.codigo, descripcion: it.descripcion, cantidad: it.cantidad, precio_unitario: it.precio_unitario, costo_unitario: it.costo_unitario || 0, descuento_pct: it.descuento_pct, stock_actual: it.stock_actual };
+    return { tipo_item: it.tipo_item || "producto", es_a_pedido: it.es_a_pedido || 0, producto_id: it.producto_id, marca_id: it.marca_id || 0, marca_nombre: it.marca_nombre || "", codigo: it.codigo, descripcion: it.descripcion, descripcion_detallada: it.descripcion_detallada || "", imagen_url: it.imagen_url || "", cantidad: it.cantidad, precio_unitario: it.precio_unitario, costo_unitario: it.costo_unitario || 0, descuento_pct: it.descuento_pct, stock_actual: it.stock_actual };
   });
   renderItems();
   renderMarcas((c.marca_ids || []).map(Number));
 });
 document.querySelector('[name=descuento]').addEventListener("input", updateTotalesCot);
 document.getElementById("btnAddPedido").addEventListener("click", function () {
-  items.push({ tipo_item: "a_pedido", es_a_pedido: 1, producto_id: null, marca_id: 0, marca_nombre: "", codigo: "PEDIDO", descripcion: "", cantidad: 1, precio_unitario: 0, costo_unitario: 0, descuento_pct: 0, stock_actual: null });
+  items.push({ tipo_item: "a_pedido", es_a_pedido: 1, producto_id: null, marca_id: 0, marca_nombre: "", codigo: "PEDIDO", descripcion: "", descripcion_detallada: "", imagen_url: "", cantidad: 1, precio_unitario: 0, costo_unitario: 0, descuento_pct: 0, stock_actual: null });
   renderItems();
 });
 document.getElementById("btnAddServ").addEventListener("click", function () {
-  items.push({ tipo_item: "servicio", producto_id: null, codigo: "SERV", descripcion: "", cantidad: 1, precio_unitario: 0, descuento_pct: 0, stock_actual: null });
+  items.push({ tipo_item: "servicio", producto_id: null, codigo: "SERV", descripcion: "", descripcion_detallada: "", imagen_url: "", cantidad: 1, precio_unitario: 0, descuento_pct: 0, stock_actual: null });
   renderItems();
 });
 document.getElementById("btnAddProd").addEventListener("click", function () {
@@ -223,6 +250,16 @@ document.querySelector("#items tbody").addEventListener("click", function (ev) {
   if (del == null) return;
   items.splice(Number(del), 1);
   renderItems();
+});
+document.querySelector("#items tbody").addEventListener("change", function (ev) {
+  var idx = ev.target.getAttribute("data-img");
+  if (idx == null || !ev.target.files || !ev.target.files[0]) return;
+  var fd = new FormData();
+  fd.append("archivo", ev.target.files[0]);
+  crmApi("api/cotizacion_item_imagen.php", { method: "POST", body: fd }).then(function (d) {
+    items[Number(idx)].imagen_url = d.imagen_url;
+    renderItems();
+  }).catch(function (e) { crmToast(e.message, true); });
 });
 document.getElementById("formCot").addEventListener("submit", function (ev) {
   ev.preventDefault();

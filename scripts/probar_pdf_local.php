@@ -35,6 +35,31 @@ foreach ($args as $arg) {
 }
 if ($demo) {
     $login = \Crm\Auth::login('ivan.p@example.net', 'Lpaezsis.2026');
+    $demoDir = $root . '/uploads/cotizacion_items';
+    if (!is_dir($demoDir)) {
+        mkdir($demoDir, 0775, true);
+    }
+    $demoImg = 'uploads/cotizacion_items/demo_item.png';
+    if (function_exists('imagecreatetruecolor') && function_exists('imagepng')) {
+        $im = imagecreatetruecolor(48, 48);
+        $bg = imagecolorallocate($im, 11, 60, 93);
+        $fg = imagecolorallocate($im, 254, 192, 1);
+        imagefilledrectangle($im, 0, 0, 47, 47, $bg);
+        imagefilledrectangle($im, 12, 12, 35, 35, $fg);
+        imagepng($im, $root . '/' . $demoImg);
+        imagedestroy($im);
+    } else {
+        $png1 = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+        file_put_contents($root . '/' . $demoImg, $png1);
+    }
+    $invDir = $root . '/uploads/productos';
+    if (!is_dir($invDir)) {
+        mkdir($invDir, 0775, true);
+    }
+    if (!is_file($root . '/' . $demoImg)) {
+        copy($root . '/assets/img/logo.png', $root . '/' . $demoImg);
+    }
+    copy($root . '/' . $demoImg, $invDir . '/13451.png');
     $prods = $pdo->query('SELECT id FROM productos WHERE activo = 1 ORDER BY id ASC LIMIT 8')->fetchAll(\PDO::FETCH_COLUMN);
     $items = array();
     $cant = 1;
@@ -51,6 +76,15 @@ if ($demo) {
         'descripcion' => 'Instalación y puesta en marcha en planta',
         'cantidad' => 1,
         'precio_unitario' => 450000,
+    );
+    $items[] = array(
+        'tipo_item' => 'a_pedido',
+        'descripcion' => 'Carcasa especial soplador',
+        'descripcion_detallada' => 'Pintura epoxy RAL 5010. Incluye brida DIN 2566.',
+        'imagen_url' => $demoImg,
+        'cantidad' => 1,
+        'precio_unitario' => 220000,
+        'costo_unitario' => 140000,
     );
     $pack = \Crm\Cotizaciones::store(array(
         'empresa_id' => 2,

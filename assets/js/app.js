@@ -28,6 +28,14 @@
     return data;
   };
 
+  window.crmEsc = function (s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  };
+
   window.crmClp = function (n) {
     return new Intl.NumberFormat("es-CL", {
       style: "currency",

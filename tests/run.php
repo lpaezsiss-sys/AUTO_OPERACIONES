@@ -718,6 +718,106 @@ try {
 }
 assert_true($pedidoFail, 'A pedido sin descripción se rechaza');
 
+$colsItems = array();
+foreach ($pdo->query('PRAGMA table_info(crm_cotizacion_items)') as $col) {
+    $colsItems[] = (string) $col['name'];
+}
+assert_true(in_array('descripcion_detallada', $colsItems, true), 'Columna descripcion_detallada en ítems');
+assert_true(in_array('imagen_url', $colsItems, true), 'Columna imagen_url en ítems');
+
+$png1 = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+$prodDir = dirname(__DIR__) . '/uploads/productos';
+if (!is_dir($prodDir)) {
+    mkdir($prodDir, 0775, true);
+}
+$invImg = $prodDir . '/13451.png';
+file_put_contents($invImg, $png1);
+$prod13451 = (int) $pdo->query("SELECT id FROM productos WHERE codigo = '13451' LIMIT 1")->fetchColumn();
+$cotImgCat = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'enviada',
+    'items' => array(
+        array(
+            'tipo_item' => 'producto',
+            'producto_id' => $prod13451,
+            'cantidad' => 1,
+            'descripcion_detallada' => 'Eje 25 mm, material AISI 304, largo 1200 mm.',
+        ),
+    ),
+), $login);
+$itCat = $cotImgCat['cotizacion']['items'][0];
+assert_true(strpos((string) $itCat['descripcion_detallada'], 'AISI 304') !== false, 'Descripción detallada persistida en producto');
+assert_true((string) $itCat['imagen_url'] === 'uploads/productos/13451.png', 'Imagen de inventario por archivo SKU');
+
+$tmpPng = sys_get_temp_dir() . '/crm-item-test.png';
+file_put_contents($tmpPng, $png1);
+$up = \Crm\ItemImagen::guardarUpload(array(
+    'name' => 'pieza.png',
+    'type' => 'image/png',
+    'tmp_name' => $tmpPng,
+    'error' => UPLOAD_ERR_OK,
+    'size' => filesize($tmpPng),
+));
+assert_true(strpos($up, 'uploads/cotizacion_items/') === 0 && is_file(dirname(__DIR__) . '/' . $up), 'Upload PNG de ítem a pedido');
+
+$cotPedidoImg = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'enviada',
+    'items' => array(
+        array(
+            'tipo_item' => 'a_pedido',
+            'descripcion' => 'Carcasa especial soplador',
+            'descripcion_detallada' => 'Pintura epoxy RAL 5010. Incluye brida.',
+            'imagen_url' => $up,
+            'cantidad' => 1,
+            'precio_unitario' => 220000,
+        ),
+    ),
+), $login);
+$itPedImg = $cotPedidoImg['cotizacion']['items'][0];
+assert_true((string) $itPedImg['imagen_url'] === $up, 'A pedido guarda ruta de imagen subida');
+$htmlDet = \Crm\CotizacionPdf::html($cotPedidoImg['cotizacion']);
+assert_true(strpos($htmlDet, 'Pintura epoxy RAL 5010') !== false, 'PDF imprime descripción detallada');
+assert_true(strpos($htmlDet, 'item-thumb') !== false, 'PDF incluye miniatura del ítem');
+assert_true(strpos($htmlDet, 'Total línea') !== false, 'PDF mantiene columna de total de línea');
+
+$trav = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'borrador',
+    'items' => array(
+        array(
+            'tipo_item' => 'a_pedido',
+            'descripcion' => 'Ítem sin foto válida',
+            'imagen_url' => '../.env',
+            'cantidad' => 1,
+            'precio_unitario' => 10,
+        ),
+    ),
+), $login);
+assert_true((string) $trav['cotizacion']['items'][0]['imagen_url'] === '', 'Ruta de imagen con .. se descarta');
+
+$gifFail = false;
+$tmpGif = sys_get_temp_dir() . '/crm-item-test.gif';
+file_put_contents($tmpGif, base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'));
+try {
+    \Crm\ItemImagen::guardarUpload(array(
+        'name' => 'x.gif',
+        'type' => 'image/gif',
+        'tmp_name' => $tmpGif,
+        'error' => UPLOAD_ERR_OK,
+        'size' => filesize($tmpGif),
+    ));
+} catch (\Crm\ApiException $e) {
+    $gifFail = strpos($e->getMessage(), 'PNG') !== false || strpos($e->getMessage(), 'JPG') !== false;
+}
+assert_true($gifFail, 'GIF de ítem se rechaza');
+if (is_file($tmpGif)) {
+    unlink($tmpGif);
+}
+if (is_file($tmpPng)) {
+    unlink($tmpPng);
+}
+
 $statsPed = \Crm\EstadisticasAPedido::obtener(array('periodo' => 'anio'));
 assert_true((int) $statsPed['kpis']['n_cotizados'] >= 3, 'KPI ítems a pedido cotizados');
 assert_true((int) $statsPed['kpis']['n_ganados'] >= 1, 'KPI ítems a pedido ganados');
