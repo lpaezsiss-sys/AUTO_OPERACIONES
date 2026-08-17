@@ -230,6 +230,7 @@ assert_true(strpos($htmlPdf, '76.987.654-5') !== false, 'PDF incluye RUT de empr
 assert_true(strpos($htmlPdf, 'LPAEZsis') !== false, 'PDF incluye razón social emisora');
 assert_true(strpos($htmlPdf, 'Luis') !== false, 'PDF incluye nombre del vendedor');
 assert_true(strpos($htmlPdf, 'MARCAS REPRESENTADAS') !== false, 'PDF incluye sección de marcas');
+assert_true(strpos($htmlPdf, 'banner_marcas.png') !== false, 'PDF usa banner de 12 marcas');
 assert_true(strpos($htmlPdf, 'Banco Estado') !== false, 'PDF incluye datos bancarios');
 assert_true(strpos($htmlPdf, '35171442603') !== false, 'PDF incluye número de cuenta vista');
 assert_true(strpos($htmlPdf, 'logo.png') !== false || strpos($htmlPdf, 'logo.svg') !== false, 'PDF referencia logo corporativo');

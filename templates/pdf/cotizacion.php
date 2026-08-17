@@ -9,6 +9,7 @@ declare(strict_types=1);
  * @var array|null $vendedor
  * @var array $marcas
  * @var string $logoSrc
+ * @var string $bannerMarcasSrc
  * @var callable $h
  */
 $h = isset($h) && is_callable($h) ? $h : static function ($v) {
@@ -19,6 +20,7 @@ $items = is_array($items) ? $items : array();
 $emisora = is_array($emisora) ? $emisora : array();
 $marcas = is_array($marcas) ? $marcas : array();
 $logoSrc = isset($logoSrc) ? (string) $logoSrc : '';
+$bannerMarcasSrc = isset($bannerMarcasSrc) ? (string) $bannerMarcasSrc : '';
 
 $numero = isset($cotizacion['numero']) ? (string) $cotizacion['numero'] : (isset($cotizacion['folio']) ? (string) $cotizacion['folio'] : '');
 $cotizacion['numero'] = $numero;
@@ -85,7 +87,7 @@ $fechaEmision = $fmtFecha(isset($cotizacion['fecha_emision']) ? $cotizacion['fec
 <meta charset="utf-8">
 <title>Cotización <?php echo $h($numero); ?></title>
 <style>
-@page { margin: 12mm 11mm 12mm 11mm; }
+@page { margin: 10mm 11mm 10mm 11mm; }
 body { font-family: DejaVu Sans, Helvetica, Arial, sans-serif; font-size: 9pt; color: #333333; }
 table { border-collapse: collapse; }
 .wrap { width: 100%; }
@@ -109,13 +111,14 @@ h1, h2, h3 { margin: 0; padding: 0; }
 .tot-lab { padding: 3px 6px; font-size: 8.5pt; }
 .tot-val { padding: 3px 6px; font-size: 8.5pt; text-align: right; }
 .tot-final { background: #0b3c5d; color: #ffffff; font-weight: bold; }
-.sign { margin-top: 22px; text-align: center; }
-.sign-line { border-top: 0.6pt solid #333333; width: 220px; margin: 28px auto 4px auto; }
-.marcas-h { text-align: center; color: #0b3c5d; font-size: 8pt; letter-spacing: 1px; font-weight: bold; margin: 16px 0 8px 0; }
-.marca { text-align: center; vertical-align: middle; padding: 6px 4px; border: 0.4pt solid #d0d7de; }
+.sign { margin-top: 12px; text-align: center; }
+.sign-line { border-top: 0.6pt solid #333333; width: 220px; margin: 14px auto 4px auto; }
+.marcas-h { text-align: center; color: #0b3c5d; font-size: 8pt; letter-spacing: 1px; font-weight: bold; margin: 8px 0 4px 0; }
+.marca { text-align: center; vertical-align: middle; padding: 6px 4px; }
 .marca img { max-height: 32px; max-width: 95px; }
 .marca-n { font-size: 6.5pt; color: #0b3c5d; margin-top: 3px; }
-.foot { margin-top: 8px; font-size: 7pt; color: #777777; text-align: center; }
+.marcas-banner { width: 100%; height: auto; max-height: 32mm; display: block; margin-top: 2px; }
+.foot { margin-top: 4px; font-size: 7pt; color: #777777; text-align: center; }
 </style>
 </head>
 <body>
@@ -256,33 +259,48 @@ h1, h2, h3 { margin: 0; padding: 0; }
 </div>
 
 <div class="marcas-h">MARCAS REPRESENTADAS Y DISTRIBUIDAS</div>
+<?php if ($bannerMarcasSrc !== '') { ?>
+<img class="marcas-banner" src="<?php echo $h($bannerMarcasSrc); ?>" alt="Marcas representadas y distribuidas">
+<?php } else { ?>
 <table class="wrap" width="100%">
-    <tr>
-        <?php
+    <?php
+    $chunks = array();
+    $row = array();
+    foreach ($marcas as $marca) {
+        if (!is_array($marca)) {
+            continue;
+        }
+        $row[] = $marca;
+        if (count($row) === 6) {
+            $chunks[] = $row;
+            $row = array();
+        }
+    }
+    if (count($row) > 0) {
+        $chunks[] = $row;
+    }
+    foreach ($chunks as $fila) {
+        echo '<tr>';
         $n = 0;
-        foreach ($marcas as $marca) {
-            if (!is_array($marca) || $n >= 5) {
-                continue;
-            }
+        foreach ($fila as $marca) {
             $n++;
             $src = isset($marca['src']) ? (string) $marca['src'] : '';
             $nom = isset($marca['nombre']) ? (string) $marca['nombre'] : '';
-            ?>
-            <td class="marca" width="20%">
-                <?php if ($src !== '') { ?>
-                    <img src="<?php echo $h($src); ?>" alt="<?php echo $h($nom); ?>">
-                <?php } ?>
-                <div class="marca-n"><?php echo $h($nom); ?></div>
-            </td>
-        <?php } ?>
-        <?php
-        while ($n < 5) {
-            $n++;
-            echo '<td class="marca" width="20%">&nbsp;</td>';
+            echo '<td class="marca" width="16%">';
+            if ($src !== '') {
+                echo '<img src="' . $h($src) . '" alt="' . $h($nom) . '">';
+            }
+            echo '</td>';
         }
-        ?>
-    </tr>
+        while ($n < 6) {
+            $n++;
+            echo '<td class="marca" width="16%">&nbsp;</td>';
+        }
+        echo '</tr>';
+    }
+    ?>
 </table>
+<?php } ?>
 <div class="foot">Documento generado por CRM LPAEZsis · crm.lpaezsis.cl</div>
 </body>
 </html>

@@ -63,6 +63,7 @@ final class CotizacionPdf
         }
 
         $marcas = self::marcasRepresentadas($root);
+        $bannerMarcasSrc = self::rutaImagen($root . '/assets/img/marcas/banner_marcas.png');
         $h = static function ($v) {
             return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         };
@@ -80,11 +81,18 @@ final class CotizacionPdf
     public static function marcasRepresentadas($root)
     {
         $defs = array(
-            array('archivo' => 'cmc.png', 'nombre' => 'CMC Alemania'),
-            array('archivo' => 'paxton.png', 'nombre' => 'Paxton'),
-            array('archivo' => 'sonic.png', 'nombre' => 'Sonic'),
-            array('archivo' => 'aircontrol.png', 'nombre' => 'AirControl'),
-            array('archivo' => 'packline.png', 'nombre' => 'PackLine'),
+            array('archivo' => 'sonic.png', 'nombre' => 'Sonic Air Systems'),
+            array('archivo' => 'lc.png', 'nombre' => 'L&C Ltda.'),
+            array('archivo' => 'movex.png', 'nombre' => 'Movex'),
+            array('archivo' => 'eltra.png', 'nombre' => 'ELTRA trade'),
+            array('archivo' => 'flexlink.png', 'nombre' => 'FlexLink'),
+            array('archivo' => 'elektror.png', 'nombre' => 'Elektror airsystems'),
+            array('archivo' => 'haida.png', 'nombre' => 'HAIDA International'),
+            array('archivo' => 'intralox.png', 'nombre' => 'Intralox'),
+            array('archivo' => 'columbia.png', 'nombre' => 'Columbia Okura LLC'),
+            array('archivo' => 'combi.png', 'nombre' => 'Combi Packaging Systems'),
+            array('archivo' => 'cmc.png', 'nombre' => 'CMC Klebetechnik'),
+            array('archivo' => 'oriental.png', 'nombre' => 'Oriental Motor'),
         );
         $out = array();
         foreach ($defs as $def) {
