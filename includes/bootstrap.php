@@ -143,3 +143,16 @@ function crm_page_user()
     }
     return $user;
 }
+
+/**
+ * @return array
+ */
+function crm_page_require_admin()
+{
+    $user = crm_page_user();
+    if ((string) $user['rol'] !== 'admin') {
+        header('Location: index.php');
+        exit;
+    }
+    return $user;
+}

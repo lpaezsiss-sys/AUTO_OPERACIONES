@@ -9,12 +9,14 @@ use PDO;
 final class Codes
 {
     /**
+     * Próximo código correlativo. No inserta ni reserva el número.
+     *
      * @param string $table
      * @param string $column
      * @param string $prefix
      * @return string
      */
-    public static function next($table, $column, $prefix)
+    public static function peek($table, $column, $prefix)
     {
         $allowed = array(
             'crm_oportunidades' => 'codigo',
@@ -34,6 +36,17 @@ final class Codes
             $n = ((int) $m[1]) + 1;
         }
         return $prefix . '-' . $year . '-' . str_pad((string) $n, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * @param string $table
+     * @param string $column
+     * @param string $prefix
+     * @return string
+     */
+    public static function next($table, $column, $prefix)
+    {
+        return self::peek($table, $column, $prefix);
     }
 
     /**

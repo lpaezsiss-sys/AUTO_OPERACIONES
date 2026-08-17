@@ -11,6 +11,9 @@ require __DIR__ . '/_init.php';
     if ($method === 'GET' && $id > 0) {
         return \Crm\Cotizaciones::show($id);
     }
+    if ($method === 'GET' && isset($_GET['proximo'])) {
+        return \Crm\Cotizaciones::proximoFolio();
+    }
     if ($method === 'GET') {
         return \Crm\Cotizaciones::index();
     }

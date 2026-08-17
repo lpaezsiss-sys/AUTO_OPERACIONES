@@ -13,7 +13,10 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         <h1 class="page-title h3 mb-1">Cotizador</h1>
         <p class="text-secondary mb-0">Búsqueda en vivo sobre <code>productos</code> · IVA 19% · guardado asíncrono.</p>
     </div>
-    <a class="text-decoration-none" href="cotizaciones.php">Ver cotizaciones</a>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span id="folioBadge" class="badge-folio badge-folio-new">Cotización Nueva (Próximo Nº: …)</span>
+        <a class="text-decoration-none" href="cotizaciones.php">Ver cotizaciones</a>
+    </div>
 </div>
 
 <div class="card card-soft p-4">
@@ -266,6 +269,17 @@ crm_layout_start('Cotizador', 'cotizador', $user);
     }).join("") || '<span class="small text-secondary">No hay marcas cargadas.</span>';
   }).catch(function (e) { crmToast(e.message, true); });
 
+  crmApi("api/cotizaciones.php?proximo=1").then(function (d) {
+    var folio = d.proximo_folio || "";
+    if (!folio) {
+      return;
+    }
+    var badge = document.getElementById("folioBadge");
+    badge.textContent = "Cotización Nueva (Próximo Nº: " + folio + ")";
+    badge.classList.add("badge-folio-new");
+    badge.classList.remove("badge-folio-ok");
+  }).catch(function (e) { crmToast(e.message, true); });
+
   crmApi("api/vendedores.php").then(function (d) {
     document.getElementById("vendedor_id").innerHTML = '<option value="">(según usuario)</option>' +
       (d.vendedores || []).filter(function (v) { return Number(v.activo) === 1; }).map(function (v) {
@@ -426,6 +440,10 @@ crm_layout_start('Cotizador', 'cotizador', $user);
           ' · <a href="api/cotizacion_pdf.php?id=' + pack.d.id + '" target="_blank">Descargar PDF</a>';
         okMsg.hidden = false;
         crmToast("Cotización " + pack.d.folio + " creada");
+        var badge = document.getElementById("folioBadge");
+        badge.textContent = pack.d.folio;
+        badge.classList.remove("badge-folio-new");
+        badge.classList.add("badge-folio-ok");
         items = [];
         render();
       }).catch(function (e) { crmToast(e.message, true); });

@@ -123,6 +123,15 @@ $cot = \Crm\Cotizaciones::store(array(
 ), $login);
 $cotId = (int) $cot['cotizacion']['id'];
 assert_true(strpos($cot['cotizacion']['folio'], 'COT-') === 0, 'Folio COT generado');
+$peekA = \Crm\Codes::peek('crm_cotizaciones', 'folio', 'COT');
+$peekB = \Crm\Codes::peek('crm_cotizaciones', 'folio', 'COT');
+assert_true($peekA === $peekB, 'Peek no consume el correlativo');
+assert_true($peekA === \Crm\Codes::next('crm_cotizaciones', 'folio', 'COT'), 'Peek coincide con next');
+$proximoApi = \Crm\Cotizaciones::proximoFolio();
+assert_true($proximoApi['proximo_folio'] === $peekA, 'API próximo folio coincide con peek');
+$countPeek = (int) $pdo->query('SELECT COUNT(*) FROM crm_cotizaciones')->fetchColumn();
+\Crm\Codes::peek('crm_cotizaciones', 'folio', 'COT');
+assert_true((int) $pdo->query('SELECT COUNT(*) FROM crm_cotizaciones')->fetchColumn() === $countPeek, 'Peek no inserta cotización');
 assert_true((float) $cot['cotizacion']['items'][0]['stock_al_cotizar'] === (float) $prod['stock'], 'Snapshot de stock desde productos');
 $neto = (float) $cot['cotizacion']['subtotal'];
 $iva = (float) $cot['cotizacion']['iva'];
@@ -855,6 +864,118 @@ try {
     $dupAlta = strpos($e->getMessage(), 'Ya existe') !== false;
 }
 assert_true($dupAlta, 'Alta duplicada por código se rechaza');
+
+$cotizadorSrc = (string) file_get_contents($root . '/cotizador.php');
+assert_true(strpos($cotizadorSrc, 'folioBadge') !== false, 'Cotizador tiene badge de folio');
+assert_true(strpos($cotizadorSrc, 'api/cotizaciones.php?proximo=1') !== false, 'Cotizador pide próximo folio');
+$cotFormSrc = (string) file_get_contents($root . '/cotizacion.php');
+assert_true(strpos($cotFormSrc, 'folioBadge') !== false, 'Formulario de cotización tiene badge de folio');
+$layoutSrc = (string) file_get_contents($root . '/includes/layout.php');
+assert_true(strpos($layoutSrc, 'usuarios.php') !== false, 'Menú incluye Usuarios');
+assert_true(strpos($layoutSrc, "rol'] === 'admin'") !== false, 'Menú Usuarios restringido a admin');
+
+$listaUsers = \Crm\Usuarios::index();
+assert_true(count($listaUsers['usuarios']) >= 2, 'Listado de usuarios seed');
+foreach ($listaUsers['usuarios'] as $uRow) {
+    assert_true(!isset($uRow['password_hash']), 'Listado no expone password_hash');
+}
+
+$altaUser = \Crm\Usuarios::guardar(array(
+    'nombre' => 'Ana Cotizaciones',
+    'email' => 'ana.cotizaciones@lpaezsis.cl',
+    'password' => 'ClaveUser.2026',
+    'rol' => 'vendedor',
+    'activo' => 1,
+));
+$nuevoUserId = (int) $altaUser['usuario']['id'];
+assert_true($nuevoUserId > 0, 'Alta de usuario');
+assert_true($altaUser['usuario']['email'] === 'ana.cotizaciones@lpaezsis.cl', 'Email de usuario persistido');
+assert_true($altaUser['usuario']['rol'] === 'vendedor', 'Rol vendedor persistido');
+assert_true(!isset($altaUser['usuario']['password_hash']), 'Alta no expone password_hash');
+$hashNuevo = (string) $pdo->query('SELECT password_hash FROM crm_usuarios WHERE id = ' . $nuevoUserId)->fetchColumn();
+assert_true(password_verify('ClaveUser.2026', $hashNuevo), 'Contraseña con password_hash');
+
+$loginNuevo = \Crm\Auth::login('ana.cotizaciones@lpaezsis.cl', 'ClaveUser.2026');
+assert_true((int) $loginNuevo['id'] === $nuevoUserId, 'Login del usuario nuevo');
+
+$forbidAdmin = false;
+try {
+    \Crm\Auth::requireAdmin();
+} catch (\Crm\ApiException $e) {
+    $forbidAdmin = $e->status === 403;
+}
+assert_true($forbidAdmin, 'Vendedor no accede a requireAdmin');
+
+$login = \Crm\Auth::login('ivan.p@example.net', 'Lpaezsis.2026');
+assert_true((string) $login['rol'] === 'admin', 'Reingreso admin para CRUD');
+assert_true(is_array(\Crm\Auth::requireAdmin()), 'Admin pasa requireAdmin');
+
+$editUser = \Crm\Usuarios::guardar(array(
+    'nombre' => 'Ana Editada',
+    'email' => 'ana.cotizaciones@lpaezsis.cl',
+    'rol' => 'vendedor',
+    'activo' => 1,
+), $nuevoUserId);
+assert_true($editUser['usuario']['nombre'] === 'Ana Editada', 'Edición de nombre de usuario');
+
+\Crm\Usuarios::cambiarPassword($nuevoUserId, 'OtraClave.2026');
+$loginCambio = \Crm\Auth::login('ana.cotizaciones@lpaezsis.cl', 'OtraClave.2026');
+assert_true((int) $loginCambio['id'] === $nuevoUserId, 'Cambio de contraseña válido');
+
+$dupMail = false;
+try {
+    \Crm\Usuarios::guardar(array(
+        'nombre' => 'Copia',
+        'email' => 'ivan.p@example.net',
+        'password' => 'ClaveUser.2026',
+        'rol' => 'vendedor',
+    ));
+} catch (\Crm\ApiException $e) {
+    $dupMail = strpos($e->getMessage(), 'Ya existe') !== false;
+}
+assert_true($dupMail, 'Email duplicado se rechaza');
+
+$corta = false;
+try {
+    \Crm\Usuarios::guardar(array(
+        'nombre' => 'Corta',
+        'email' => 'corta@lpaezsis.cl',
+        'password' => '123',
+        'rol' => 'vendedor',
+    ));
+} catch (\Crm\ApiException $e) {
+    $corta = strpos($e->getMessage(), '8 caracteres') !== false;
+}
+assert_true($corta, 'Contraseña corta se rechaza');
+
+$login = \Crm\Auth::login('ivan.p@example.net', 'Lpaezsis.2026');
+$sinAdmin = false;
+try {
+    \Crm\Usuarios::guardar(array(
+        'nombre' => $login['nombre'],
+        'email' => $login['email'],
+        'rol' => 'vendedor',
+        'activo' => 1,
+    ), (int) $login['id']);
+} catch (\Crm\ApiException $e) {
+    $sinAdmin = strpos($e->getMessage(), 'sin un administrador') !== false;
+}
+assert_true($sinAdmin, 'No se degrada el último admin');
+
+$inactivo = \Crm\Usuarios::guardar(array(
+    'nombre' => 'Ana Editada',
+    'email' => 'ana.cotizaciones@lpaezsis.cl',
+    'rol' => 'vendedor',
+    'activo' => 0,
+), $nuevoUserId);
+assert_true((int) $inactivo['usuario']['activo'] === 0, 'Usuario se puede inactivar');
+$loginInact = false;
+try {
+    \Crm\Auth::login('ana.cotizaciones@lpaezsis.cl', 'OtraClave.2026');
+} catch (\Crm\ApiException $e) {
+    $loginInact = $e->status === 401;
+}
+assert_true($loginInact, 'Usuario inactivo no inicia sesión');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

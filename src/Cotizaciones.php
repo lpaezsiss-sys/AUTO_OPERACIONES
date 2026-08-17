@@ -30,6 +30,18 @@ final class Cotizaciones
     }
 
     /**
+     * Folio correlativo provisorio. No reserva el número.
+     *
+     * @return array
+     */
+    public static function proximoFolio()
+    {
+        return array(
+            'proximo_folio' => Codes::peek('crm_cotizaciones', 'folio', 'COT'),
+        );
+    }
+
+    /**
      * @param int $id
      * @return array
      */

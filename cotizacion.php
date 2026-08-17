@@ -7,12 +7,24 @@ require __DIR__ . '/includes/layout.php';
 
 $user = crm_page_user();
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-crm_layout_start($id ? 'Cotización' : 'Nueva cotización', 'cotizaciones', $user);
+$folioAsignado = '';
+if ($id > 0) {
+    $folioStmt = crm_pdo()->prepare('SELECT folio FROM crm_cotizaciones WHERE id = ? LIMIT 1');
+    $folioStmt->execute(array($id));
+    $folioAsignado = (string) $folioStmt->fetchColumn();
+}
+$proximoFolio = $folioAsignado === '' ? \Crm\Codes::peek('crm_cotizaciones', 'folio', 'COT') : '';
+crm_layout_start($folioAsignado !== '' ? $folioAsignado : 'Nueva cotización', 'cotizaciones', $user);
 ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <a href="cotizaciones.php" class="text-decoration-none">← Cotizaciones</a>
-    <div class="d-flex gap-2 align-items-center">
-        <h1 class="page-title h4 mb-0" id="title"><?php echo $id ? 'Editar cotización' : 'Nueva cotización'; ?></h1>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <h1 class="page-title h4 mb-0" id="title"><?php echo $folioAsignado !== '' ? crm_h($folioAsignado) : 'Nueva cotización'; ?></h1>
+        <?php if ($folioAsignado !== '') { ?>
+        <span id="folioBadge" class="badge-folio badge-folio-ok"><?php echo crm_h($folioAsignado); ?></span>
+        <?php } else { ?>
+        <span id="folioBadge" class="badge-folio badge-folio-new">Cotización Nueva (Próximo Nº: <?php echo crm_h($proximoFolio); ?>)</span>
+        <?php } ?>
         <?php if ($id) { ?>
         <a class="btn btn-sm btn-outline-primary" href="api/cotizacion_pdf.php?id=<?php echo (int) $id; ?>" target="_blank">PDF</a>
         <button class="btn btn-sm btn-outline-danger" type="button" id="btnEliminarCot">Eliminar</button>
@@ -190,6 +202,12 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
   if (!d) return;
   var c = d.cotizacion;
   document.getElementById("title").textContent = c.folio;
+  var badge = document.getElementById("folioBadge");
+  if (badge) {
+    badge.textContent = c.folio;
+    badge.classList.remove("badge-folio-new");
+    badge.classList.add("badge-folio-ok");
+  }
   document.querySelector('[name=empresa_id]').value = c.empresa_id;
   pendingContactoId = c.contacto_id || "";
   loadContactos(c.empresa_id, pendingContactoId);
