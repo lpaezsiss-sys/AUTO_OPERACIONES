@@ -35,7 +35,23 @@ foreach ($args as $arg) {
 }
 if ($demo) {
     $login = \Crm\Auth::login('ivan.p@example.net', 'Lpaezsis.2026');
-    $prodId = (int) $pdo->query('SELECT id FROM productos WHERE activo = 1 ORDER BY id ASC LIMIT 1')->fetchColumn();
+    $prods = $pdo->query('SELECT id FROM productos WHERE activo = 1 ORDER BY id ASC LIMIT 8')->fetchAll(\PDO::FETCH_COLUMN);
+    $items = array();
+    $cant = 1;
+    foreach ($prods as $pid) {
+        $items[] = array(
+            'tipo_item' => 'producto',
+            'producto_id' => (int) $pid,
+            'cantidad' => $cant,
+        );
+        $cant = $cant === 1 ? 2 : 1;
+    }
+    $items[] = array(
+        'tipo_item' => 'servicio',
+        'descripcion' => 'Instalación y puesta en marcha en planta',
+        'cantidad' => 1,
+        'precio_unitario' => 450000,
+    );
     $pack = \Crm\Cotizaciones::store(array(
         'empresa_id' => 2,
         'contacto_id' => 2,
@@ -46,19 +62,7 @@ if ($demo) {
         'plazo_entrega' => '15 días hábiles',
         'lugar_entrega' => 'Planta cliente, San Bernardo',
         'notas' => 'Oferta sujeta a stock de inventario. Instalación no incluye obra civil.',
-        'items' => array(
-            array(
-                'tipo_item' => 'producto',
-                'producto_id' => $prodId,
-                'cantidad' => 2,
-            ),
-            array(
-                'tipo_item' => 'servicio',
-                'descripcion' => 'Instalación y puesta en marcha en planta',
-                'cantidad' => 1,
-                'precio_unitario' => 450000,
-            ),
-        ),
+        'items' => $items,
     ), $login);
     $id = (int) $pack['cotizacion']['id'];
 }

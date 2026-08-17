@@ -32,15 +32,23 @@ $iva = (float) (isset($cotizacion['iva']) ? $cotizacion['iva'] : 0);
 $total = (float) (isset($cotizacion['total']) ? $cotizacion['total'] : 0);
 
 $dirEmisora = isset($emisora['direccion']) ? (string) $emisora['direccion'] : '';
-if (!empty($emisora['ciudad'])) {
+if (!empty($emisora['ciudad']) && strpos($dirEmisora, (string) $emisora['ciudad']) === false) {
     $dirEmisora .= ($dirEmisora !== '' ? ', ' : '') . (string) $emisora['ciudad'];
 }
 
-$tels = array();
-if (!empty($emisora['telefono'])) {
-    $tels[] = (string) $emisora['telefono'];
+$metaEmisora = array();
+if (!empty($emisora['rut'])) {
+    $metaEmisora[] = 'RUT ' . (string) $emisora['rut'];
 }
-$telTxt = implode(' · ', $tels);
+if ($dirEmisora !== '') {
+    $metaEmisora[] = $dirEmisora;
+}
+if (!empty($emisora['telefono'])) {
+    $metaEmisora[] = (string) $emisora['telefono'];
+}
+if (!empty($emisora['sitio_web'])) {
+    $metaEmisora[] = (string) $emisora['sitio_web'];
+}
 
 $contactoNombre = trim(
     (isset($cotizacion['contacto_nombre']) ? (string) $cotizacion['contacto_nombre'] : '')
@@ -61,6 +69,20 @@ $plazo = isset($cotizacion['plazo_entrega']) && (string) $cotizacion['plazo_entr
 $lugar = isset($cotizacion['lugar_entrega']) && (string) $cotizacion['lugar_entrega'] !== ''
     ? (string) $cotizacion['lugar_entrega']
     : 'Por definir';
+
+$dirCliente = isset($cotizacion['direccion']) ? (string) $cotizacion['direccion'] : '';
+$comunaCliente = isset($cotizacion['comuna']) ? (string) $cotizacion['comuna'] : '';
+if ($comunaCliente !== '' && strpos($dirCliente, $comunaCliente) === false) {
+    $dirCliente .= ($dirCliente !== '' ? ', ' : '') . $comunaCliente;
+}
+
+$contactoLinea = array();
+if ($contactoNombre !== '') {
+    $contactoLinea[] = $contactoNombre;
+}
+if ($contactoEmail !== '') {
+    $contactoLinea[] = $contactoEmail;
+}
 
 $vendNombre = '';
 if (is_array($vendedor) && !empty($vendedor['nombre_completo'])) {
@@ -87,93 +109,84 @@ $fechaEmision = $fmtFecha(isset($cotizacion['fecha_emision']) ? $cotizacion['fec
 <meta charset="utf-8">
 <title>Cotización <?php echo $h($numero); ?></title>
 <style>
-@page { margin: 10mm 11mm 10mm 11mm; }
-body { font-family: DejaVu Sans, Helvetica, Arial, sans-serif; font-size: 9pt; color: #333333; }
+@page { margin: 8mm 9mm 8mm 9mm; }
+body { font-family: DejaVu Sans, Helvetica, Arial, sans-serif; font-size: 8pt; color: #333333; line-height: 1.15; }
 table { border-collapse: collapse; }
 .wrap { width: 100%; }
 .brand { color: #0b3c5d; }
-.muted { color: #555555; font-size: 8pt; }
-.box-doc { background: #0b3c5d; color: #ffffff; text-align: center; padding: 8px 10px; }
-.box-doc .tipo { font-size: 8pt; letter-spacing: 1px; }
-.box-doc .num { font-size: 14pt; font-weight: bold; margin-top: 4px; }
-.logo { max-width: 110px; max-height: 52px; }
+.muted { color: #555555; font-size: 7pt; }
+.box-doc { background: #0b3c5d; color: #ffffff; text-align: center; padding: 4px 8px; }
+.box-doc .tipo { font-size: 7pt; letter-spacing: 1px; }
+.box-doc .num { font-size: 11pt; font-weight: bold; }
+.logo { max-width: 92px; max-height: 28px; }
 h1, h2, h3 { margin: 0; padding: 0; }
-.rule { height: 3px; background: #0b3c5d; font-size: 1px; line-height: 1px; }
-.rule-gold { height: 2px; background: #c9a227; font-size: 1px; line-height: 1px; }
-.section { margin-top: 10px; }
-.th { background: #0b3c5d; color: #ffffff; font-size: 7.5pt; font-weight: bold; padding: 5px 4px; }
-.td { border-bottom: 0.4pt solid #cfd8dc; padding: 4px; font-size: 8pt; vertical-align: top; }
+.rule { height: 2px; background: #0b3c5d; font-size: 1px; line-height: 1px; padding: 0; }
+.rule-gold { height: 1px; background: #c9a227; font-size: 1px; line-height: 1px; padding: 0; }
+.gap { height: 3px; font-size: 1px; line-height: 1px; padding: 0; }
+.th { background: #0b3c5d; color: #ffffff; font-size: 7pt; font-weight: bold; padding: 3px 3px; }
+.td { border-bottom: 0.4pt solid #cfd8dc; padding: 2px 3px; font-size: 7.5pt; vertical-align: top; }
 .td-alt { background: #f4f7f9; }
 .num { text-align: right; white-space: nowrap; }
-.panel { border: 0.6pt solid #0b3c5d; }
-.panel td { padding: 7px 8px; vertical-align: top; }
-.panel-h { background: #0b3c5d; color: #ffffff; font-size: 8pt; font-weight: bold; padding: 5px 8px; }
-.tot-lab { padding: 3px 6px; font-size: 8.5pt; }
-.tot-val { padding: 3px 6px; font-size: 8.5pt; text-align: right; }
+.kv { width: 100%; }
+.kv td { padding: 0 4px; vertical-align: middle; font-size: 7.5pt; line-height: 1.2; }
+.kv .lab { color: #0b3c5d; font-weight: bold; white-space: nowrap; width: 12%; }
+.panel { border: 0.5pt solid #0b3c5d; }
+.panel-h { background: #0b3c5d; color: #ffffff; font-size: 7pt; font-weight: bold; padding: 2px 6px; }
+.tot-lab { padding: 1px 6px; font-size: 8pt; }
+.tot-val { padding: 1px 6px; font-size: 8pt; text-align: right; white-space: nowrap; }
 .tot-final { background: #0b3c5d; color: #ffffff; font-weight: bold; }
-.sign { margin-top: 12px; text-align: center; }
-.sign-line { border-top: 0.6pt solid #333333; width: 220px; margin: 14px auto 4px auto; }
-.marcas-h { text-align: center; color: #0b3c5d; font-size: 8pt; letter-spacing: 1px; font-weight: bold; margin: 8px 0 4px 0; }
-.marca { text-align: center; vertical-align: middle; padding: 6px 4px; }
-.marca img { max-height: 32px; max-width: 95px; }
-.marca-n { font-size: 6.5pt; color: #0b3c5d; margin-top: 3px; }
-.marcas-banner { width: 100%; height: auto; max-height: 32mm; display: block; margin-top: 2px; }
-.foot { margin-top: 4px; font-size: 7pt; color: #777777; text-align: center; }
+.sign { margin-top: 6px; text-align: center; font-size: 7.5pt; }
+.sign-line { border-top: 0.5pt solid #333333; width: 180px; margin: 8px auto 2px auto; }
+.marcas-h { text-align: center; color: #0b3c5d; font-size: 6.5pt; letter-spacing: 0.8px; font-weight: bold; margin: 4px 0 2px 0; }
+.marca { text-align: center; vertical-align: middle; padding: 2px; }
+.marca img { max-height: 22px; max-width: 80px; }
+.marcas-banner { width: 100%; height: 52px; display: block; }
+.foot { margin-top: 2px; font-size: 6pt; color: #777777; text-align: center; }
+.notas { margin: 3px 0 0 0; font-size: 7pt; color: #555555; }
 </style>
 </head>
 <body>
 <table class="wrap" width="100%">
     <tr>
-        <td width="62%" valign="top">
-            <?php if ($logoSrc !== '') { ?>
-                <img class="logo" src="<?php echo $h($logoSrc); ?>" alt="Logo">
-            <?php } ?>
-            <div style="margin-top:4px;">
-                <strong class="brand" style="font-size:12pt;"><?php echo $h(isset($emisora['razon_social']) ? $emisora['razon_social'] : ''); ?></strong><br>
-                <span class="muted">RUT: <?php echo $h(isset($emisora['rut']) ? $emisora['rut'] : ''); ?></span><br>
-                <span class="muted"><?php echo $h($dirEmisora); ?></span><br>
-                <?php if ($telTxt !== '') { ?><span class="muted">Tel: <?php echo $h($telTxt); ?></span><br><?php } ?>
-                <?php if (!empty($emisora['sitio_web'])) { ?><span class="muted"><?php echo $h($emisora['sitio_web']); ?></span><?php } ?>
-            </div>
+        <td width="14%" valign="middle"><?php if ($logoSrc !== '') { ?>
+            <img class="logo" src="<?php echo $h($logoSrc); ?>" alt="Logo">
+        <?php } ?></td>
+        <td width="56%" valign="middle">
+            <strong class="brand" style="font-size:10pt;"><?php echo $h(isset($emisora['razon_social']) ? $emisora['razon_social'] : ''); ?></strong><br>
+            <span class="muted"><?php echo $h(implode(' · ', $metaEmisora)); ?></span>
         </td>
-        <td width="38%" valign="top">
+        <td width="30%" valign="middle">
             <div class="box-doc">
-                <div class="tipo">COTIZACIÓN</div>
+                <div class="tipo">COTIZACIÓN · <?php echo $h($moneda); ?></div>
                 <div class="num"><?php echo $h($cotizacion['numero']); ?></div>
-            </div>
-            <div class="muted" style="margin-top:6px; text-align:right;">
-                Moneda: <?php echo $h($moneda); ?>
+                <div class="tipo" style="margin-top:2px; white-space:nowrap;">Emisión <?php echo $h($fechaEmision !== '' ? $fechaEmision : '—'); ?>
+                    · Validez <?php echo $h($validez !== '' ? $validez : '—'); ?></div>
             </div>
         </td>
     </tr>
 </table>
-<div class="rule" style="margin-top:8px;">&nbsp;</div>
-<div class="rule-gold">&nbsp;</div>
+<div class="rule"></div>
+<div class="rule-gold"></div>
+<div class="gap"></div>
 
-<table class="wrap section" width="100%">
+<table class="wrap panel" width="100%">
     <tr>
-        <td width="54%" valign="top" style="padding-right:8px;">
+        <td valign="top">
             <div class="panel-h">Cliente</div>
-            <table width="100%" class="panel">
-                <tr><td><strong><?php echo $h(isset($cotizacion['razon_social']) ? $cotizacion['razon_social'] : ''); ?></strong></td></tr>
-                <tr><td>RUT: <?php echo $h(isset($cotizacion['rut']) ? $cotizacion['rut'] : ''); ?></td></tr>
-                <tr><td>Dirección: <?php echo $h(isset($cotizacion['direccion']) ? $cotizacion['direccion'] : '—'); ?></td></tr>
-                <tr><td>Comuna: <?php echo $h(isset($cotizacion['comuna']) && $cotizacion['comuna'] !== '' ? $cotizacion['comuna'] : '—'); ?></td></tr>
-                <tr><td>Contacto: <?php echo $h($contactoNombre !== '' ? $contactoNombre : '—'); ?></td></tr>
-                <tr><td>Email: <?php echo $h($contactoEmail !== '' ? $contactoEmail : '—'); ?></td></tr>
-            </table>
-        </td>
-        <td width="46%" valign="top">
-            <div class="panel-h">Emisión y validez</div>
-            <table width="100%" class="panel">
-                <tr><td>Fecha de emisión</td><td style="text-align:right;"><?php echo $h($fechaEmision !== '' ? $fechaEmision : '—'); ?></td></tr>
-                <tr><td>Días de validez</td><td style="text-align:right;"><?php echo $h($validez !== '' ? $validez : '—'); ?></td></tr>
+            <table class="kv">
+                <tr>
+                    <td><strong><?php echo $h(isset($cotizacion['razon_social']) ? $cotizacion['razon_social'] : ''); ?></strong>
+                        · RUT <?php echo $h(isset($cotizacion['rut']) ? $cotizacion['rut'] : ''); ?>
+                        · <?php echo $h($dirCliente !== '' ? $dirCliente : '—'); ?>
+                        · <?php echo $h(count($contactoLinea) ? implode(' · ', $contactoLinea) : '—'); ?></td>
+                </tr>
             </table>
         </td>
     </tr>
 </table>
+<div class="gap"></div>
 
-<table class="wrap section" width="100%">
+<table class="wrap" width="100%">
     <tr>
         <td class="th" width="12%">Código</td>
         <td class="th" width="40%">Descripción</td>
@@ -210,19 +223,32 @@ h1, h2, h3 { margin: 0; padding: 0; }
         </tr>
     <?php } ?>
 </table>
+<div class="gap"></div>
 
-<table class="wrap section" width="100%">
+<table class="wrap" width="100%">
     <tr>
-        <td width="54%" valign="top" style="padding-right:8px;">
+        <td width="58%" valign="top" style="padding-right:6px;">
             <div class="panel-h">Condiciones comerciales</div>
-            <table width="100%" class="panel">
-                <tr><td><strong>Datos bancarios</strong><br>Banco Estado<br>Cuenta Vista #35171442603</td></tr>
-                <tr><td><strong>Lugar de entrega</strong><br><?php echo $h($lugar); ?></td></tr>
-                <tr><td><strong>Plazo de entrega</strong><br><?php echo $h($plazo); ?></td></tr>
-                <tr><td><strong>Forma de pago</strong><br><?php echo $h($pago); ?></td></tr>
+            <table class="kv panel" width="100%">
+                <tr>
+                    <td class="lab">Lugar de entrega</td>
+                    <td><?php echo $h($lugar); ?></td>
+                </tr>
+                <tr>
+                    <td class="lab">Plazo de entrega</td>
+                    <td><?php echo $h($plazo); ?></td>
+                </tr>
+                <tr>
+                    <td class="lab">Forma de pago</td>
+                    <td><?php echo $h($pago); ?></td>
+                </tr>
+                <tr>
+                    <td class="lab">Datos bancarios</td>
+                    <td>Banco Estado · Cuenta Vista #35171442603</td>
+                </tr>
             </table>
         </td>
-        <td width="46%" valign="top">
+        <td width="42%" valign="top">
             <div class="panel-h">Totales</div>
             <table width="100%" class="panel">
                 <tr>
@@ -249,13 +275,13 @@ h1, h2, h3 { margin: 0; padding: 0; }
 </table>
 
 <?php if (!empty($cotizacion['notas'])) { ?>
-<p class="muted section"><strong>Notas:</strong> <?php echo $h($cotizacion['notas']); ?></p>
+<p class="notas"><strong>Notas:</strong> <?php echo $h($cotizacion['notas']); ?></p>
 <?php } ?>
 
 <div class="sign">
     <div class="sign-line"></div>
-    <div><strong><?php echo $h($vendNombre !== '' ? $vendNombre : 'Ejecutivo comercial'); ?></strong></div>
-    <div class="muted">Firma y aceptación de la oferta</div>
+    <strong><?php echo $h($vendNombre !== '' ? $vendNombre : 'Ejecutivo comercial'); ?></strong>
+    <span class="muted"> · Firma y aceptación de la oferta</span>
 </div>
 
 <div class="marcas-h">MARCAS REPRESENTADAS Y DISTRIBUIDAS</div>

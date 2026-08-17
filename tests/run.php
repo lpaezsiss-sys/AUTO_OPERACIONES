@@ -233,6 +233,9 @@ assert_true(strpos($htmlPdf, 'MARCAS REPRESENTADAS') !== false, 'PDF incluye sec
 assert_true(strpos($htmlPdf, 'banner_marcas.png') !== false, 'PDF usa banner de 12 marcas');
 assert_true(strpos($htmlPdf, 'Banco Estado') !== false, 'PDF incluye datos bancarios');
 assert_true(strpos($htmlPdf, '35171442603') !== false, 'PDF incluye número de cuenta vista');
+$posPago = strpos($htmlPdf, 'Forma de pago');
+$posBanco = strpos($htmlPdf, 'Banco Estado');
+assert_true($posPago !== false && $posBanco !== false && $posPago < $posBanco, 'Condiciones comerciales van antes de datos bancarios');
 assert_true(strpos($htmlPdf, 'logo.png') !== false || strpos($htmlPdf, 'logo.svg') !== false, 'PDF referencia logo corporativo');
 
 $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
