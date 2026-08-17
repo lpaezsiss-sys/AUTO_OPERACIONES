@@ -232,6 +232,7 @@ assert_true(strpos($htmlPdf, 'Luis') !== false, 'PDF incluye nombre del vendedor
 assert_true(strpos($htmlPdf, 'MARCAS REPRESENTADAS') !== false, 'PDF incluye sección de marcas');
 assert_true(strpos($htmlPdf, 'Banco Estado') !== false, 'PDF incluye datos bancarios');
 assert_true(strpos($htmlPdf, '35171442603') !== false, 'PDF incluye número de cuenta vista');
+assert_true(strpos($htmlPdf, 'logo.png') !== false || strpos($htmlPdf, 'logo.svg') !== false, 'PDF referencia logo corporativo');
 
 $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
 $tmpPng = sys_get_temp_dir() . '/crm-logo-test.png';

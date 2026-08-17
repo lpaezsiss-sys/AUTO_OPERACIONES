@@ -22,6 +22,9 @@ foreach ($iterator as $file) {
     if (strpos($path, '/vendor/') !== false) {
         continue;
     }
+    if (strpos($path, '/lib/pdf/deps/') !== false) {
+        continue;
+    }
     $src = file_get_contents($path);
     $src = preg_replace('#/\*.*?\*/#s', '', $src);
     $src = preg_replace('#^\s*//.*$#m', '', $src);

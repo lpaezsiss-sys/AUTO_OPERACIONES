@@ -66,6 +66,18 @@ if (is_array($vendedor) && !empty($vendedor['nombre_completo'])) {
 } elseif (!empty($cotizacion['vendedor_nombre'])) {
     $vendNombre = (string) $cotizacion['vendedor_nombre'];
 }
+
+$fmtFecha = static function ($v) {
+    $s = trim((string) $v);
+    if ($s === '') {
+        return '';
+    }
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $s, $m)) {
+        return $m[3] . '-' . $m[2] . '-' . $m[1];
+    }
+    return $s;
+};
+$fechaEmision = $fmtFecha(isset($cotizacion['fecha_emision']) ? $cotizacion['fecha_emision'] : '');
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -151,7 +163,7 @@ h1, h2, h3 { margin: 0; padding: 0; }
         <td width="46%" valign="top">
             <div class="panel-h">Emisión y validez</div>
             <table width="100%" class="panel">
-                <tr><td>Fecha de emisión</td><td style="text-align:right;"><?php echo $h(isset($cotizacion['fecha_emision']) ? $cotizacion['fecha_emision'] : ''); ?></td></tr>
+                <tr><td>Fecha de emisión</td><td style="text-align:right;"><?php echo $h($fechaEmision !== '' ? $fechaEmision : '—'); ?></td></tr>
                 <tr><td>Días de validez</td><td style="text-align:right;"><?php echo $h($validez !== '' ? $validez : '—'); ?></td></tr>
             </table>
         </td>

@@ -54,7 +54,10 @@ final class CotizacionPdf
             : array();
         $cotizacion['numero'] = isset($cotizacion['folio']) ? (string) $cotizacion['folio'] : '';
 
-        $logoSrc = self::rutaImagen(isset($emisora['logo_path']) ? (string) $emisora['logo_path'] : '');
+        $logoSrc = self::rutaImagen(isset($emisora['logo_path']) ? (string) $emisora['logo_path'] : '', 200);
+        if ($logoSrc === '') {
+            $logoSrc = self::rutaImagen($root . '/assets/img/logo.png');
+        }
         if ($logoSrc === '') {
             $logoSrc = self::rutaImagen($root . '/assets/img/logo.svg');
         }
@@ -109,9 +112,10 @@ final class CotizacionPdf
 
     /**
      * @param string $relOrAbs
+     * @param int $minBytes Ignora placeholders minúsculos (p. ej. PNG 1×1 de tests)
      * @return string file://... o vacío
      */
-    private static function rutaImagen($relOrAbs)
+    private static function rutaImagen($relOrAbs, $minBytes = 0)
     {
         $path = (string) $relOrAbs;
         if ($path === '') {
@@ -122,6 +126,9 @@ final class CotizacionPdf
             $path = $root . '/' . ltrim($path, '/');
         }
         if (!is_file($path)) {
+            return '';
+        }
+        if ((int) $minBytes > 0 && filesize($path) < (int) $minBytes) {
             return '';
         }
         $real = realpath($path);
