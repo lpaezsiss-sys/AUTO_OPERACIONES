@@ -61,7 +61,7 @@ final class Auth
     public static function login($email, $password)
     {
         $email = crm_lower(trim((string) $email));
-        $password = (string) $password;
+        $password = trim((string) $password);
         if ($email === '' || $password === '') {
             Http::fail('Email y contraseña son obligatorios');
         }

@@ -54,6 +54,9 @@ assert_true(is_array($userRow), 'Usuario admin seed');
 $login = \Crm\Auth::login('ivan.p@example.net', 'Lpaezsis.2026');
 assert_true($login['email'] === 'ivan.p@example.net', 'Login correcto');
 
+$loginPad = \Crm\Auth::login('ivan.p@example.net', '  Lpaezsis.2026  ');
+assert_true($loginPad['email'] === 'ivan.p@example.net', 'Login recorta espacios en la clave');
+
 try {
     \Crm\Auth::login('ivan.p@example.net', 'bad');
     assert_true(false, 'Login inválido debe fallar');

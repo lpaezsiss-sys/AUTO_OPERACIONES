@@ -48,6 +48,8 @@ document.getElementById("loginForm").addEventListener("submit", function (ev) {
   var err = document.getElementById("loginError");
   err.hidden = true;
   var body = crmForm("loginForm");
+  if (body.email) { body.email = String(body.email).replace(/^\s+|\s+$/g, ""); }
+  if (body.password) { body.password = String(body.password).replace(/^\s+|\s+$/g, ""); }
   crmApi("api/auth.php", { method: "POST", body: body })
     .then(function () { window.location.href = "index.php"; })
     .catch(function (e) {
