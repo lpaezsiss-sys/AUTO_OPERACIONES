@@ -44,6 +44,22 @@ foreach ($alt as $b) {
     }
     echo '  ' . $b . '/downloads/' . $r['archivo'] . PHP_EOL;
 }
+
+$gh = 'https://github.com/lpaezsiss-sys/AUTO_OPERACIONES';
+$tagOut = array();
+exec('git -C ' . escapeshellarg($root) . ' describe --tags --abbrev=0 2>/dev/null', $tagOut);
+$tag = isset($tagOut[0]) ? trim((string) $tagOut[0]) : '';
+echo PHP_EOL;
+echo 'GitHub:' . PHP_EOL;
+echo '  Repo   ' . $gh . PHP_EOL;
+if ($tag !== '') {
+    echo '  Tag    ' . $tag . PHP_EOL;
+    echo '  ZIP encapsulado (GitHub archive, carpeta AUTO_OPERACIONES-' . $tag . '/):' . PHP_EOL;
+    echo '    ' . $gh . '/archive/refs/tags/' . rawurlencode($tag) . '.zip' . PHP_EOL;
+    echo '  ZIP plano (Release, index.php en la raíz):' . PHP_EOL;
+    echo '    ' . $gh . '/releases/tag/' . rawurlencode($tag) . PHP_EOL;
+    echo '    ' . $gh . '/releases/download/' . rawurlencode($tag) . '/crm_lpaezsis_' . rawurlencode($tag) . '.zip' . PHP_EOL;
+}
 echo PHP_EOL;
 echo 'RESULTADO: OK' . PHP_EOL;
 exit(0);

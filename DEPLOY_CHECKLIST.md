@@ -38,7 +38,7 @@ Si ves **«Índice de /»** en https://crm.lpaezsis.cl, Apache está listando la
 6. Permisos de `uploads/`: **755**.
 7. Recarga https://crm.lpaezsis.cl — debe abrir login/dashboard, no el índice.
 
-**No uses el ZIP de GitHub** (`…/archive/refs/tags/….zip`): GitHub siempre encapsula en una carpeta `repositorio-tag/`. Usa el ZIP plano `downloads/crm_backup_YYYYMMDD_HHMM.zip` generado con `php scripts/crear_respaldo.php`.
+**ZIP de GitHub:** el enlace `…/archive/refs/tags/….zip` encapsula en `AUTO_OPERACIONES-tag/`. Para cPanel usa el **Release** (ZIP plano `crm_lpaezsis_freeze-….zip`, `index.php` en la raíz) o `php scripts/crear_respaldo.php`.
 
 Verificación local del paquete:
 

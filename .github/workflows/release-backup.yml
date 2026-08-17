@@ -1,0 +1,30 @@
+name: Publicar respaldo ZIP
+
+on:
+  push:
+    tags:
+      - "freeze-crm-*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Empaquetar ZIP plano
+        run: |
+          mkdir -p downloads
+          php scripts/empaquetar_zip.php "downloads/crm_lpaezsis_${GITHUB_REF_NAME}.zip"
+
+      - name: Publicar GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILE="downloads/crm_lpaezsis_${GITHUB_REF_NAME}.zip"
+          gh release create "${GITHUB_REF_NAME}" "$FILE" \
+            --title "Respaldo CRM ${GITHUB_REF_NAME}" \
+            --notes "ZIP plano para cPanel: index.php y .htaccess en la raíz. No usar archive/refs/tags (GitHub encapsula en AUTO_OPERACIONES-tag/)."
