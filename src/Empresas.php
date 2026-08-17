@@ -146,6 +146,11 @@ final class Empresas
     {
         $pdo = crm_pdo();
         Codes::requireEmpresa($pdo, $id);
+        $n = $pdo->prepare('SELECT COUNT(*) FROM crm_cotizaciones WHERE empresa_id = ?');
+        $n->execute(array((int) $id));
+        if ((int) $n->fetchColumn() > 0) {
+            Http::fail('No se puede eliminar la empresa: tiene cotizaciones asociadas.', 409);
+        }
         $stmt = $pdo->prepare('DELETE FROM crm_empresas WHERE id = ?');
         $stmt->execute(array((int) $id));
         return array('deleted' => true, 'id' => (int) $id);

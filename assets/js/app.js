@@ -3,15 +3,16 @@
 
   window.crmApi = async function (path, options) {
     options = options || {};
+    var isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
     var headers = { Accept: "application/json" };
-    if (options.body) {
+    if (options.body && !isForm) {
       headers["Content-Type"] = "application/json";
     }
     var res = await fetch(path, {
       credentials: "same-origin",
       method: options.method || "GET",
       headers: Object.assign(headers, options.headers || {}),
-      body: options.body ? JSON.stringify(options.body) : undefined,
+      body: options.body ? (isForm ? options.body : JSON.stringify(options.body)) : undefined,
     });
     var data = {};
     try {

@@ -20,6 +20,9 @@ require __DIR__ . '/_init.php';
     if ($method === 'PUT' || $method === 'PATCH') {
         return \Crm\Cotizaciones::update($id, \Crm\Http::body(), $user);
     }
+    if ($method === 'DELETE') {
+        return \Crm\Cotizaciones::destroy($id);
+    }
     \Crm\Http::fail('Método no permitido', 405);
     return array();
 });

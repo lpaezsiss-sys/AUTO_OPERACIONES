@@ -9,7 +9,6 @@ declare(strict_types=1);
  * @var array|null $vendedor
  * @var array $marcas
  * @var string $logoSrc
- * @var string $bannerMarcasSrc
  * @var callable $h
  */
 $h = isset($h) && is_callable($h) ? $h : static function ($v) {
@@ -20,7 +19,6 @@ $items = is_array($items) ? $items : array();
 $emisora = is_array($emisora) ? $emisora : array();
 $marcas = is_array($marcas) ? $marcas : array();
 $logoSrc = isset($logoSrc) ? (string) $logoSrc : '';
-$bannerMarcasSrc = isset($bannerMarcasSrc) ? (string) $bannerMarcasSrc : '';
 
 $numero = isset($cotizacion['numero']) ? (string) $cotizacion['numero'] : (isset($cotizacion['folio']) ? (string) $cotizacion['folio'] : '');
 $cotizacion['numero'] = $numero;
@@ -55,7 +53,8 @@ $contactoNombre = trim(
     . ' '
     . (isset($cotizacion['contacto_apellido']) ? (string) $cotizacion['contacto_apellido'] : '')
 );
-$contactoEmail = isset($cotizacion['contacto_email']) ? (string) $cotizacion['contacto_email'] : '';
+$contactoEmail = isset($cotizacion['contacto_email']) ? trim((string) $cotizacion['contacto_email']) : '';
+$contactoTelefono = isset($cotizacion['contacto_telefono']) ? trim((string) $cotizacion['contacto_telefono']) : '';
 $validez = isset($cotizacion['validez_oferta']) && (string) $cotizacion['validez_oferta'] !== ''
     ? (string) $cotizacion['validez_oferta']
     : (isset($cotizacion['fecha_validez']) ? (string) $cotizacion['fecha_validez'] : '');
@@ -76,13 +75,10 @@ if ($comunaCliente !== '' && strpos($dirCliente, $comunaCliente) === false) {
     $dirCliente .= ($dirCliente !== '' ? ', ' : '') . $comunaCliente;
 }
 
-$contactoLinea = array();
-if ($contactoNombre !== '') {
-    $contactoLinea[] = $contactoNombre;
-}
-if ($contactoEmail !== '') {
-    $contactoLinea[] = $contactoEmail;
-}
+$dash = '—';
+$contactoNombrePdf = $contactoNombre !== '' ? $contactoNombre : $dash;
+$contactoEmailPdf = $contactoEmail !== '' ? $contactoEmail : $dash;
+$contactoTelefonoPdf = $contactoTelefono !== '' ? $contactoTelefono : $dash;
 
 $vendNombre = '';
 if (is_array($vendedor) && !empty($vendedor['nombre_completo'])) {
@@ -175,10 +171,21 @@ h1, h2, h3 { margin: 0; padding: 0; }
             <div class="panel-h">Cliente</div>
             <table class="kv">
                 <tr>
-                    <td><strong><?php echo $h(isset($cotizacion['razon_social']) ? $cotizacion['razon_social'] : ''); ?></strong>
+                    <td colspan="2"><strong><?php echo $h(isset($cotizacion['razon_social']) ? $cotizacion['razon_social'] : ''); ?></strong>
                         · RUT <?php echo $h(isset($cotizacion['rut']) ? $cotizacion['rut'] : ''); ?>
-                        · <?php echo $h($dirCliente !== '' ? $dirCliente : '—'); ?>
-                        · <?php echo $h(count($contactoLinea) ? implode(' · ', $contactoLinea) : '—'); ?></td>
+                        · <?php echo $h($dirCliente !== '' ? $dirCliente : '—'); ?></td>
+                </tr>
+                <tr>
+                    <td class="lab">Nombre</td>
+                    <td><?php echo $h($contactoNombrePdf); ?></td>
+                </tr>
+                <tr>
+                    <td class="lab">Email</td>
+                    <td><?php echo $h($contactoEmailPdf); ?></td>
+                </tr>
+                <tr>
+                    <td class="lab">Teléfono</td>
+                    <td><?php echo $h($contactoTelefonoPdf); ?></td>
                 </tr>
             </table>
         </td>
@@ -285,9 +292,6 @@ h1, h2, h3 { margin: 0; padding: 0; }
 </div>
 
 <div class="marcas-h">MARCAS REPRESENTADAS Y DISTRIBUIDAS</div>
-<?php if ($bannerMarcasSrc !== '') { ?>
-<img class="marcas-banner" src="<?php echo $h($bannerMarcasSrc); ?>" alt="Marcas representadas y distribuidas">
-<?php } else { ?>
 <table class="wrap" width="100%">
     <?php
     $chunks = array();
@@ -315,6 +319,8 @@ h1, h2, h3 { margin: 0; padding: 0; }
             echo '<td class="marca" width="16%">';
             if ($src !== '') {
                 echo '<img src="' . $h($src) . '" alt="' . $h($nom) . '">';
+            } elseif ($nom !== '') {
+                echo '<span class="muted">' . $h($nom) . '</span>';
             }
             echo '</td>';
         }
@@ -326,7 +332,6 @@ h1, h2, h3 { margin: 0; padding: 0; }
     }
     ?>
 </table>
-<?php } ?>
 <div class="foot">Documento generado por CRM LPAEZsis · crm.lpaezsis.cl</div>
 </body>
 </html>

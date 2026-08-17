@@ -21,8 +21,9 @@ final class Contactos
                 WHERE 1=1';
         $params = array();
         if ($q !== '') {
-            $sql .= ' AND (c.nombre LIKE ? OR c.apellido LIKE ? OR c.email LIKE ? OR c.whatsapp LIKE ?)';
+            $sql .= ' AND (c.nombre LIKE ? OR c.apellido LIKE ? OR c.email LIKE ? OR c.whatsapp LIKE ? OR c.telefono LIKE ?)';
             $like = '%' . $q . '%';
+            $params[] = $like;
             $params[] = $like;
             $params[] = $like;
             $params[] = $like;
@@ -114,7 +115,13 @@ final class Contactos
     public static function destroy($id)
     {
         self::one($id);
-        $stmt = crm_pdo()->prepare('DELETE FROM crm_contactos WHERE id = ?');
+        $pdo = crm_pdo();
+        $n = $pdo->prepare('SELECT COUNT(*) FROM crm_cotizaciones WHERE contacto_id = ?');
+        $n->execute(array((int) $id));
+        if ((int) $n->fetchColumn() > 0) {
+            Http::fail('No se puede eliminar el contacto: tiene cotizaciones asociadas.', 409);
+        }
+        $stmt = $pdo->prepare('DELETE FROM crm_contactos WHERE id = ?');
         $stmt->execute(array((int) $id));
         return array('deleted' => true, 'id' => (int) $id);
     }

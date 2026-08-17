@@ -90,10 +90,13 @@ $cto = \Crm\Contactos::store(array(
     'empresa_id' => $empId,
     'nombre' => 'Ana',
     'apellido' => 'Rivas',
+    'email' => 'ana.rivas@packingdemo.cl',
+    'telefono' => '+56 9 5555 1212',
     'canal_preferido' => 'email',
     'es_principal' => 1,
 ));
 assert_true((int) $cto['contacto']['id'] > 0, 'Alta de contacto');
+assert_true((string) $cto['contacto']['telefono'] === '+56 9 5555 1212', 'Teléfono de contacto persistido');
 
 $opp = \Crm\Oportunidades::store(array(
     'empresa_id' => $empId,
@@ -201,6 +204,7 @@ assert_true(abs(\Crm\Comisiones::calcularMonto(1000, 3.5) - 35.0) < 0.001, 'Cál
 
 $acept = \Crm\Cotizaciones::store(array(
     'empresa_id' => $empId,
+    'contacto_id' => (int) $cto['contacto']['id'],
     'estado' => 'aceptada',
     'descuento' => 100,
     'items' => array(
@@ -230,7 +234,13 @@ assert_true(strpos($htmlPdf, '76.987.654-5') !== false, 'PDF incluye RUT de empr
 assert_true(strpos($htmlPdf, 'LPAEZsis') !== false, 'PDF incluye razón social emisora');
 assert_true(strpos($htmlPdf, 'Luis') !== false, 'PDF incluye nombre del vendedor');
 assert_true(strpos($htmlPdf, 'MARCAS REPRESENTADAS') !== false, 'PDF incluye sección de marcas');
-assert_true(strpos($htmlPdf, 'banner_marcas.png') !== false, 'PDF usa banner de 12 marcas');
+assert_true(strpos($htmlPdf, 'banner_marcas.png') === false, 'PDF no usa banner fijo de marcas');
+assert_true(strpos($htmlPdf, 'sonic.png') !== false, 'PDF incluye logo de marca desde disco');
+assert_true(strpos($htmlPdf, 'Ana Rivas') !== false, 'PDF incluye nombre del contacto');
+assert_true(strpos($htmlPdf, 'ana.rivas@packingdemo.cl') !== false, 'PDF incluye email del contacto');
+assert_true(strpos($htmlPdf, '+56 9 5555 1212') !== false, 'PDF incluye teléfono del contacto');
+assert_true(strpos($htmlPdf, '>Nombre<') !== false || strpos($htmlPdf, 'Nombre') !== false, 'PDF etiqueta Nombre del contacto');
+assert_true(strpos($htmlPdf, 'Teléfono') !== false, 'PDF etiqueta Teléfono del contacto');
 assert_true(strpos($htmlPdf, 'Banco Estado') !== false, 'PDF incluye datos bancarios');
 assert_true(strpos($htmlPdf, '35171442603') !== false, 'PDF incluye número de cuenta vista');
 $posPago = strpos($htmlPdf, 'Forma de pago');
@@ -514,6 +524,126 @@ $listPendKpi = \Crm\Actividades::index(array(
     'estado' => 'pendiente',
 ));
 assert_true((int) $listPendKpi['resumen']['realizadas'] >= 1, 'KPI realizadas no se anula al filtrar pendientes');
+
+$marcasSeed = \Crm\Marcas::index();
+assert_true(count($marcasSeed['marcas']) >= 10, 'Seed de marcas representadas');
+$marcaIdsGlobales = array();
+foreach ($marcasSeed['marcas'] as $mRow) {
+    if ((int) $mRow['incluir_global'] === 1 && (int) $mRow['activa'] === 1) {
+        $marcaIdsGlobales[] = (int) $mRow['id'];
+    }
+}
+assert_true(count($marcaIdsGlobales) >= 1, 'Hay marcas globales para el PDF');
+assert_true((int) $acept['cotizacion']['contacto_id'] === (int) $cto['contacto']['id'], 'Cotización guarda contacto_id');
+assert_true(is_array($acept['cotizacion']['marca_ids']), 'Cotización expone marca_ids');
+assert_true(count($acept['cotizacion']['marcas']) >= 1, 'Cotización resuelve marcas del PDF');
+
+$pngMarca = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+$tmpMarca = sys_get_temp_dir() . '/crm-marca-test.png';
+file_put_contents($tmpMarca, $pngMarca);
+$marcaNueva = \Crm\Marcas::store(array(
+    'nombre' => 'Marca Test Local',
+    'activa' => 1,
+    'incluir_global' => 0,
+    'orden' => 999,
+), array(
+    'tmp_name' => $tmpMarca,
+    'size' => strlen($pngMarca),
+    'error' => 0,
+    'name' => 'test.png',
+    'type' => 'image/png',
+));
+$marcaNuevaId = (int) $marcaNueva['marca']['id'];
+assert_true($marcaNuevaId > 0, 'Alta de marca con logo');
+assert_true(strpos((string) $marcaNueva['marca']['archivo'], 'marca_upl_') === 0, 'Archivo de marca subida con prefijo propio');
+assert_true(is_file(dirname(__DIR__) . '/assets/img/marcas/' . $marcaNueva['marca']['archivo']), 'Logo de marca existe en disco');
+
+$cotMarca = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'contacto_id' => (int) $cto['contacto']['id'],
+    'estado' => 'borrador',
+    'marca_ids' => array($marcaNuevaId),
+    'items' => array(
+        array('producto_id' => (int) $prod['id'], 'cantidad' => 1),
+    ),
+), $login);
+assert_true($cotMarca['cotizacion']['marca_ids'] === array($marcaNuevaId), 'Selección de marcas persistida en cotización');
+$htmlMarcaSel = \Crm\CotizacionPdf::html($cotMarca['cotizacion']);
+assert_true(strpos($htmlMarcaSel, $marcaNueva['marca']['archivo']) !== false, 'PDF usa logo de marca seleccionada');
+assert_true(strpos($htmlMarcaSel, 'banner_marcas.png') === false, 'PDF seleccionado no usa banner fijo');
+
+$empUpd = \Crm\Empresas::update($empId, array(
+    'rut' => '76.123.456-0',
+    'razon_social' => 'Packing Demo SpA',
+    'direccion' => 'Camino Industrial 450',
+    'industria' => 'Agroindustria',
+    'region' => 'Maule',
+    'origen' => 'whatsapp',
+    'estado' => 'activa',
+), $login);
+assert_true((string) $empUpd['empresa']['direccion'] === 'Camino Industrial 450', 'Editar empresa persiste dirección');
+assert_true((string) $empUpd['empresa']['estado'] === 'activa', 'Editar empresa persiste estado');
+
+$ctoUpd = \Crm\Contactos::update((int) $cto['contacto']['id'], array(
+    'empresa_id' => $empId,
+    'nombre' => 'Ana',
+    'apellido' => 'Rivas',
+    'cargo' => 'Jefa de Compras',
+    'email' => 'ana.rivas@packingdemo.cl',
+    'telefono' => '+56 9 5555 9999',
+    'canal_preferido' => 'email',
+));
+assert_true((string) $ctoUpd['contacto']['telefono'] === '+56 9 5555 9999', 'Editar contacto persiste teléfono');
+assert_true((string) $ctoUpd['contacto']['cargo'] === 'Jefa de Compras', 'Editar contacto persiste cargo');
+
+$delCtoBlocked = false;
+try {
+    \Crm\Contactos::destroy((int) $cto['contacto']['id']);
+} catch (\Crm\ApiException $e) {
+    $delCtoBlocked = $e->status === 409 || strpos($e->getMessage(), 'cotizaciones') !== false;
+}
+assert_true($delCtoBlocked, 'No se elimina contacto con cotizaciones');
+
+$delEmpBlocked = false;
+try {
+    \Crm\Empresas::destroy($empId);
+} catch (\Crm\ApiException $e) {
+    $delEmpBlocked = $e->status === 409 || strpos($e->getMessage(), 'cotizaciones') !== false;
+}
+assert_true($delEmpBlocked, 'No se elimina empresa con cotizaciones');
+
+$empLibre = \Crm\Empresas::store(array(
+    'rut' => '77.888.111-K',
+    'razon_social' => 'Empresa Sin Cotizaciones Ltda.',
+    'origen' => 'web',
+    'estado' => 'prospecto',
+), $login);
+$ctoLibre = \Crm\Contactos::store(array(
+    'empresa_id' => (int) $empLibre['empresa']['id'],
+    'nombre' => 'Pedro',
+    'apellido' => 'Libre',
+    'telefono' => '+56 9 1111 2222',
+    'canal_preferido' => 'telefono',
+));
+$delCtoOk = \Crm\Contactos::destroy((int) $ctoLibre['contacto']['id']);
+assert_true(!empty($delCtoOk['deleted']), 'Se elimina contacto sin cotizaciones');
+$delEmpOk = \Crm\Empresas::destroy((int) $empLibre['empresa']['id']);
+assert_true(!empty($delEmpOk['deleted']), 'Se elimina empresa sin cotizaciones');
+
+$delCot = \Crm\Cotizaciones::destroy((int) $cotMarca['cotizacion']['id']);
+assert_true(!empty($delCot['deleted']), 'Se elimina cotización');
+$gone = $pdo->prepare('SELECT id FROM crm_cotizaciones WHERE id = ?');
+$gone->execute(array((int) $cotMarca['cotizacion']['id']));
+assert_true($gone->fetch() === false, 'Cotización eliminada de la base');
+$pivotGone = (int) $pdo->query(
+    'SELECT COUNT(*) FROM crm_cotizacion_marcas WHERE cotizacion_id = ' . (int) $cotMarca['cotizacion']['id']
+)->fetchColumn();
+assert_true($pivotGone === 0, 'Pivote de marcas de cotización eliminado');
+
+$archivoMarca = (string) $marcaNueva['marca']['archivo'];
+$delMarca = \Crm\Marcas::destroy($marcaNuevaId);
+assert_true(!empty($delMarca['deleted']), 'Se elimina marca');
+assert_true(!is_file(dirname(__DIR__) . '/assets/img/marcas/' . $archivoMarca), 'Archivo de marca subida se borra del disco');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

@@ -23,8 +23,18 @@ crm_layout_start('Cotizaciones', 'cotizaciones', $user);
 <script>
 crmApi("api/cotizaciones.php").then(function (d) {
   document.getElementById("rows").innerHTML = (d.cotizaciones||[]).map(function (c) {
-    return '<tr><td><a href="cotizacion.php?id='+c.id+'">'+c.folio+'</a></td><td>'+c.razon_social+'</td><td>'+c.estado+'</td><td>'+c.fecha_emision+'</td><td class="text-end">'+crmClp(c.total)+'</td><td><a class="btn btn-sm btn-outline-primary" href="api/cotizacion_pdf.php?id='+c.id+'" target="_blank">PDF</a></td></tr>';
+    return '<tr><td><a href="cotizacion.php?id='+c.id+'">'+c.folio+'</a></td><td>'+c.razon_social+'</td><td>'+c.estado+'</td><td>'+c.fecha_emision+'</td><td class="text-end">'+crmClp(c.total)+'</td>' +
+      '<td class="text-nowrap"><a class="btn btn-sm btn-outline-primary me-1" href="api/cotizacion_pdf.php?id='+c.id+'" target="_blank">PDF</a>' +
+      '<button class="btn btn-sm btn-outline-danger" type="button" data-del="'+c.id+'">Eliminar</button></td></tr>';
   }).join("");
 }).catch(function (e) { crmToast(e.message, true); });
+document.getElementById("rows").addEventListener("click", function (ev) {
+  var id = ev.target.getAttribute("data-del");
+  if (!id) return;
+  if (!window.confirm("¿Eliminar esta cotización y sus ítems?")) return;
+  crmApi("api/cotizaciones.php?id="+id, { method: "DELETE" })
+    .then(function () { ev.target.closest("tr").remove(); crmToast("Cotización eliminada"); })
+    .catch(function (e) { crmToast(e.message, true); });
+});
 </script>
 <?php crm_layout_end(); ?>

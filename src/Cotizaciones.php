@@ -77,6 +77,8 @@ final class Cotizaciones
         $cot['emisora'] = ConfiguracionEmpresa::obtener($pdo);
         $vendId = crm_int(isset($cot['vendedor_id']) ? $cot['vendedor_id'] : 0, 0);
         $cot['vendedor'] = $vendId > 0 ? Vendedores::obtener($pdo, $vendId) : null;
+        $cot['marca_ids'] = Marcas::idsDeCotizacion((int) $id, $pdo);
+        $cot['marcas'] = Marcas::paraPdf((int) $id, $pdo);
         return array('cotizacion' => $cot);
     }
 
@@ -127,6 +129,17 @@ final class Cotizaciones
         }
 
         $contactoId = crm_int(isset($body['contacto_id']) ? $body['contacto_id'] : 0, 0);
+        if ($contactoId > 0) {
+            $ctoStmt = $pdo->prepare('SELECT id, empresa_id FROM crm_contactos WHERE id = ? LIMIT 1');
+            $ctoStmt->execute(array($contactoId));
+            $ctoRow = $ctoStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$ctoRow) {
+                Http::fail('Contacto no encontrado', 404);
+            }
+            if ((int) $ctoRow['empresa_id'] !== $empresaId) {
+                Http::fail('El contacto no pertenece a la empresa seleccionada');
+            }
+        }
         $oppId = crm_int(isset($body['oportunidad_id']) ? $body['oportunidad_id'] : 0, 0);
         $fechaEmision = crm_str(isset($body['fecha_emision']) ? $body['fecha_emision'] : date('Y-m-d'), 10);
         if ($fechaEmision === '') {
@@ -239,6 +252,7 @@ final class Cotizaciones
             ));
 
             Comisiones::sincronizarConCotizacion($pdo, $id, $vendedorId, $neto, $estado);
+            Marcas::sincronizarCotizacion($pdo, $id, $body);
 
             $pdo->commit();
         } catch (\Throwable $e) {
@@ -249,6 +263,32 @@ final class Cotizaciones
         }
 
         return self::show($id);
+    }
+
+    /**
+     * @param int $id
+     * @return array
+     */
+    public static function destroy($id)
+    {
+        $id = (int) $id;
+        self::show($id);
+        $pdo = crm_pdo();
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare('DELETE FROM crm_cotizacion_marcas WHERE cotizacion_id = ?')->execute(array($id));
+            $pdo->prepare('DELETE FROM crm_comisiones WHERE cotizacion_id = ?')->execute(array($id));
+            $pdo->prepare('DELETE FROM crm_cotizacion_items WHERE cotizacion_id = ?')->execute(array($id));
+            $pdo->prepare('UPDATE crm_actividades SET cotizacion_id = NULL WHERE cotizacion_id = ?')->execute(array($id));
+            $pdo->prepare('DELETE FROM crm_cotizaciones WHERE id = ?')->execute(array($id));
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+        return array('deleted' => true, 'id' => $id);
     }
 
     /**

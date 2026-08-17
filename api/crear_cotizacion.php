@@ -127,6 +127,22 @@ function crm_guardar_cotizacion(array $user)
         exit;
     }
 
+    if ($contactoId > 0) {
+        $cto = $pdo->prepare('SELECT id, empresa_id FROM crm_contactos WHERE id = ? LIMIT 1');
+        $cto->execute(array($contactoId));
+        $ctoRow = $cto->fetch(PDO::FETCH_ASSOC);
+        if (!$ctoRow) {
+            http_response_code(404);
+            echo json_encode(array('ok' => false, 'error' => 'Contacto no encontrado'));
+            exit;
+        }
+        if ((int) $ctoRow['empresa_id'] !== $empresaId) {
+            http_response_code(400);
+            echo json_encode(array('ok' => false, 'error' => 'El contacto no pertenece a la empresa seleccionada'));
+            exit;
+        }
+    }
+
     $ivaPct = crm_iva_pct();
     $now = crm_now();
     $fechaEmision = isset($data['fecha_emision']) && $data['fecha_emision'] !== ''
@@ -221,6 +237,7 @@ function crm_guardar_cotizacion(array $user)
         $upd->execute(array($subtotal, $descuento, $iva, $total, $vendedorIdPre > 0 ? $vendedorIdPre : null, $now, $cotizacionId));
 
         \Crm\Comisiones::sincronizarConCotizacion($pdo, $cotizacionId, $vendedorIdPre, $neto, $estado);
+        \Crm\Marcas::sincronizarCotizacion($pdo, $cotizacionId, $data);
 
         $pdo->commit();
     } catch (\Crm\ApiException $e) {

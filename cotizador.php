@@ -22,6 +22,12 @@ crm_layout_start('Cotizador', 'cotizador', $user);
             <label class="form-label">Empresa</label>
             <select class="form-select" id="empresa_id"></select>
         </div>
+        <div class="col-md-4">
+            <label class="form-label">Contacto</label>
+            <select class="form-select" id="contacto_id">
+                <option value="">(sin contacto)</option>
+            </select>
+        </div>
         <div class="col-md-3">
             <label class="form-label">Vendedor</label>
             <select class="form-select" id="vendedor_id"></select>
@@ -62,6 +68,11 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         <div class="col-md-2">
             <label class="form-label">Lugar de entrega</label>
             <input class="form-control" id="lugar_entrega" placeholder="Ciudad / faena">
+        </div>
+        <div class="col-12">
+            <label class="form-label">Marcas en el PDF</label>
+            <div id="marcasBox" class="d-flex flex-wrap gap-3 border rounded p-2 bg-white"></div>
+            <div class="form-text">Si no marca ninguna, el PDF usa las marcas globales activas.</div>
         </div>
         <div class="col-md-8">
             <label class="form-label">Buscar producto (SKU o nombre)</label>
@@ -175,6 +186,32 @@ crm_layout_start('Cotizador', 'cotizador', $user);
     document.getElementById("empresa_id").innerHTML = (d.empresas || []).map(function (e) {
       return '<option value="' + e.id + '">' + e.razon_social + '</option>';
     }).join("");
+    loadContactos(document.getElementById("empresa_id").value);
+  }).catch(function (e) { crmToast(e.message, true); });
+
+  function loadContactos(empresaId) {
+    var sel = document.getElementById("contacto_id");
+    sel.innerHTML = '<option value="">(sin contacto)</option>';
+    if (!empresaId) return;
+    crmApi("api/contactos.php?empresa_id=" + empresaId).then(function (d) {
+      sel.innerHTML = '<option value="">(sin contacto)</option>' + (d.contactos || []).map(function (c) {
+        return '<option value="' + c.id + '">' + c.nombre + ' ' + (c.apellido || "") + (c.email ? ' · ' + c.email : '') + '</option>';
+      }).join("");
+    }).catch(function (e) { crmToast(e.message, true); });
+  }
+  document.getElementById("empresa_id").addEventListener("change", function () {
+    loadContactos(this.value);
+  });
+
+  crmApi("api/marcas.php").then(function (d) {
+    var marcas = d.marcas || [];
+    document.getElementById("marcasBox").innerHTML = marcas.map(function (m) {
+      var chk = false;
+      var img = m.existe_archivo ? '<img src="' + m.url + '" alt="" style="max-height:22px;max-width:70px" class="me-1">' : '';
+      return '<label class="form-check d-flex align-items-center gap-1 me-2 mb-1">' +
+        '<input class="form-check-input" type="checkbox" value="' + m.id + '" ' + (chk ? 'checked' : '') + '>' +
+        img + '<span class="small">' + (m.nombre || m.archivo) + '</span></label>';
+    }).join("") || '<span class="small text-secondary">No hay marcas cargadas.</span>';
   }).catch(function (e) { crmToast(e.message, true); });
 
   crmApi("api/vendedores.php").then(function (d) {
@@ -267,6 +304,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
         empresa_id: Number(document.getElementById("empresa_id").value || 0),
+        contacto_id: Number(document.getElementById("contacto_id").value || 0),
         vendedor_id: Number(document.getElementById("vendedor_id").value || 0),
         estado: document.getElementById("estado").value,
         descuento: Number(document.getElementById("descuento").value || 0),
@@ -276,6 +314,9 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         plazo_entrega: document.getElementById("plazo_entrega").value,
         lugar_entrega: document.getElementById("lugar_entrega").value,
         notas: document.getElementById("notas").value,
+        marca_ids: Array.prototype.map.call(document.querySelectorAll("#marcasBox input:checked"), function (el) {
+          return Number(el.value);
+        }),
         items: items
       })
     }).then(function (r) { return r.json().then(function (d) { return { r: r, d: d }; }); })

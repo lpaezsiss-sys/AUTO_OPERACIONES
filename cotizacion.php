@@ -15,6 +15,7 @@ crm_layout_start($id ? 'Cotización' : 'Nueva cotización', 'cotizaciones', $use
         <h1 class="page-title h4 mb-0" id="title"><?php echo $id ? 'Editar cotización' : 'Nueva cotización'; ?></h1>
         <?php if ($id) { ?>
         <a class="btn btn-sm btn-outline-primary" href="api/cotizacion_pdf.php?id=<?php echo (int) $id; ?>" target="_blank">PDF</a>
+        <button class="btn btn-sm btn-outline-danger" type="button" id="btnEliminarCot">Eliminar</button>
         <?php } ?>
     </div>
 </div>
@@ -22,6 +23,7 @@ crm_layout_start($id ? 'Cotización' : 'Nueva cotización', 'cotizaciones', $use
     <input type="hidden" name="id" value="<?php echo (int) $id; ?>">
     <div class="row g-2">
         <div class="col-md-6"><label class="form-label">Empresa</label><select class="form-select" name="empresa_id" id="selEmpresa" required></select></div>
+        <div class="col-md-6"><label class="form-label">Contacto</label><select class="form-select" name="contacto_id" id="selContacto"><option value="">(sin contacto)</option></select></div>
         <div class="col-md-3"><label class="form-label">Vendedor</label><select class="form-select" name="vendedor_id" id="selVendedor"></select></div>
         <div class="col-md-3"><label class="form-label">Estado</label>
             <select class="form-select" name="estado">
@@ -47,6 +49,11 @@ crm_layout_start($id ? 'Cotización' : 'Nueva cotización', 'cotizaciones', $use
         <div class="col-md-3"><label class="form-label">Lugar de entrega</label><input class="form-control" name="lugar_entrega"></div>
         <div class="col-md-3"><label class="form-label">Descuento global</label><input class="form-control" type="number" min="0" name="descuento" value="0"></div>
         <div class="col-md-6"><label class="form-label">Notas</label><input class="form-control" name="notas"></div>
+        <div class="col-12">
+            <label class="form-label">Marcas en el PDF</label>
+            <div id="marcasBox" class="d-flex flex-wrap gap-3 border rounded p-2 bg-white"></div>
+            <div class="form-text">Si no marca ninguna, el PDF usa las marcas globales activas.</div>
+        </div>
     </div>
     <hr>
     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -70,6 +77,8 @@ crm_layout_start($id ? 'Cotización' : 'Nueva cotización', 'cotizaciones', $use
 var cotId = <?php echo (int) $id; ?>;
 var items = [];
 var productos = [];
+var marcasCatalogo = [];
+var pendingContactoId = "";
 function lineSub(it) {
   return Math.round(Number(it.cantidad||0) * Number(it.precio_unitario||0) * (1 - Number(it.descuento_pct||0)/100));
 }
@@ -93,7 +102,28 @@ function addProducto(p) {
   items.push({ tipo_item: "producto", producto_id: p.id, codigo: p.codigo, descripcion: p.nombre, cantidad: 1, precio_unitario: p.precio_unitario, descuento_pct: 0, stock_actual: p.stock });
   renderItems();
 }
-Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("api/vendedores.php")]).then(function (arr) {
+function renderMarcas(selectedIds) {
+  selectedIds = selectedIds || [];
+  document.getElementById("marcasBox").innerHTML = marcasCatalogo.map(function (m) {
+    var chk = selectedIds.indexOf(Number(m.id)) >= 0;
+    var img = m.existe_archivo ? '<img src="'+m.url+'" alt="" style="max-height:22px;max-width:70px" class="me-1">' : '';
+    return '<label class="form-check d-flex align-items-center gap-1 me-2 mb-1">' +
+      '<input class="form-check-input" type="checkbox" value="'+m.id+'" '+(chk?'checked':'')+'>' +
+      img + '<span class="small">'+(m.nombre||m.archivo)+'</span></label>';
+  }).join("") || '<span class="small text-secondary">No hay marcas cargadas.</span>';
+}
+function loadContactos(empresaId, selected) {
+  var sel = document.getElementById("selContacto");
+  sel.innerHTML = '<option value="">(sin contacto)</option>';
+  if (!empresaId) return Promise.resolve();
+  return crmApi("api/contactos.php?empresa_id="+empresaId).then(function (d) {
+    sel.innerHTML = '<option value="">(sin contacto)</option>' + (d.contactos||[]).map(function (c) {
+      return '<option value="'+c.id+'">'+c.nombre+' '+(c.apellido||"")+(c.email?' · '+c.email:'')+'</option>';
+    }).join("");
+    if (selected) sel.value = selected;
+  }).catch(function (e) { crmToast(e.message, true); });
+}
+Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("api/vendedores.php"), crmApi("api/marcas.php")]).then(function (arr) {
   document.getElementById("selEmpresa").innerHTML = (arr[0].empresas||[]).map(function (e) {
     return '<option value="'+e.id+'">'+e.razon_social+'</option>';
   }).join("");
@@ -102,6 +132,11 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
       return '<option value="'+v.id+'">'+v.nombre_completo+' · '+Number(v.comision_porcentaje).toFixed(2)+'%</option>';
     }).join("");
   productos = arr[1].productos || [];
+  marcasCatalogo = arr[3].marcas || [];
+  renderMarcas([]);
+  var empSel = document.getElementById("selEmpresa");
+  loadContactos(empSel.value, "");
+  empSel.addEventListener("change", function () { loadContactos(empSel.value, ""); });
   if (cotId) {
     return crmApi("api/cotizaciones.php?id="+cotId);
   }
@@ -111,6 +146,8 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
   var c = d.cotizacion;
   document.getElementById("title").textContent = c.folio;
   document.querySelector('[name=empresa_id]').value = c.empresa_id;
+  pendingContactoId = c.contacto_id || "";
+  loadContactos(c.empresa_id, pendingContactoId);
   document.querySelector('[name=vendedor_id]').value = c.vendedor_id || "";
   document.querySelector('[name=estado]').value = c.estado;
   document.querySelector('[name=fecha_validez]').value = c.fecha_validez || "";
@@ -125,6 +162,7 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
     return { tipo_item: it.tipo_item || "producto", producto_id: it.producto_id, codigo: it.codigo, descripcion: it.descripcion, cantidad: it.cantidad, precio_unitario: it.precio_unitario, descuento_pct: it.descuento_pct, stock_actual: it.stock_actual };
   });
   renderItems();
+  renderMarcas((c.marca_ids || []).map(Number));
 });
 document.querySelector('[name=descuento]').addEventListener("input", updateTotalesCot);
 document.getElementById("btnAddServ").addEventListener("click", function () {
@@ -160,12 +198,24 @@ document.getElementById("formCot").addEventListener("submit", function (ev) {
   var body = crmForm("formCot");
   body.items = items;
   body.descuento = Number(body.descuento || 0);
+  body.marca_ids = Array.prototype.map.call(document.querySelectorAll("#marcasBox input:checked"), function (el) {
+    return Number(el.value);
+  });
   var method = cotId ? "PUT" : "POST";
   var url = cotId ? "api/cotizaciones.php?id="+cotId : "api/cotizaciones.php";
   crmApi(url, { method: method, body: body })
     .then(function (d) { crmToast("Cotización "+d.cotizacion.folio+" guardada"); window.location.href = "cotizacion.php?id="+d.cotizacion.id; })
     .catch(function (e) { crmToast(e.message, true); });
 });
+var btnDel = document.getElementById("btnEliminarCot");
+if (btnDel) {
+  btnDel.addEventListener("click", function () {
+    if (!window.confirm("¿Eliminar esta cotización y sus ítems?")) return;
+    crmApi("api/cotizaciones.php?id="+cotId, { method: "DELETE" })
+      .then(function () { crmToast("Cotización eliminada"); window.location.href = "cotizaciones.php"; })
+      .catch(function (e) { crmToast(e.message, true); });
+  });
+}
 renderItems();
 </script>
 <?php crm_layout_end(); ?>

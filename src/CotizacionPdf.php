@@ -62,8 +62,7 @@ final class CotizacionPdf
             $logoSrc = self::rutaImagen($root . '/assets/img/logo.svg');
         }
 
-        $marcas = self::marcasRepresentadas($root);
-        $bannerMarcasSrc = self::rutaImagen($root . '/assets/img/marcas/banner_marcas.png');
+        $marcas = self::marcasRepresentadas($root, $cotizacion);
         $h = static function ($v) {
             return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         };
@@ -76,30 +75,29 @@ final class CotizacionPdf
 
     /**
      * @param string $root
+     * @param array $cotizacion
      * @return array
      */
-    public static function marcasRepresentadas($root)
+    public static function marcasRepresentadas($root, array $cotizacion = array())
     {
-        $defs = array(
-            array('archivo' => 'sonic.png', 'nombre' => 'Sonic Air Systems'),
-            array('archivo' => 'lc.png', 'nombre' => 'L&C Ltda.'),
-            array('archivo' => 'movex.png', 'nombre' => 'Movex'),
-            array('archivo' => 'eltra.png', 'nombre' => 'ELTRA trade'),
-            array('archivo' => 'flexlink.png', 'nombre' => 'FlexLink'),
-            array('archivo' => 'elektror.png', 'nombre' => 'Elektror airsystems'),
-            array('archivo' => 'haida.png', 'nombre' => 'HAIDA International'),
-            array('archivo' => 'intralox.png', 'nombre' => 'Intralox'),
-            array('archivo' => 'columbia.png', 'nombre' => 'Columbia Okura LLC'),
-            array('archivo' => 'combi.png', 'nombre' => 'Combi Packaging Systems'),
-            array('archivo' => 'cmc.png', 'nombre' => 'CMC Klebetechnik'),
-            array('archivo' => 'oriental.png', 'nombre' => 'Oriental Motor'),
-        );
+        $cotId = isset($cotizacion['id']) ? (int) $cotizacion['id'] : 0;
+        $rows = array();
+        if (isset($cotizacion['marcas']) && is_array($cotizacion['marcas']) && count($cotizacion['marcas']) > 0) {
+            $rows = $cotizacion['marcas'];
+        } else {
+            $rows = Marcas::paraPdf($cotId);
+        }
         $out = array();
-        foreach ($defs as $def) {
-            $path = $root . '/assets/img/marcas/' . $def['archivo'];
-            $src = self::rutaImagen($path);
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $archivo = isset($row['archivo']) ? basename((string) $row['archivo']) : '';
+            $path = $archivo !== '' ? $root . '/assets/img/marcas/' . $archivo : '';
+            $src = $path !== '' ? self::rutaImagen($path) : '';
             $out[] = array(
-                'nombre' => $def['nombre'],
+                'nombre' => isset($row['nombre']) ? (string) $row['nombre'] : '',
+                'archivo' => $archivo,
                 'src' => $src,
             );
         }

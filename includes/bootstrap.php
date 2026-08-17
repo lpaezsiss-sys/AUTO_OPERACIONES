@@ -56,6 +56,7 @@ try {
     $pdoBoot->query('SELECT 1 FROM crm_configuracion_empresa LIMIT 1');
     $pdoBoot->query('SELECT 1 FROM crm_vendedores LIMIT 1');
     $pdoBoot->query('SELECT 1 FROM crm_comisiones LIMIT 1');
+    $pdoBoot->query('SELECT 1 FROM crm_marcas LIMIT 1');
 } catch (Exception $e) {
     \Crm\Schema::install();
 }
