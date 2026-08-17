@@ -223,11 +223,15 @@ assert_true((int) $acept['cotizacion']['vendedor_id'] === (int) $adminVend['id']
 assert_true(is_array($acept['cotizacion']['vendedor']), 'Ficha de vendedor en cotización');
 assert_true(is_array($acept['cotizacion']['emisora']), 'Datos empresa emisora en cotización');
 
+$htmlPdf = \Crm\CotizacionPdf::html($acept['cotizacion']);
 $pdf = \Crm\CotizacionPdf::generar($acept['cotizacion']);
-assert_true(strpos($pdf, '%PDF-1.4') === 0, 'PDF de cotización válido');
-assert_true(strpos($pdf, '76.987.654-5') !== false, 'PDF incluye RUT de empresa emisora');
-assert_true(strpos($pdf, 'LPAEZsis') !== false, 'PDF incluye razón social emisora');
-assert_true(strpos($pdf, 'Luis') !== false, 'PDF incluye nombre del vendedor');
+assert_true(strpos($pdf, '%PDF') === 0, 'PDF de cotización válido');
+assert_true(strpos($htmlPdf, '76.987.654-5') !== false, 'PDF incluye RUT de empresa emisora');
+assert_true(strpos($htmlPdf, 'LPAEZsis') !== false, 'PDF incluye razón social emisora');
+assert_true(strpos($htmlPdf, 'Luis') !== false, 'PDF incluye nombre del vendedor');
+assert_true(strpos($htmlPdf, 'MARCAS REPRESENTADAS') !== false, 'PDF incluye sección de marcas');
+assert_true(strpos($htmlPdf, 'Banco Estado') !== false, 'PDF incluye datos bancarios');
+assert_true(strpos($htmlPdf, '35171442603') !== false, 'PDF incluye número de cuenta vista');
 
 $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
 $tmpPng = sys_get_temp_dir() . '/crm-logo-test.png';
@@ -308,7 +312,9 @@ try {
 assert_true($servFail, 'Servicio sin descripción se rechaza');
 
 $pdfServ = \Crm\CotizacionPdf::generar($serv['cotizacion']);
-assert_true(strpos($pdfServ, '[Servicio]') !== false, 'PDF marca ítems de servicio');
+$htmlServ = \Crm\CotizacionPdf::html($serv['cotizacion']);
+assert_true(strpos($pdfServ, '%PDF') === 0, 'PDF de servicio válido');
+assert_true(strpos($htmlServ, '[Servicio]') !== false, 'PDF marca ítems de servicio');
 
 $com = \Crm\Cotizaciones::store(array(
     'empresa_id' => $empId,
@@ -332,8 +338,10 @@ assert_true(strpos((string) $ccom['condiciones_pago'], 'anticipo') !== false, 'C
 assert_true((string) $ccom['plazo_entrega'] === '15 días hábiles', 'Plazo de entrega persistido');
 assert_true(strpos((string) $ccom['lugar_entrega'], 'Talca') !== false, 'Lugar de entrega persistido');
 $pdfCom = \Crm\CotizacionPdf::generar($ccom);
-assert_true(strpos($pdfCom, 'USD') !== false, 'PDF incluye moneda');
-assert_true(strpos($pdfCom, 'Validez') !== false, 'PDF incluye validez de oferta');
+$htmlCom = \Crm\CotizacionPdf::html($ccom);
+assert_true(strpos($pdfCom, '%PDF') === 0, 'PDF comercial válido');
+assert_true(strpos($htmlCom, 'USD') !== false, 'PDF incluye moneda');
+assert_true(strpos($htmlCom, 'Validez') !== false || strpos($htmlCom, 'validez') !== false, 'PDF incluye validez de oferta');
 
 $monedaFail = false;
 try {

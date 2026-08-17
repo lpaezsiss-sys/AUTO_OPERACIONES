@@ -37,10 +37,13 @@ final class Cotizaciones
     {
         $pdo = crm_pdo();
         $stmt = $pdo->prepare(
-            'SELECT c.*, e.razon_social, e.rut, e.direccion, e.giro,
+            'SELECT c.*, e.razon_social, e.rut, e.direccion, e.giro, e.comuna,
+                    ct.nombre AS contacto_nombre, ct.apellido AS contacto_apellido,
+                    ct.email AS contacto_email, ct.telefono AS contacto_telefono,
                     v.nombre_completo AS vendedor_nombre, v.email AS vendedor_email, v.telefono AS vendedor_telefono
              FROM crm_cotizaciones c
              INNER JOIN crm_empresas e ON e.id = c.empresa_id
+             LEFT JOIN crm_contactos ct ON ct.id = c.contacto_id
              LEFT JOIN crm_vendedores v ON v.id = c.vendedor_id
              WHERE c.id = ? LIMIT 1'
         );
@@ -50,7 +53,7 @@ final class Cotizaciones
             Http::fail('Cotización no encontrada', 404);
         }
         $items = $pdo->prepare(
-            'SELECT i.*, p.stock AS stock_actual, p.umbral_stock
+            'SELECT i.*, p.stock AS stock_actual, p.umbral_stock, p.unidad AS producto_unidad
              FROM crm_cotizacion_items i
              LEFT JOIN productos p ON p.id = i.producto_id
              WHERE i.cotizacion_id = ?
@@ -61,6 +64,12 @@ final class Cotizaciones
         foreach ($rows as &$row) {
             $stock = $row['stock_actual'] !== null ? (float) $row['stock_actual'] : null;
             $row['alerta_stock'] = $stock !== null && $stock < (float) $row['cantidad'];
+            $tipo = isset($row['tipo_item']) ? (string) $row['tipo_item'] : 'producto';
+            $un = isset($row['producto_unidad']) ? trim((string) $row['producto_unidad']) : '';
+            if ($un === '') {
+                $un = $tipo === 'servicio' ? 'GL' : 'UN';
+            }
+            $row['unidad'] = $un;
         }
         unset($row);
         $cot['items'] = $rows;

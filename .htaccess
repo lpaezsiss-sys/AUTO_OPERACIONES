@@ -15,7 +15,7 @@ Options -Indexes
     RewriteCond %{HTTP_HOST} ^www\.crm\.lpaezsis\.cl$ [NC]
     RewriteRule ^ https://crm.lpaezsis.cl%{REQUEST_URI} [L,R=301]
 
-    RewriteRule ^(config|src|includes|sql|tests|data|database|scripts)/ - [F]
+    RewriteRule ^(config|src|includes|sql|tests|data|database|scripts|lib|templates)/ - [F]
     RewriteRule ^\.env - [F]
 </IfModule>
 
