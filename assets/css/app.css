@@ -121,6 +121,9 @@ body {
   font-size: 0.82rem;
   letter-spacing: 0.01em;
   line-height: 1.3;
+  white-space: normal;
+  max-width: 100%;
+  text-align: right;
 }
 
 .badge-folio-new {
