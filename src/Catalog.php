@@ -87,7 +87,7 @@ final class Catalog
      */
     public static function itemTipos()
     {
-        return array('producto', 'servicio');
+        return array('producto', 'servicio', 'a_pedido');
     }
 
     /**

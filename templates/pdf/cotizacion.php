@@ -213,6 +213,9 @@ h1, h2, h3 { margin: 0; padding: 0; }
         $desc = (string) (isset($it['descripcion']) ? $it['descripcion'] : '');
         if ($tipo === 'servicio') {
             $desc = '[Servicio] ' . $desc;
+        } elseif ($tipo === 'a_pedido' || !empty($it['es_a_pedido'])) {
+            $marcaTxt = isset($it['marca_nombre']) ? trim((string) $it['marca_nombre']) : '';
+            $desc = '[A pedido]' . ($marcaTxt !== '' ? ' ' . $marcaTxt . ' ·' : '') . ' ' . $desc;
         }
         $un = isset($it['unidad']) && (string) $it['unidad'] !== '' ? (string) $it['unidad'] : ($tipo === 'servicio' ? 'GL' : 'UN');
         $cant = (float) (isset($it['cantidad']) ? $it['cantidad'] : 0);

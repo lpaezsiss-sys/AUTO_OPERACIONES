@@ -48,10 +48,39 @@ final class Schema
             } else {
                 $pdo->exec(
                     "ALTER TABLE crm_cotizacion_items
-                     ADD COLUMN tipo_item ENUM('producto','servicio') NOT NULL DEFAULT 'producto' AFTER cotizacion_id"
+                     ADD COLUMN tipo_item ENUM('producto','servicio','a_pedido') NOT NULL DEFAULT 'producto' AFTER cotizacion_id"
                 );
             }
         }
+        self::ensureTipoItemAPedido($pdo);
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_cotizacion_items',
+            'es_a_pedido',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN es_a_pedido INTEGER NOT NULL DEFAULT 0',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN es_a_pedido TINYINT(1) NOT NULL DEFAULT 0 AFTER tipo_item'
+        );
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_cotizacion_items',
+            'marca_id',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN marca_id INTEGER',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN marca_id INT UNSIGNED NULL AFTER producto_id'
+        );
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_cotizacion_items',
+            'marca_nombre',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN marca_nombre TEXT',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN marca_nombre VARCHAR(150) NULL AFTER marca_id'
+        );
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_cotizacion_items',
+            'costo_unitario',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN costo_unitario REAL NOT NULL DEFAULT 0',
+            'ALTER TABLE crm_cotizacion_items ADD COLUMN costo_unitario DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER precio_unitario'
+        );
         self::addColumnIfMissing(
             $pdo,
             'crm_cotizaciones',
@@ -152,6 +181,35 @@ final class Schema
         }
         $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
         $pdo->exec($driver === 'sqlite' ? $sqliteDdl : $mysqlDdl);
+    }
+
+    /**
+     * Amplía el ENUM MySQL de tipo_item para incluir a_pedido.
+     *
+     * @param PDO $pdo
+     * @return void
+     */
+    private static function ensureTipoItemAPedido(PDO $pdo)
+    {
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
+            return;
+        }
+        if (!self::hasColumn($pdo, 'crm_cotizacion_items', 'tipo_item')) {
+            return;
+        }
+        $stmt = $pdo->prepare(
+            "SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'crm_cotizacion_items' AND COLUMN_NAME = 'tipo_item'"
+        );
+        $stmt->execute();
+        $tipo = (string) $stmt->fetchColumn();
+        if ($tipo === '' || strpos($tipo, 'a_pedido') !== false) {
+            return;
+        }
+        $pdo->exec(
+            "ALTER TABLE crm_cotizacion_items
+             MODIFY COLUMN tipo_item ENUM('producto','servicio','a_pedido') NOT NULL DEFAULT 'producto'"
+        );
     }
 
     public static function seed(PDO $pdo): void
@@ -422,12 +480,16 @@ final class Schema
             "CREATE TABLE IF NOT EXISTS crm_cotizacion_items (
                 id INT UNSIGNED NOT NULL AUTO_INCREMENT,
                 cotizacion_id INT UNSIGNED NOT NULL,
-                tipo_item ENUM('producto','servicio') NOT NULL DEFAULT 'producto',
+                tipo_item ENUM('producto','servicio','a_pedido') NOT NULL DEFAULT 'producto',
+                es_a_pedido TINYINT(1) NOT NULL DEFAULT 0,
                 producto_id INT UNSIGNED NULL,
+                marca_id INT UNSIGNED NULL,
+                marca_nombre VARCHAR(150) NULL,
                 codigo VARCHAR(50) NOT NULL,
                 descripcion VARCHAR(300) NOT NULL,
                 cantidad DECIMAL(12,2) NOT NULL DEFAULT 1,
                 precio_unitario DECIMAL(12,2) NOT NULL DEFAULT 0,
+                costo_unitario DECIMAL(12,2) NOT NULL DEFAULT 0,
                 descuento_pct DECIMAL(5,2) NOT NULL DEFAULT 0,
                 subtotal DECIMAL(14,2) NOT NULL DEFAULT 0,
                 stock_al_cotizar DECIMAL(12,2) NULL,
@@ -657,11 +719,15 @@ final class Schema
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cotizacion_id INTEGER NOT NULL,
                 tipo_item TEXT NOT NULL DEFAULT 'producto',
+                es_a_pedido INTEGER NOT NULL DEFAULT 0,
                 producto_id INTEGER,
+                marca_id INTEGER,
+                marca_nombre TEXT,
                 codigo TEXT NOT NULL,
                 descripcion TEXT NOT NULL,
                 cantidad REAL NOT NULL DEFAULT 1,
                 precio_unitario REAL NOT NULL DEFAULT 0,
+                costo_unitario REAL NOT NULL DEFAULT 0,
                 descuento_pct REAL NOT NULL DEFAULT 0,
                 subtotal REAL NOT NULL DEFAULT 0,
                 stock_al_cotizar REAL,

@@ -11,7 +11,7 @@ crm_layout_start('Inventario', 'productos', $user);
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="page-title h3 mb-1">Inventario (solo lectura)</h1>
-        <p class="text-secondary mb-0">Stock y precio se leen de la tabla <code>productos</code>. El CRM no modifica inventario.</p>
+        <p class="text-secondary mb-0">Stock y precio se leen de la tabla <code>productos</code>. El CRM no modifica inventario existente. <a href="estadisticas_a_pedido.php">Estadísticas a pedido</a></p>
     </div>
     <div class="form-check">
         <input class="form-check-input" type="checkbox" id="bajo">

@@ -70,6 +70,10 @@ final class Cotizaciones
                 $un = $tipo === 'servicio' ? 'GL' : 'UN';
             }
             $row['unidad'] = $un;
+            $row['es_a_pedido'] = !empty($row['es_a_pedido']) || $tipo === 'a_pedido' ? 1 : 0;
+            $row['marca_id'] = isset($row['marca_id']) && $row['marca_id'] !== '' ? (int) $row['marca_id'] : null;
+            $row['marca_nombre'] = isset($row['marca_nombre']) ? (string) $row['marca_nombre'] : '';
+            $row['costo_unitario'] = isset($row['costo_unitario']) ? (float) $row['costo_unitario'] : 0.0;
         }
         unset($row);
         $cot['items'] = $rows;
@@ -192,8 +196,8 @@ final class Cotizaciones
 
             $subtotal = 0.0;
             $insItem = $pdo->prepare(
-                'INSERT INTO crm_cotizacion_items (cotizacion_id, tipo_item, producto_id, codigo, descripcion, cantidad, precio_unitario, descuento_pct, subtotal, stock_al_cotizar)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO crm_cotizacion_items (cotizacion_id, tipo_item, es_a_pedido, producto_id, marca_id, marca_nombre, codigo, descripcion, cantidad, precio_unitario, costo_unitario, descuento_pct, subtotal, stock_al_cotizar)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
 
             foreach ($itemsIn as $raw) {
@@ -205,11 +209,15 @@ final class Cotizaciones
                 $insItem->execute(array(
                     $id,
                     $item['tipo_item'],
+                    $item['es_a_pedido'],
                     $item['producto_id'],
+                    $item['marca_id'],
+                    $item['marca_nombre'],
                     $item['codigo'],
                     $item['descripcion'],
                     $item['cantidad'],
                     $item['precio_unitario'],
+                    $item['costo_unitario'],
                     $item['descuento_pct'],
                     $item['subtotal'],
                     $item['stock_al_cotizar'],
@@ -312,11 +320,42 @@ final class Cotizaciones
         $descripcion = crm_str(isset($raw['descripcion']) ? $raw['descripcion'] : '', 300);
         $cantidad = crm_float(isset($raw['cantidad']) ? $raw['cantidad'] : 1, 1);
         $precio = crm_float(isset($raw['precio_unitario']) ? $raw['precio_unitario'] : 0, 0);
+        $costo = crm_float(isset($raw['costo_unitario']) ? $raw['costo_unitario'] : 0, 0);
         $descPct = crm_float(isset($raw['descuento_pct']) ? $raw['descuento_pct'] : 0, 0);
         $stockSnap = null;
+        $esAPedido = 0;
+        $marcaId = 0;
+        $marcaNombre = '';
 
-        if ($tipo === 'servicio') {
+        if ($tipo === 'a_pedido' || !empty($raw['es_a_pedido'])) {
+            $tipo = 'a_pedido';
+            $esAPedido = 1;
             $productoId = 0;
+            if ($codigo === '') {
+                $codigo = 'PEDIDO';
+            }
+            if ($descripcion === '') {
+                Http::fail('El ítem a pedido requiere una descripción');
+            }
+            $marcaId = crm_int(isset($raw['marca_id']) ? $raw['marca_id'] : 0, 0);
+            $marcaNombre = crm_str(isset($raw['marca_nombre']) ? $raw['marca_nombre'] : '', 150);
+            if ($marcaId > 0) {
+                $mStmt = $pdo->prepare('SELECT id, nombre FROM crm_marcas WHERE id = ? LIMIT 1');
+                $mStmt->execute(array($marcaId));
+                $marca = $mStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$marca) {
+                    Http::fail('Marca no encontrada: id ' . $marcaId);
+                }
+                if ($marcaNombre === '') {
+                    $marcaNombre = (string) $marca['nombre'];
+                }
+            }
+            if ($costo < 0) {
+                $costo = 0;
+            }
+        } elseif ($tipo === 'servicio') {
+            $productoId = 0;
+            $costo = 0;
             if ($codigo === '') {
                 $codigo = 'SERV';
             }
@@ -342,6 +381,7 @@ final class Cotizaciones
                 $precio = (float) $prod['precio_unitario'];
             }
             $stockSnap = (float) $prod['stock'];
+            $costo = 0;
         }
 
         if ($codigo === '' || $descripcion === '') {
@@ -360,11 +400,15 @@ final class Cotizaciones
 
         return array(
             'tipo_item' => $tipo,
+            'es_a_pedido' => $esAPedido,
             'producto_id' => $productoId > 0 ? $productoId : null,
+            'marca_id' => $marcaId > 0 ? $marcaId : null,
+            'marca_nombre' => $marcaNombre !== '' ? $marcaNombre : null,
             'codigo' => $codigo,
             'descripcion' => $descripcion,
             'cantidad' => $cantidad,
             'precio_unitario' => $precio,
+            'costo_unitario' => $costo,
             'descuento_pct' => $descPct,
             'subtotal' => $line,
             'stock_al_cotizar' => $stockSnap,

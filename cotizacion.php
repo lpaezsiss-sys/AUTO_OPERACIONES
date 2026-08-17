@@ -57,16 +57,17 @@ crm_layout_start($id ? 'Cotización' : 'Nueva cotización', 'cotizaciones', $use
     </div>
     <hr>
     <div class="d-flex justify-content-between align-items-center mb-2">
-        <h2 class="h6 mb-0">Ítems (producto o servicio)</h2>
+        <h2 class="h6 mb-0">Ítems (inventario, a pedido o servicio)</h2>
         <div class="d-flex gap-2">
             <input id="prodQ" class="form-control form-control-sm" placeholder="Buscar SKU">
             <button class="btn btn-sm btn-outline-primary" type="button" id="btnAddProd">Agregar producto</button>
+            <button class="btn btn-sm btn-outline-warning" type="button" id="btnAddPedido">Ítem a pedido</button>
             <button class="btn btn-sm btn-outline-secondary" type="button" id="btnAddServ">Agregar servicio</button>
         </div>
     </div>
     <div class="table-responsive">
         <table class="table" id="items">
-            <thead><tr><th>Tipo</th><th>Código</th><th>Descripción</th><th>Stock</th><th>Cant.</th><th>Precio</th><th>% Desc.</th><th>Subtotal</th><th></th></tr></thead>
+            <thead><tr><th>Tipo</th><th>Código</th><th>Descripción</th><th>Marca</th><th>Stock</th><th>Cant.</th><th>Precio</th><th>Costo</th><th>% Desc.</th><th>Subtotal</th><th></th></tr></thead>
             <tbody></tbody>
         </table>
     </div>
@@ -82,12 +83,29 @@ var pendingContactoId = "";
 function lineSub(it) {
   return Math.round(Number(it.cantidad||0) * Number(it.precio_unitario||0) * (1 - Number(it.descuento_pct||0)/100));
 }
+function tipoLabel(it) {
+  if (it.tipo_item === "servicio") return "Servicio";
+  if (it.tipo_item === "a_pedido") return "A pedido";
+  return "Producto";
+}
+function esLibre(it) {
+  return it.tipo_item === "servicio" || it.tipo_item === "a_pedido";
+}
+function marcaCell(it, i) {
+  if (it.tipo_item !== "a_pedido") return "—";
+  var opts = '<option value="">Otra / escribir</option>' + marcasCatalogo.map(function (m) {
+    return '<option value="'+m.id+'"'+(Number(it.marca_id)===Number(m.id)?' selected':'')+'>'+m.nombre+'</option>';
+  }).join("");
+  return '<select class="form-select form-select-sm mb-1" data-i="'+i+'" data-k="marca_id">'+opts+'</select>' +
+    '<input class="form-control form-control-sm" data-i="'+i+'" data-k="marca_nombre" placeholder="Marca" value="'+(it.marca_nombre||"")+'">';
+}
 function renderItems() {
   var tb = document.querySelector("#items tbody");
   tb.innerHTML = items.map(function (it, i) {
-    var warn = it.tipo_item !== "servicio" && it.stock_actual != null && Number(it.stock_actual) < Number(it.cantidad);
-    var serv = it.tipo_item === "servicio";
-    return '<tr><td>'+(serv?'Servicio':'Producto')+'</td><td>'+(serv?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+it.codigo+'">':it.codigo)+'</td><td>'+(serv?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+it.descripcion+'">':it.descripcion)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(serv||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="number" min="1" value="'+it.cantidad+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="number" min="0" value="'+it.precio_unitario+'"></td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="number" min="0" max="100" value="'+it.descuento_pct+'"></td><td class="text-end line-sub">'+crmClp(lineSub(it))+'</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>';
+    var warn = !esLibre(it) && it.stock_actual != null && Number(it.stock_actual) < Number(it.cantidad);
+    var libre = esLibre(it);
+    var pedido = it.tipo_item === "a_pedido";
+    return '<tr><td>'+tipoLabel(it)+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+it.codigo+'">':it.codigo)+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+it.descripcion+'">':it.descripcion)+'</td><td>'+marcaCell(it,i)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(libre||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="number" min="1" value="'+it.cantidad+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="number" min="0" value="'+it.precio_unitario+'"></td><td>'+(pedido?'<input data-i="'+i+'" data-k="costo_unitario" class="form-control form-control-sm" type="number" min="0" value="'+(it.costo_unitario||0)+'">':'—')+'</td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="number" min="0" max="100" value="'+it.descuento_pct+'"></td><td class="text-end line-sub">'+crmClp(lineSub(it))+'</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>';
   }).join("");
   updateTotalesCot();
 }
@@ -159,12 +177,16 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
   document.querySelector('[name=descuento]').value = c.descuento || 0;
   document.querySelector('[name=notas]').value = c.notas || "";
   items = (c.items||[]).map(function (it) {
-    return { tipo_item: it.tipo_item || "producto", producto_id: it.producto_id, codigo: it.codigo, descripcion: it.descripcion, cantidad: it.cantidad, precio_unitario: it.precio_unitario, descuento_pct: it.descuento_pct, stock_actual: it.stock_actual };
+    return { tipo_item: it.tipo_item || "producto", es_a_pedido: it.es_a_pedido || 0, producto_id: it.producto_id, marca_id: it.marca_id || 0, marca_nombre: it.marca_nombre || "", codigo: it.codigo, descripcion: it.descripcion, cantidad: it.cantidad, precio_unitario: it.precio_unitario, costo_unitario: it.costo_unitario || 0, descuento_pct: it.descuento_pct, stock_actual: it.stock_actual };
   });
   renderItems();
   renderMarcas((c.marca_ids || []).map(Number));
 });
 document.querySelector('[name=descuento]').addEventListener("input", updateTotalesCot);
+document.getElementById("btnAddPedido").addEventListener("click", function () {
+  items.push({ tipo_item: "a_pedido", es_a_pedido: 1, producto_id: null, marca_id: 0, marca_nombre: "", codigo: "PEDIDO", descripcion: "", cantidad: 1, precio_unitario: 0, costo_unitario: 0, descuento_pct: 0, stock_actual: null });
+  renderItems();
+});
 document.getElementById("btnAddServ").addEventListener("click", function () {
   items.push({ tipo_item: "servicio", producto_id: null, codigo: "SERV", descripcion: "", cantidad: 1, precio_unitario: 0, descuento_pct: 0, stock_actual: null });
   renderItems();
@@ -181,6 +203,15 @@ document.querySelector("#items tbody").addEventListener("input", function (ev) {
   if (i == null) return;
   items[i][k] = ev.target.value;
   var row = ev.target.closest("tr");
+  if (k === "marca_id") {
+    items[i].marca_id = Number(ev.target.value || 0);
+    var opt = ev.target.options[ev.target.selectedIndex];
+    if (items[i].marca_id > 0 && opt) {
+      items[i].marca_nombre = opt.text;
+      var nom = row ? row.querySelector('[data-k="marca_nombre"]') : null;
+      if (nom) nom.value = opt.text;
+    }
+  }
   if (row) {
     var subCell = row.querySelector(".line-sub");
     if (subCell) subCell.textContent = crmClp(lineSub(items[i]));

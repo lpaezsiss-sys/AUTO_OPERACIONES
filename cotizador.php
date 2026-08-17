@@ -74,15 +74,18 @@ crm_layout_start('Cotizador', 'cotizador', $user);
             <div id="marcasBox" class="d-flex flex-wrap gap-3 border rounded p-2 bg-white"></div>
             <div class="form-text">Si no marca ninguna, el PDF usa las marcas globales activas.</div>
         </div>
-        <div class="col-md-8">
+        <div class="col-md-6">
             <label class="form-label">Buscar producto (SKU o nombre)</label>
             <div class="position-relative">
                 <input class="form-control" id="buscar" autocomplete="off" placeholder="Escriba para buscar en inventario…">
                 <div id="sugerencias" class="list-group position-absolute w-100 shadow" style="z-index:20;display:none;max-height:260px;overflow:auto;"></div>
             </div>
         </div>
-        <div class="col-md-4 d-flex align-items-end">
-            <button class="btn btn-outline-primary w-100" id="btnServicio" type="button">Agregar servicio</button>
+        <div class="col-md-3 d-flex align-items-end">
+            <button class="btn btn-outline-primary w-100" id="btnPedido" type="button">Ítem a pedido</button>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button class="btn btn-outline-secondary w-100" id="btnServicio" type="button">Agregar servicio</button>
         </div>
     </div>
 
@@ -93,9 +96,11 @@ crm_layout_start('Cotizador', 'cotizador', $user);
                     <th>Tipo</th>
                     <th>SKU</th>
                     <th>Descripción</th>
+                    <th>Marca</th>
                     <th>Stock</th>
                     <th>Cant.</th>
                     <th>Precio</th>
+                    <th>Costo</th>
                     <th>% Desc.</th>
                     <th class="text-end">Subtotal</th>
                     <th></th>
@@ -130,23 +135,46 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   var timer = null;
   var buscar = document.getElementById("buscar");
   var sug = document.getElementById("sugerencias");
+  var marcasCatalogo = [];
 
   function lineSub(it) {
     return Math.round(Number(it.cantidad || 0) * Number(it.precio_unitario || 0) * (1 - Number(it.descuento_pct || 0) / 100));
   }
 
+  function tipoBadge(it) {
+    if (it.tipo_item === "servicio") return '<span class="badge text-bg-info">Servicio</span>';
+    if (it.tipo_item === "a_pedido") return '<span class="badge text-bg-warning">A pedido</span>';
+    return '<span class="badge text-bg-light">Producto</span>';
+  }
+
+  function esLibre(it) {
+    return it.tipo_item === "servicio" || it.tipo_item === "a_pedido";
+  }
+
+  function marcaCell(it, i) {
+    if (it.tipo_item !== "a_pedido") return "—";
+    var opts = '<option value="">Otra / escribir</option>' + marcasCatalogo.map(function (m) {
+      return '<option value="' + m.id + '"' + (Number(it.marca_id) === Number(m.id) ? " selected" : "") + '>' + m.nombre + '</option>';
+    }).join("");
+    return '<select class="form-select form-select-sm mb-1" data-i="' + i + '" data-k="marca_id">' + opts + '</select>' +
+      '<input class="form-control form-control-sm" data-i="' + i + '" data-k="marca_nombre" placeholder="Marca" value="' + (it.marca_nombre || "") + '">';
+  }
+
   function render() {
     var tb = document.querySelector("#tablaItems tbody");
     tb.innerHTML = items.map(function (it, i) {
-      var warn = it.tipo_item !== "servicio" && it.stock != null && Number(it.stock) < Number(it.cantidad);
-      var serv = it.tipo_item === "servicio";
+      var warn = !esLibre(it) && it.stock != null && Number(it.stock) < Number(it.cantidad);
+      var libre = esLibre(it);
+      var pedido = it.tipo_item === "a_pedido";
       return '<tr>' +
-        '<td><span class="badge ' + (serv ? "text-bg-info" : "text-bg-light") + '">' + (serv ? "Servicio" : "Producto") + '</span></td>' +
-        '<td>' + (serv ? '<input class="form-control form-control-sm" value="' + it.codigo + '" data-i="' + i + '" data-k="codigo">' : it.codigo) + '</td>' +
-        '<td>' + (serv ? '<input class="form-control form-control-sm" value="' + it.descripcion + '" data-i="' + i + '" data-k="descripcion">' : it.descripcion) + '</td>' +
-        '<td><span class="badge badge-stock ' + (warn ? "low" : "") + '">' + (serv || it.stock == null ? "—" : it.stock) + '</span></td>' +
+        '<td>' + tipoBadge(it) + '</td>' +
+        '<td>' + (libre ? '<input class="form-control form-control-sm" value="' + (it.codigo || "") + '" data-i="' + i + '" data-k="codigo">' : it.codigo) + '</td>' +
+        '<td>' + (libre ? '<input class="form-control form-control-sm" value="' + (it.descripcion || "") + '" data-i="' + i + '" data-k="descripcion">' : it.descripcion) + '</td>' +
+        '<td>' + marcaCell(it, i) + '</td>' +
+        '<td><span class="badge badge-stock ' + (warn ? "low" : "") + '">' + (libre || it.stock == null ? "—" : it.stock) + '</span></td>' +
         '<td><input class="form-control form-control-sm" type="number" min="1" value="' + it.cantidad + '" data-i="' + i + '" data-k="cantidad"></td>' +
         '<td><input class="form-control form-control-sm" type="number" min="0" value="' + it.precio_unitario + '" data-i="' + i + '" data-k="precio_unitario"></td>' +
+        '<td>' + (pedido ? '<input class="form-control form-control-sm" type="number" min="0" value="' + (it.costo_unitario || 0) + '" data-i="' + i + '" data-k="costo_unitario">' : "—") + '</td>' +
         '<td><input class="form-control form-control-sm" type="number" min="0" max="100" value="' + it.descuento_pct + '" data-i="' + i + '" data-k="descuento_pct"></td>' +
         '<td class="text-end line-sub">' + crmClp(lineSub(it)) + '</td>' +
         '<td><button class="btn btn-sm btn-outline-danger" type="button" data-del="' + i + '">x</button></td>' +
@@ -204,7 +232,8 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   });
 
   crmApi("api/marcas.php").then(function (d) {
-    var marcas = d.marcas || [];
+    marcasCatalogo = d.marcas || [];
+    var marcas = marcasCatalogo;
     document.getElementById("marcasBox").innerHTML = marcas.map(function (m) {
       var chk = false;
       var img = m.existe_archivo ? '<img src="' + m.url + '" alt="" style="max-height:22px;max-width:70px" class="me-1">' : '';
@@ -264,6 +293,16 @@ crm_layout_start('Cotizador', 'cotizador', $user);
     }
     items[i][k] = ev.target.value;
     var row = ev.target.closest("tr");
+    if (k === "marca_id") {
+      var sel = ev.target;
+      var opt = sel.options[sel.selectedIndex];
+      items[i].marca_id = Number(ev.target.value || 0);
+      if (items[i].marca_id > 0 && opt) {
+        items[i].marca_nombre = opt.text;
+        var nom = row ? row.querySelector('[data-k="marca_nombre"]') : null;
+        if (nom) nom.value = opt.text;
+      }
+    }
     if (row) {
       var subCell = row.querySelector(".line-sub");
       if (subCell) {
@@ -278,6 +317,28 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       return;
     }
     items.splice(Number(del), 1);
+    render();
+  });
+  document.querySelector("#tablaItems tbody").addEventListener("change", function (ev) {
+    if (ev.target.getAttribute("data-k") === "marca_id") {
+      ev.target.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  });
+  document.getElementById("btnPedido").addEventListener("click", function () {
+    items.push({
+      tipo_item: "a_pedido",
+      es_a_pedido: 1,
+      producto_id: null,
+      marca_id: 0,
+      marca_nombre: "",
+      codigo: "PEDIDO",
+      descripcion: "",
+      cantidad: 1,
+      precio_unitario: 0,
+      costo_unitario: 0,
+      descuento_pct: 0,
+      stock: null
+    });
     render();
   });
   document.getElementById("btnServicio").addEventListener("click", function () {

@@ -197,8 +197,8 @@ function crm_guardar_cotizacion(array $user)
 
         $insItem = $pdo->prepare(
             'INSERT INTO crm_cotizacion_items
-                (cotizacion_id, tipo_item, producto_id, codigo, descripcion, cantidad, precio_unitario, descuento_pct, subtotal, stock_al_cotizar)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                (cotizacion_id, tipo_item, es_a_pedido, producto_id, marca_id, marca_nombre, codigo, descripcion, cantidad, precio_unitario, costo_unitario, descuento_pct, subtotal, stock_al_cotizar)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         $subtotal = 0.0;
@@ -215,11 +215,15 @@ function crm_guardar_cotizacion(array $user)
             $insItem->execute(array(
                 $cotizacionId,
                 $item['tipo_item'],
+                $item['es_a_pedido'],
                 $item['producto_id'],
+                $item['marca_id'],
+                $item['marca_nombre'],
                 $item['codigo'],
                 $item['descripcion'],
                 $item['cantidad'],
                 $item['precio_unitario'],
+                $item['costo_unitario'],
                 $item['descuento_pct'],
                 $item['subtotal'],
                 $item['stock_al_cotizar'],

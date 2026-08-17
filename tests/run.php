@@ -645,5 +645,116 @@ $delMarca = \Crm\Marcas::destroy($marcaNuevaId);
 assert_true(!empty($delMarca['deleted']), 'Se elimina marca');
 assert_true(!is_file(dirname(__DIR__) . '/assets/img/marcas/' . $archivoMarca), 'Archivo de marca subida se borra del disco');
 
+$marcaCat = \Crm\Marcas::index();
+$marcaSeedId = (int) $marcaCat['marcas'][0]['id'];
+$marcaSeedNom = (string) $marcaCat['marcas'][0]['nombre'];
+$pedido1 = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'aceptada',
+    'items' => array(
+        array(
+            'tipo_item' => 'a_pedido',
+            'descripcion' => 'Soplador X200 a pedido',
+            'marca_id' => $marcaSeedId,
+            'cantidad' => 2,
+            'precio_unitario' => 100000,
+            'costo_unitario' => 60000,
+        ),
+    ),
+), $login);
+$itPed = $pedido1['cotizacion']['items'][0];
+assert_true((string) $itPed['tipo_item'] === 'a_pedido', 'Ítem tipo a_pedido');
+assert_true((int) $itPed['es_a_pedido'] === 1, 'Flag es_a_pedido = 1');
+assert_true($itPed['producto_id'] === null || $itPed['producto_id'] === '', 'A pedido deja producto_id NULL');
+assert_true((int) $itPed['marca_id'] === $marcaSeedId, 'A pedido guarda marca_id de catálogo');
+assert_true((string) $itPed['marca_nombre'] === $marcaSeedNom, 'A pedido copia nombre de marca');
+assert_true(abs((float) $itPed['costo_unitario'] - 60000) < 0.001, 'Costo unitario persistido');
+$htmlPed = \Crm\CotizacionPdf::html($pedido1['cotizacion']);
+assert_true(strpos($htmlPed, '[A pedido]') !== false, 'PDF marca ítem a pedido');
+assert_true(strpos($htmlPed, $marcaSeedNom) !== false, 'PDF incluye marca del ítem a pedido');
+
+$pedidoLibre = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'enviada',
+    'items' => array(
+        array(
+            'tipo_item' => 'a_pedido',
+            'descripcion' => 'Filtro especial no catálogo',
+            'marca_nombre' => 'Marca Libre XYZ',
+            'cantidad' => 1,
+            'precio_unitario' => 50000,
+            'costo_unitario' => 0,
+        ),
+    ),
+), $login);
+assert_true($pedidoLibre['cotizacion']['items'][0]['marca_id'] === null || $pedidoLibre['cotizacion']['items'][0]['marca_id'] === '', 'Marca texto libre sin marca_id');
+assert_true((string) $pedidoLibre['cotizacion']['items'][0]['marca_nombre'] === 'Marca Libre XYZ', 'Marca texto libre persistida');
+
+\Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'borrador',
+    'items' => array(
+        array(
+            'tipo_item' => 'a_pedido',
+            'descripcion' => 'Soplador X200 a pedido',
+            'marca_id' => $marcaSeedId,
+            'cantidad' => 1,
+            'precio_unitario' => 100000,
+            'costo_unitario' => 60000,
+        ),
+    ),
+), $login);
+
+$pedidoFail = false;
+try {
+    \Crm\Cotizaciones::store(array(
+        'empresa_id' => $empId,
+        'items' => array(
+            array('tipo_item' => 'a_pedido', 'cantidad' => 1, 'precio_unitario' => 10),
+        ),
+    ), $login);
+} catch (\Crm\ApiException $e) {
+    $pedidoFail = strpos($e->getMessage(), 'descripción') !== false;
+}
+assert_true($pedidoFail, 'A pedido sin descripción se rechaza');
+
+$statsPed = \Crm\EstadisticasAPedido::obtener(array('periodo' => 'anio'));
+assert_true((int) $statsPed['kpis']['n_cotizados'] >= 3, 'KPI ítems a pedido cotizados');
+assert_true((int) $statsPed['kpis']['n_ganados'] >= 1, 'KPI ítems a pedido ganados');
+assert_true((float) $statsPed['kpis']['monto_ganado'] > 0, 'Monto ganado a pedido > 0');
+assert_true($statsPed['kpis']['margen_pct'] !== null && (float) $statsPed['kpis']['margen_pct'] > 0, 'Margen promedio con costo informado');
+assert_true(count($statsPed['por_marca']) >= 1, 'Análisis por marca');
+$libreMarca = false;
+foreach ($statsPed['por_marca'] as $pm) {
+    if ((string) $pm['marca'] === 'Marca Libre XYZ' && (int) $pm['en_catalogo'] === 0) {
+        $libreMarca = true;
+    }
+}
+assert_true($libreMarca, 'Marca fuera de catálogo identificada');
+assert_true(count($statsPed['sugerencias']) >= 1, 'Sugerencia de alta por recurrencia');
+
+$stockAntes = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '13451' LIMIT 1")->fetchColumn();
+$alta = \Crm\Productos::altaCatalogo(array(
+    'nombre' => 'Soplador X200 a pedido',
+    'descripcion' => 'Soplador X200 a pedido',
+    'marca_nombre' => $marcaSeedNom,
+    'precio_unitario' => 100000,
+));
+assert_true(strpos((string) $alta['producto']['codigo'], 'APD-') === 0, 'Código APD generado en alta a catálogo');
+assert_true((float) $alta['producto']['stock'] === 0.0, 'Alta a catálogo con stock 0');
+$stockDespues = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '13451' LIMIT 1")->fetchColumn();
+assert_true($stockAntes === $stockDespues, 'Alta a catálogo no altera stock existente');
+$dupAlta = false;
+try {
+    \Crm\Productos::altaCatalogo(array(
+        'nombre' => 'Otro',
+        'codigo' => $alta['producto']['codigo'],
+        'precio_unitario' => 1,
+    ));
+} catch (\Crm\ApiException $e) {
+    $dupAlta = strpos($e->getMessage(), 'Ya existe') !== false;
+}
+assert_true($dupAlta, 'Alta duplicada por código se rechaza');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
