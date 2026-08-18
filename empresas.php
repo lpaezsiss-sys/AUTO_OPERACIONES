@@ -57,6 +57,11 @@ crm_layout_start('Empresas', 'empresas', $user);
                 <option value="inactiva">Inactiva</option>
             </select>
         </div>
+        <div class="col-md-6"><label class="form-label">Lista de precios</label>
+            <select class="form-select" name="lista_precio_id" id="selListaPrecio">
+                <option value="">(predeterminada del sistema)</option>
+            </select>
+        </div>
         <div class="col-12"><label class="form-label">Notas</label><textarea class="form-control" name="notas" rows="2"></textarea></div>
       </div>
       <div class="modal-footer"><button class="btn btn-primary" type="submit">Guardar</button></div>
@@ -82,6 +87,7 @@ function fillEmpresaForm(e) {
   ["rut","razon_social","nombre_fantasia","giro","industria","region","comuna","direccion","telefono","email","sitio_web","origen","estado","notas"].forEach(function (k) {
     if (form.elements[k]) form.elements[k].value = e[k] || "";
   });
+  if (form.elements.lista_precio_id) form.elements.lista_precio_id.value = e.lista_precio_id || "";
   document.getElementById("titEmpresa").textContent = "Editar empresa";
 }
 function loadEmpresas() {
@@ -100,6 +106,15 @@ crmApi("api/catalogos.php").then(function (c) {
   fillSelect("selRegion", c.regiones, "Seleccione");
   fillSelect("selOrigen", c.origenes);
 });
+crmApi("api/listas_precios.php").then(function (d) {
+  var sel = document.getElementById("selListaPrecio");
+  sel.innerHTML = '<option value="">(predeterminada del sistema)</option>' + (d.listas || []).filter(function (l) {
+    return l.estado === "activa";
+  }).map(function (l) {
+    var tag = Number(l.es_default) === 1 ? " · default" : "";
+    return '<option value="'+l.id+'">'+l.nombre+' ('+(Number(l.porcentaje_ajuste)>0?'+':'')+Number(l.porcentaje_ajuste).toFixed(2)+'%)'+tag+'</option>';
+  }).join("");
+}).catch(function (e) { crmToast(e.message, true); });
 ["q","estado"].forEach(function (id) {
   document.getElementById(id).addEventListener("input", loadEmpresas);
   document.getElementById(id).addEventListener("change", loadEmpresas);

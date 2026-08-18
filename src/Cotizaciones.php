@@ -168,6 +168,11 @@ final class Cotizaciones
         $notas = crm_str(isset($body['notas']) ? $body['notas'] : '', 4000) ?: null;
         $ejecutivoId = crm_int(isset($body['ejecutivo_id']) ? $body['ejecutivo_id'] : $user['id'], (int) $user['id']);
         $vendedorId = 0;
+        $listaPrecioId = crm_int(isset($body['lista_precio_id']) ? $body['lista_precio_id'] : 0, 0);
+        if ($listaPrecioId > 0 && ListasPrecios::obtener($listaPrecioId) === null) {
+            Http::fail('Lista de precios no encontrada', 404);
+        }
+        $listaPrecioIdSql = $listaPrecioId > 0 ? $listaPrecioId : null;
 
         $pdo->beginTransaction();
         try {
@@ -181,8 +186,8 @@ final class Cotizaciones
             } else {
                 $folio = Codes::next('crm_cotizaciones', 'folio', 'COT');
                 $ins = $pdo->prepare(
-                    'INSERT INTO crm_cotizaciones (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, vendedor_id, estado, fecha_emision, fecha_validez, validez_oferta, moneda, condiciones_pago, plazo_entrega, lugar_entrega, subtotal, descuento, iva, total, notas, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
+                    'INSERT INTO crm_cotizaciones (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, vendedor_id, lista_precio_id, estado, fecha_emision, fecha_validez, validez_oferta, moneda, condiciones_pago, plazo_entrega, lugar_entrega, subtotal, descuento, iva, total, notas, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
                 );
                 $ins->execute(array(
                     $folio,
@@ -191,6 +196,7 @@ final class Cotizaciones
                     $oppId > 0 ? $oppId : null,
                     $ejecutivoId,
                     $vendedorId > 0 ? $vendedorId : null,
+                    $listaPrecioIdSql,
                     $estado,
                     $fechaEmision,
                     $fechaValidez !== '' ? $fechaValidez : null,
@@ -249,7 +255,7 @@ final class Cotizaciones
 
             $upd = $pdo->prepare(
                 'UPDATE crm_cotizaciones
-                 SET empresa_id=?, contacto_id=?, oportunidad_id=?, ejecutivo_id=?, vendedor_id=?, estado=?, fecha_emision=?, fecha_validez=?, validez_oferta=?, moneda=?, condiciones_pago=?, plazo_entrega=?, lugar_entrega=?, subtotal=?, descuento=?, iva=?, total=?, notas=?, updated_at=?
+                 SET empresa_id=?, contacto_id=?, oportunidad_id=?, ejecutivo_id=?, vendedor_id=?, lista_precio_id=?, estado=?, fecha_emision=?, fecha_validez=?, validez_oferta=?, moneda=?, condiciones_pago=?, plazo_entrega=?, lugar_entrega=?, subtotal=?, descuento=?, iva=?, total=?, notas=?, updated_at=?
                  WHERE id=?'
             );
             $upd->execute(array(
@@ -258,6 +264,7 @@ final class Cotizaciones
                 $oppId > 0 ? $oppId : null,
                 $ejecutivoId,
                 $vendedorId > 0 ? $vendedorId : null,
+                $listaPrecioIdSql,
                 $estado,
                 $fechaEmision,
                 $fechaValidez !== '' ? $fechaValidez : null,

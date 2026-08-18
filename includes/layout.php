@@ -42,6 +42,7 @@ function crm_layout_start($title, $page, array $user)
             <a class="nav-link<?php echo $page === 'vendedores' ? ' active' : ''; ?>" href="vendedores.php">Vendedores</a>
             <?php if ((string) $user['rol'] === 'admin') { ?>
             <a class="nav-link<?php echo $page === 'usuarios' ? ' active' : ''; ?>" href="usuarios.php">Usuarios</a>
+            <a class="nav-link<?php echo $page === 'listas_precios' ? ' active' : ''; ?>" href="listas_precios.php">Listas de precios</a>
             <?php } ?>
             <a class="nav-link<?php echo $page === 'comisiones' ? ' active' : ''; ?>" href="comisiones.php">Comisiones</a>
             <a class="nav-link<?php echo $page === 'reportes' ? ' active' : ''; ?>" href="reportes.php">Informes</a>

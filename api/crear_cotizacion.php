@@ -111,6 +111,16 @@ function crm_guardar_cotizacion(array $user)
     $estado = isset($data['estado']) ? trim((string) $data['estado']) : 'borrador';
     $estadosOk = array('borrador' => true, 'enviada' => true, 'aceptada' => true, 'rechazada' => true, 'vencida' => true);
     $estado = isset($estadosOk[$estado]) ? $estado : 'borrador';
+    $listaPrecioId = isset($data['lista_precio_id']) ? (int) $data['lista_precio_id'] : 0;
+    $listaPrecioIdSql = null;
+    if ($listaPrecioId > 0) {
+        if (\Crm\ListasPrecios::obtener($listaPrecioId) === null) {
+            http_response_code(404);
+            echo json_encode(array('ok' => false, 'error' => 'Lista de precios no encontrada'));
+            exit;
+        }
+        $listaPrecioIdSql = $listaPrecioId;
+    }
 
     if ($empresaId <= 0) {
         http_response_code(400);
@@ -179,8 +189,8 @@ function crm_guardar_cotizacion(array $user)
 
         $insCot = $pdo->prepare(
             'INSERT INTO crm_cotizaciones
-                (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, vendedor_id, estado, fecha_emision, fecha_validez, validez_oferta, moneda, condiciones_pago, plazo_entrega, lugar_entrega, subtotal, descuento, iva, total, notas, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
+                (folio, empresa_id, contacto_id, oportunidad_id, ejecutivo_id, vendedor_id, lista_precio_id, estado, fecha_emision, fecha_validez, validez_oferta, moneda, condiciones_pago, plazo_entrega, lugar_entrega, subtotal, descuento, iva, total, notas, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)'
         );
         $vendedorIdPre = \Crm\Comisiones::resolverVendedorId($pdo, $data, $ejecutivoId ? $ejecutivoId : 0);
         $insCot->execute(array(
@@ -190,6 +200,7 @@ function crm_guardar_cotizacion(array $user)
             $oportunidadId > 0 ? $oportunidadId : null,
             $ejecutivoId,
             $vendedorIdPre > 0 ? $vendedorIdPre : null,
+            $listaPrecioIdSql,
             $estado,
             $fechaEmision,
             $fechaValidez,

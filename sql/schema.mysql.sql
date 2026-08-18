@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS crm_cotizaciones (
                 PRIMARY KEY (id),
                 UNIQUE KEY uq_crm_cotizaciones_folio (folio),
                 KEY ix_crm_cot_empresa (empresa_id),
+                KEY ix_crm_cot_empresa_id (empresa_id, id),
                 CONSTRAINT fk_crm_cot_empresa FOREIGN KEY (empresa_id) REFERENCES crm_empresas (id) ON DELETE CASCADE,
                 CONSTRAINT fk_crm_cot_contacto FOREIGN KEY (contacto_id) REFERENCES crm_contactos (id) ON DELETE SET NULL,
                 CONSTRAINT fk_crm_cot_opp FOREIGN KEY (oportunidad_id) REFERENCES crm_oportunidades (id) ON DELETE SET NULL,
@@ -149,6 +150,7 @@ CREATE TABLE IF NOT EXISTS crm_cotizacion_items (
                 PRIMARY KEY (id),
                 KEY ix_crm_cot_items_cot (cotizacion_id),
                 KEY ix_crm_cot_items_prod (producto_id),
+                KEY ix_crm_cot_items_prod_cot (producto_id, cotizacion_id),
                 CONSTRAINT fk_crm_cot_items_cot FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones (id) ON DELETE CASCADE,
                 CONSTRAINT fk_crm_cot_items_producto FOREIGN KEY (producto_id) REFERENCES productos (id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -252,4 +254,16 @@ CREATE TABLE IF NOT EXISTS crm_actividades (
                 CONSTRAINT fk_crm_act_opp FOREIGN KEY (oportunidad_id) REFERENCES crm_oportunidades (id) ON DELETE SET NULL,
                 CONSTRAINT fk_crm_act_cot FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones (id) ON DELETE SET NULL,
                 CONSTRAINT fk_crm_act_usuario FOREIGN KEY (usuario_id) REFERENCES crm_usuarios (id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS crm_listas_precios (
+                id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                nombre VARCHAR(160) NOT NULL,
+                porcentaje_ajuste DECIMAL(8,2) NOT NULL DEFAULT 0,
+                es_default TINYINT(1) NOT NULL DEFAULT 0,
+                estado VARCHAR(20) NOT NULL DEFAULT 'activa',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY ix_crm_listas_estado (estado, es_default)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -37,6 +37,11 @@ crm_layout_start($folioAsignado !== '' ? $folioAsignado : 'Nueva cotización', '
         <div class="col-md-6"><label class="form-label">Empresa</label><select class="form-select" name="empresa_id" id="selEmpresa" required></select></div>
         <div class="col-md-6"><label class="form-label">Contacto</label><select class="form-select" name="contacto_id" id="selContacto"><option value="">(sin contacto)</option></select></div>
         <div class="col-md-3"><label class="form-label">Vendedor</label><select class="form-select" name="vendedor_id" id="selVendedor"></select></div>
+        <div class="col-md-3"><label class="form-label">Lista de precios</label>
+            <select class="form-select" name="lista_precio_id" id="selListaPrecio">
+                <option value="">(predeterminada)</option>
+            </select>
+        </div>
         <div class="col-md-3"><label class="form-label">Estado</label>
             <select class="form-select" name="estado">
                 <option value="borrador">Borrador</option>
@@ -91,7 +96,34 @@ var cotId = <?php echo (int) $id; ?>;
 var items = [];
 var productos = [];
 var marcasCatalogo = [];
+var empresasCache = [];
+var listasCache = [];
 var pendingContactoId = "";
+function defaultListaId() {
+  var d = 0;
+  listasCache.forEach(function (l) {
+    if (Number(l.es_default) === 1 && l.estado === "activa") d = Number(l.id);
+  });
+  return d;
+}
+function fillListasSelect(selected) {
+  var sel = document.getElementById("selListaPrecio");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">(predeterminada)</option>' + listasCache.filter(function (l) {
+    return l.estado === "activa";
+  }).map(function (l) {
+    var tag = Number(l.es_default) === 1 ? " · default" : "";
+    return '<option value="'+l.id+'">'+crmEsc(l.nombre)+' ('+(Number(l.porcentaje_ajuste)>0?'+':'')+Number(l.porcentaje_ajuste).toFixed(2)+'%)'+tag+'</option>';
+  }).join("");
+  if (selected) sel.value = String(selected);
+}
+function aplicarListaEmpresa() {
+  var empId = document.getElementById("selEmpresa").value;
+  var emp = null;
+  empresasCache.forEach(function (e) { if (String(e.id) === String(empId)) emp = e; });
+  var listaId = emp && emp.lista_precio_id ? emp.lista_precio_id : defaultListaId();
+  fillListasSelect(listaId);
+}
 function lineSub(it) {
   return Math.round(Number(it.cantidad||0) * Number(it.precio_unitario||0) * (1 - Number(it.descuento_pct||0)/100));
 }
@@ -123,6 +155,7 @@ function extraRow(it, i) {
     '<div style="min-width:60px">'+thumbHtml(it)+'</div>'+
     '<div class="flex-grow-1">'+
     '<textarea class="form-control form-control-sm mb-1" rows="2" data-i="'+i+'" data-k="descripcion_detallada" placeholder="Descripción detallada / especificaciones (opcional)">'+crmEsc(it.descripcion_detallada||"")+'</textarea>'+
+    (it.precio_badge ? '<div class="badge-ultimo-precio mb-1">'+crmEsc(it.precio_badge)+'</div>' : '')+
     '<input class="form-control form-control-sm mb-1" data-i="'+i+'" data-k="imagen_url" placeholder="'+ph+'" value="'+crmEsc(it.imagen_url||"")+'">'+
     '<input class="form-control form-control-sm" type="file" accept="image/png,image/jpeg" data-img="'+i+'">'+
     '</div></div></td><td></td></tr>';
@@ -145,19 +178,28 @@ function updateTotalesCot() {
   document.getElementById("totales").innerHTML = '<div>Subtotal '+crmClp(sub)+'</div><div>IVA 19% '+crmClp(iva)+'</div><div class="fw-bold">Total '+crmClp(neto+iva)+'</div>';
 }
 function addProducto(p) {
-  items.push({
-    tipo_item: "producto",
-    producto_id: p.id,
-    codigo: p.codigo,
-    descripcion: p.nombre,
-    descripcion_detallada: (p.descripcion && p.descripcion !== p.nombre) ? p.descripcion : "",
-    imagen_url: p.imagen_url || "",
-    cantidad: 1,
-    precio_unitario: p.precio_unitario,
-    descuento_pct: 0,
-    stock_actual: p.stock
-  });
-  renderItems();
+  var empId = Number(document.getElementById("selEmpresa").value || 0);
+  var listaId = Number(document.getElementById("selListaPrecio").value || 0);
+  var url = "api/precios.php?empresa_id="+encodeURIComponent(empId)+"&producto_id="+encodeURIComponent(p.id);
+  if (listaId > 0) url += "&lista_precio_id="+encodeURIComponent(listaId);
+  crmApi(url).then(function (d) {
+    var pr = d.precio || {};
+    items.push({
+      tipo_item: "producto",
+      producto_id: p.id,
+      codigo: p.codigo,
+      descripcion: p.nombre,
+      descripcion_detallada: (p.descripcion && p.descripcion !== p.nombre) ? p.descripcion : "",
+      imagen_url: p.imagen_url || "",
+      cantidad: 1,
+      precio_unitario: pr.precio_unitario != null ? pr.precio_unitario : p.precio_unitario,
+      descuento_pct: 0,
+      stock_actual: p.stock,
+      precio_origen: pr.origen || "base",
+      precio_badge: pr.origen === "historial" ? (pr.badge || "") : ""
+    });
+    renderItems();
+  }).catch(function (e) { crmToast(e.message, true); });
 }
 function renderMarcas(selectedIds) {
   selectedIds = selectedIds || [];
@@ -180,8 +222,9 @@ function loadContactos(empresaId, selected) {
     if (selected) sel.value = selected;
   }).catch(function (e) { crmToast(e.message, true); });
 }
-Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("api/vendedores.php"), crmApi("api/marcas.php")]).then(function (arr) {
-  document.getElementById("selEmpresa").innerHTML = (arr[0].empresas||[]).map(function (e) {
+Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("api/vendedores.php"), crmApi("api/marcas.php"), crmApi("api/listas_precios.php")]).then(function (arr) {
+  empresasCache = arr[0].empresas || [];
+  document.getElementById("selEmpresa").innerHTML = empresasCache.map(function (e) {
     return '<option value="'+e.id+'">'+e.razon_social+'</option>';
   }).join("");
   document.getElementById("selVendedor").innerHTML = '<option value="">(según usuario)</option>' +
@@ -190,10 +233,13 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
     }).join("");
   productos = arr[1].productos || [];
   marcasCatalogo = arr[3].marcas || [];
+  listasCache = arr[4].listas || [];
+  fillListasSelect(defaultListaId());
   renderMarcas([]);
   var empSel = document.getElementById("selEmpresa");
   loadContactos(empSel.value, "");
-  empSel.addEventListener("change", function () { loadContactos(empSel.value, ""); });
+  empSel.addEventListener("change", function () { loadContactos(empSel.value, ""); aplicarListaEmpresa(); });
+  aplicarListaEmpresa();
   if (cotId) {
     return crmApi("api/cotizaciones.php?id="+cotId);
   }
@@ -212,6 +258,9 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
   pendingContactoId = c.contacto_id || "";
   loadContactos(c.empresa_id, pendingContactoId);
   document.querySelector('[name=vendedor_id]').value = c.vendedor_id || "";
+  if (document.getElementById("selListaPrecio")) {
+    fillListasSelect(c.lista_precio_id || defaultListaId());
+  }
   document.querySelector('[name=estado]').value = c.estado;
   document.querySelector('[name=fecha_validez]').value = c.fecha_validez || "";
   document.querySelector('[name=moneda]').value = c.moneda || "CLP";

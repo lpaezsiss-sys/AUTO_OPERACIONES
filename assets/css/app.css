@@ -137,6 +137,16 @@ body {
   color: #05294b;
 }
 
+.badge-ultimo-precio {
+  display: inline-block;
+  background: #e8f1fb;
+  color: #05294b;
+  font-weight: 600;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
 .kanban {
   display: grid;
   grid-template-columns: repeat(6, minmax(180px, 1fr));

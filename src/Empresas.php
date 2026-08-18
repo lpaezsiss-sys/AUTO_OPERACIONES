@@ -46,6 +46,13 @@ final class Empresas
     {
         $pdo = crm_pdo();
         $empresa = Codes::requireEmpresa($pdo, $id);
+        if (!empty($empresa['lista_precio_id'])) {
+            $lista = ListasPrecios::obtener((int) $empresa['lista_precio_id']);
+            $empresa['lista_precio_nombre'] = $lista ? (string) $lista['nombre'] : null;
+        } else {
+            $def = ListasPrecios::predeterminada();
+            $empresa['lista_precio_nombre'] = $def ? (string) $def['nombre'] . ' (sistema)' : null;
+        }
         $c = $pdo->prepare('SELECT * FROM crm_contactos WHERE empresa_id = ? ORDER BY es_principal DESC, nombre ASC');
         $c->execute(array($id));
         $o = $pdo->prepare('SELECT * FROM crm_oportunidades WHERE empresa_id = ? ORDER BY updated_at DESC');
@@ -76,8 +83,8 @@ final class Empresas
         $data = self::validate($body, $user, true);
         $pdo = crm_pdo();
         $stmt = $pdo->prepare(
-            'INSERT INTO crm_empresas (rut, razon_social, nombre_fantasia, giro, industria, region, comuna, direccion, telefono, email, sitio_web, origen, ejecutivo_id, estado, notas, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO crm_empresas (rut, razon_social, nombre_fantasia, giro, industria, region, comuna, direccion, telefono, email, sitio_web, origen, ejecutivo_id, lista_precio_id, estado, notas, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $now = crm_now();
         $stmt->execute(array(
@@ -94,6 +101,7 @@ final class Empresas
             $data['sitio_web'],
             $data['origen'],
             $data['ejecutivo_id'],
+            $data['lista_precio_id'],
             $data['estado'],
             $data['notas'],
             $now,
@@ -113,7 +121,7 @@ final class Empresas
         Codes::requireEmpresa($pdo, $id);
         $data = self::validate($body, $user, false);
         $stmt = $pdo->prepare(
-            'UPDATE crm_empresas SET rut=?, razon_social=?, nombre_fantasia=?, giro=?, industria=?, region=?, comuna=?, direccion=?, telefono=?, email=?, sitio_web=?, origen=?, ejecutivo_id=?, estado=?, notas=?, updated_at=?
+            'UPDATE crm_empresas SET rut=?, razon_social=?, nombre_fantasia=?, giro=?, industria=?, region=?, comuna=?, direccion=?, telefono=?, email=?, sitio_web=?, origen=?, ejecutivo_id=?, lista_precio_id=?, estado=?, notas=?, updated_at=?
              WHERE id=?'
         );
         $stmt->execute(array(
@@ -130,6 +138,7 @@ final class Empresas
             $data['sitio_web'],
             $data['origen'],
             $data['ejecutivo_id'],
+            $data['lista_precio_id'],
             $data['estado'],
             $data['notas'],
             crm_now(),
@@ -177,6 +186,14 @@ final class Empresas
         if ($ejecutivo <= 0) {
             $ejecutivo = crm_int($user['id'], 0);
         }
+        $listaId = crm_int(isset($body['lista_precio_id']) ? $body['lista_precio_id'] : 0, 0);
+        $listaPrecioId = null;
+        if ($listaId > 0) {
+            if (ListasPrecios::obtener($listaId) === null) {
+                Http::fail('Lista de precios no encontrada', 404);
+            }
+            $listaPrecioId = $listaId;
+        }
         return array(
             'rut' => $rut,
             'razon_social' => $razon,
@@ -191,6 +208,7 @@ final class Empresas
             'sitio_web' => crm_str(isset($body['sitio_web']) ? $body['sitio_web'] : '', 250) ?: null,
             'origen' => $origen,
             'ejecutivo_id' => $ejecutivo,
+            'lista_precio_id' => $listaPrecioId,
             'estado' => $estado,
             'notas' => crm_str(isset($body['notas']) ? $body['notas'] : '', 4000) ?: null,
         );

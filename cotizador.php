@@ -35,6 +35,12 @@ crm_layout_start('Cotizador', 'cotizador', $user);
             <label class="form-label">Vendedor</label>
             <select class="form-select" id="vendedor_id"></select>
         </div>
+        <div class="col-md-3">
+            <label class="form-label">Lista de precios</label>
+            <select class="form-select" id="lista_precio_id">
+                <option value="">(predeterminada)</option>
+            </select>
+        </div>
         <div class="col-md-2">
             <label class="form-label">Estado</label>
             <select class="form-select" id="estado">
@@ -138,7 +144,35 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   var timer = null;
   var buscar = document.getElementById("buscar");
   var sug = document.getElementById("sugerencias");
-  var marcasCatalogo = [];
+  var empresasCache = [];
+  var listasCache = [];
+
+  function defaultListaId() {
+    var d = 0;
+    listasCache.forEach(function (l) {
+      if (Number(l.es_default) === 1 && l.estado === "activa") d = Number(l.id);
+    });
+    return d;
+  }
+
+  function fillListasSelect(selected) {
+    var sel = document.getElementById("lista_precio_id");
+    sel.innerHTML = '<option value="">(predeterminada)</option>' + listasCache.filter(function (l) {
+      return l.estado === "activa";
+    }).map(function (l) {
+      var tag = Number(l.es_default) === 1 ? " · default" : "";
+      return '<option value="' + l.id + '">' + crmEsc(l.nombre) + " (" + (Number(l.porcentaje_ajuste) > 0 ? "+" : "") + Number(l.porcentaje_ajuste).toFixed(2) + "%)" + tag + "</option>";
+    }).join("");
+    if (selected) sel.value = String(selected);
+  }
+
+  function aplicarListaEmpresa() {
+    var empId = document.getElementById("empresa_id").value;
+    var emp = null;
+    empresasCache.forEach(function (e) { if (String(e.id) === String(empId)) emp = e; });
+    var listaId = emp && emp.lista_precio_id ? emp.lista_precio_id : defaultListaId();
+    fillListasSelect(listaId);
+  }
 
   function lineSub(it) {
     return Math.round(Number(it.cantidad || 0) * Number(it.precio_unitario || 0) * (1 - Number(it.descuento_pct || 0) / 100));
@@ -179,6 +213,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       '<div class="flex-grow-1">' +
       '<textarea class="form-control form-control-sm mb-1" rows="2" data-i="' + i + '" data-k="descripcion_detallada" placeholder="Descripción detallada / especificaciones (opcional)">' +
       crmEsc(it.descripcion_detallada || "") + '</textarea>' +
+      (it.precio_badge ? '<div class="badge-ultimo-precio mb-1">' + crmEsc(it.precio_badge) + '</div>' : '') +
       '<input class="form-control form-control-sm mb-1" data-i="' + i + '" data-k="imagen_url" placeholder="' + ph + '" value="' + crmEsc(it.imagen_url || "") + '">' +
       '<input class="form-control form-control-sm" type="file" accept="image/png,image/jpeg" data-img="' + i + '">' +
       '</div></div></td><td></td></tr>';
@@ -219,28 +254,39 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   }
 
   function addProducto(p) {
-    items.push({
-      tipo_item: "producto",
-      producto_id: p.id,
-      codigo: p.sku || p.codigo,
-      descripcion: p.nombre,
-      descripcion_detallada: (p.descripcion && p.descripcion !== p.nombre) ? p.descripcion : "",
-      imagen_url: p.imagen_url || "",
-      cantidad: 1,
-      precio_unitario: p.precio_unitario,
-      descuento_pct: 0,
-      stock: p.stock
-    });
-    buscar.value = "";
-    sug.style.display = "none";
-    render();
+    var empId = Number(document.getElementById("empresa_id").value || 0);
+    var listaId = Number(document.getElementById("lista_precio_id").value || 0);
+    var url = "api/precios.php?empresa_id=" + encodeURIComponent(empId) + "&producto_id=" + encodeURIComponent(p.id);
+    if (listaId > 0) url += "&lista_precio_id=" + encodeURIComponent(listaId);
+    crmApi(url).then(function (d) {
+      var pr = d.precio || {};
+      items.push({
+        tipo_item: "producto",
+        producto_id: p.id,
+        codigo: p.sku || p.codigo,
+        descripcion: p.nombre,
+        descripcion_detallada: (p.descripcion && p.descripcion !== p.nombre) ? p.descripcion : "",
+        imagen_url: p.imagen_url || "",
+        cantidad: 1,
+        precio_unitario: pr.precio_unitario != null ? pr.precio_unitario : p.precio_unitario,
+        descuento_pct: 0,
+        stock: p.stock,
+        precio_origen: pr.origen || "base",
+        precio_badge: pr.origen === "historial" ? (pr.badge || "") : ""
+      });
+      buscar.value = "";
+      sug.style.display = "none";
+      render();
+    }).catch(function (e) { crmToast(e.message, true); });
   }
 
   crmApi("api/empresas.php").then(function (d) {
-    document.getElementById("empresa_id").innerHTML = (d.empresas || []).map(function (e) {
+    empresasCache = d.empresas || [];
+    document.getElementById("empresa_id").innerHTML = empresasCache.map(function (e) {
       return '<option value="' + e.id + '">' + e.razon_social + '</option>';
     }).join("");
     loadContactos(document.getElementById("empresa_id").value);
+    aplicarListaEmpresa();
   }).catch(function (e) { crmToast(e.message, true); });
 
   function loadContactos(empresaId) {
@@ -255,6 +301,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   }
   document.getElementById("empresa_id").addEventListener("change", function () {
     loadContactos(this.value);
+    aplicarListaEmpresa();
   });
 
   crmApi("api/marcas.php").then(function (d) {
@@ -278,6 +325,11 @@ crm_layout_start('Cotizador', 'cotizador', $user);
     badge.textContent = "Cotización Nueva (Próximo Nº: " + folio + ")";
     badge.classList.add("badge-folio-new");
     badge.classList.remove("badge-folio-ok");
+  }).catch(function (e) { crmToast(e.message, true); });
+
+  crmApi("api/listas_precios.php").then(function (d) {
+    listasCache = d.listas || [];
+    aplicarListaEmpresa();
   }).catch(function (e) { crmToast(e.message, true); });
 
   crmApi("api/vendedores.php").then(function (d) {
@@ -418,6 +470,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         empresa_id: Number(document.getElementById("empresa_id").value || 0),
         contacto_id: Number(document.getElementById("contacto_id").value || 0),
         vendedor_id: Number(document.getElementById("vendedor_id").value || 0),
+        lista_precio_id: Number(document.getElementById("lista_precio_id").value || 0),
         estado: document.getElementById("estado").value,
         descuento: Number(document.getElementById("descuento").value || 0),
         moneda: document.getElementById("moneda").value,

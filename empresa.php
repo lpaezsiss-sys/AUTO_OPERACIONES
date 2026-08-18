@@ -45,6 +45,11 @@ crm_layout_start('Ficha empresa', 'empresas', $user);
                 <option value="inactiva">Inactiva</option>
             </select>
         </div>
+        <div class="col-md-6"><label class="form-label">Lista de precios</label>
+            <select class="form-select" name="lista_precio_id" id="selListaPrecio">
+                <option value="">(predeterminada del sistema)</option>
+            </select>
+        </div>
         <div class="col-12"><label class="form-label">Notas</label><textarea class="form-control" name="notas" rows="2"></textarea></div>
       </div>
       <div class="modal-footer"><button class="btn btn-primary" type="submit">Guardar</button></div>
@@ -66,7 +71,8 @@ function renderFicha(d) {
   html += '<div class="card card-soft p-4 mb-3"><h1 class="h4 page-title">'+e.razon_social+'</h1>';
   html += '<div class="text-secondary">'+e.rut+' · '+(e.industria||"")+' · '+(e.region||"")+'</div>';
   html += '<div class="mt-2">'+(e.direccion||"")+(e.comuna ? ' · '+e.comuna : '')+'</div>';
-  html += '<div class="mt-2">Origen: <strong>'+e.origen+'</strong> · Estado: <strong>'+e.estado+'</strong></div></div>';
+  html += '<div class="mt-2">Origen: <strong>'+e.origen+'</strong> · Estado: <strong>'+e.estado+'</strong></div>';
+  html += '<div class="mt-2">Lista de precios: <strong>'+(e.lista_precio_nombre || "Predeterminada del sistema")+'</strong></div></div>';
   html += '<div class="row g-3">';
   html += '<div class="col-lg-4"><div class="card card-soft p-3"><h2 class="h6">Contactos</h2>'+(d.contactos||[]).map(function (c) {
     return '<div class="border-bottom py-2"><strong>'+c.nombre+' '+(c.apellido||"")+'</strong><div class="small text-secondary">'+(c.cargo||"")+' · '+(c.telefono||c.whatsapp||c.email||"")+'</div></div>';
@@ -89,11 +95,16 @@ function loadFicha() {
     return d;
   }).catch(function (e) { crmToast(e.message, true); });
 }
-Promise.all([loadFicha(), crmApi("api/catalogos.php")]).then(function (arr) {
+Promise.all([loadFicha(), crmApi("api/catalogos.php"), crmApi("api/listas_precios.php")]).then(function (arr) {
   var c = arr[1] || {};
   fillSelect("selIndustria", c.industrias, "Seleccione");
   fillSelect("selRegion", c.regiones, "Seleccione");
   fillSelect("selOrigen", c.origenes);
+  var sel = document.getElementById("selListaPrecio");
+  sel.innerHTML = '<option value="">(predeterminada del sistema)</option>' + ((arr[2] && arr[2].listas) || []).map(function (l) {
+    var tag = Number(l.es_default) === 1 ? " · default" : "";
+    return '<option value="'+l.id+'">'+l.nombre+' ('+(Number(l.porcentaje_ajuste)>0?'+':'')+Number(l.porcentaje_ajuste).toFixed(2)+'%)'+tag+'</option>';
+  }).join("");
 });
 document.getElementById("btnEditar").addEventListener("click", function () {
   if (!fichaData) return;
@@ -102,6 +113,7 @@ document.getElementById("btnEditar").addEventListener("click", function () {
   ["rut","razon_social","nombre_fantasia","giro","industria","region","comuna","direccion","telefono","email","sitio_web","origen","estado","notas"].forEach(function (k) {
     if (form.elements[k]) form.elements[k].value = e[k] || "";
   });
+  if (form.elements.lista_precio_id) form.elements.lista_precio_id.value = e.lista_precio_id || "";
   bootstrap.Modal.getOrCreateInstance(document.getElementById("modalEmpresa")).show();
 });
 document.getElementById("formEmpresa").addEventListener("submit", function (ev) {

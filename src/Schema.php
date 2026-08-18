@@ -153,6 +153,7 @@ final class Schema
             $pdo->exec($sql);
         }
         Marcas::sembrarSiVacio($pdo);
+        self::ensureListasPrecios($pdo);
     }
 
     /**
@@ -195,6 +196,152 @@ final class Schema
         }
         $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
         $pdo->exec($driver === 'sqlite' ? $sqliteDdl : $mysqlDdl);
+    }
+
+    /**
+     * @param string $table
+     * @param string $index
+     * @return bool
+     */
+    private static function hasIndex(PDO $pdo, $table, $index)
+    {
+        $table = (string) $table;
+        $index = (string) $index;
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
+            $stmt = $pdo->query('PRAGMA index_list(' . $table . ')');
+            $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : array();
+            foreach ($rows as $row) {
+                if (isset($row['name']) && (string) $row['name'] === $index) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        $sql = 'SELECT COUNT(*) FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(array($table, $index));
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * @param string $table
+     * @param string $index
+     * @param string $ddl
+     * @return void
+     */
+    private static function ensureIndex(PDO $pdo, $table, $index, $ddl)
+    {
+        if (self::hasIndex($pdo, $table, $index)) {
+            return;
+        }
+        try {
+            $pdo->exec($ddl);
+        } catch (\PDOException $e) {
+            // Índice ya existente o motor sin IF NOT EXISTS.
+        }
+    }
+
+    /**
+     * Listas de precios, FK en empresas/cotizaciones e índices de historial.
+     *
+     * @param PDO $pdo
+     * @return void
+     */
+    private static function ensureListasPrecios(PDO $pdo)
+    {
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? 'sqlite' : 'mysql';
+        foreach (self::listasPreciosStatements($driver) as $sql) {
+            $pdo->exec($sql);
+        }
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_empresas',
+            'lista_precio_id',
+            'ALTER TABLE crm_empresas ADD COLUMN lista_precio_id INTEGER',
+            'ALTER TABLE crm_empresas ADD COLUMN lista_precio_id INT UNSIGNED NULL'
+        );
+        self::addColumnIfMissing(
+            $pdo,
+            'crm_cotizaciones',
+            'lista_precio_id',
+            'ALTER TABLE crm_cotizaciones ADD COLUMN lista_precio_id INTEGER',
+            'ALTER TABLE crm_cotizaciones ADD COLUMN lista_precio_id INT UNSIGNED NULL'
+        );
+        if ($driver === 'sqlite') {
+            self::ensureIndex(
+                $pdo,
+                'crm_cotizaciones',
+                'ix_crm_cot_empresa_id',
+                'CREATE INDEX IF NOT EXISTS ix_crm_cot_empresa_id ON crm_cotizaciones (empresa_id, id)'
+            );
+            self::ensureIndex(
+                $pdo,
+                'crm_cotizacion_items',
+                'ix_crm_cot_items_prod_cot',
+                'CREATE INDEX IF NOT EXISTS ix_crm_cot_items_prod_cot ON crm_cotizacion_items (producto_id, cotizacion_id)'
+            );
+            self::ensureIndex(
+                $pdo,
+                'crm_cotizacion_items',
+                'ix_crm_cot_items_prod',
+                'CREATE INDEX IF NOT EXISTS ix_crm_cot_items_prod ON crm_cotizacion_items (producto_id)'
+            );
+            self::ensureIndex(
+                $pdo,
+                'crm_cotizacion_items',
+                'ix_crm_cot_items_cot',
+                'CREATE INDEX IF NOT EXISTS ix_crm_cot_items_cot ON crm_cotizacion_items (cotizacion_id)'
+            );
+        } else {
+            self::ensureIndex(
+                $pdo,
+                'crm_cotizaciones',
+                'ix_crm_cot_empresa_id',
+                'CREATE INDEX ix_crm_cot_empresa_id ON crm_cotizaciones (empresa_id, id)'
+            );
+            self::ensureIndex(
+                $pdo,
+                'crm_cotizacion_items',
+                'ix_crm_cot_items_prod_cot',
+                'CREATE INDEX ix_crm_cot_items_prod_cot ON crm_cotizacion_items (producto_id, cotizacion_id)'
+            );
+        }
+        ListasPrecios::sembrarSiVacio($pdo);
+    }
+
+    /**
+     * @param string $driver
+     * @return array
+     */
+    private static function listasPreciosStatements($driver)
+    {
+        if ($driver === 'sqlite') {
+            return array(
+                "CREATE TABLE IF NOT EXISTS crm_listas_precios (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nombre TEXT NOT NULL,
+                    porcentaje_ajuste REAL NOT NULL DEFAULT 0,
+                    es_default INTEGER NOT NULL DEFAULT 0,
+                    estado TEXT NOT NULL DEFAULT 'activa',
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )",
+            );
+        }
+        return array(
+            "CREATE TABLE IF NOT EXISTS crm_listas_precios (
+                id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                nombre VARCHAR(160) NOT NULL,
+                porcentaje_ajuste DECIMAL(8,2) NOT NULL DEFAULT 0,
+                es_default TINYINT(1) NOT NULL DEFAULT 0,
+                estado VARCHAR(20) NOT NULL DEFAULT 'activa',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY ix_crm_listas_estado (estado, es_default)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        );
     }
 
     /**
@@ -485,6 +632,7 @@ final class Schema
                 PRIMARY KEY (id),
                 UNIQUE KEY uq_crm_cotizaciones_folio (folio),
                 KEY ix_crm_cot_empresa (empresa_id),
+                KEY ix_crm_cot_empresa_id (empresa_id, id),
                 CONSTRAINT fk_crm_cot_empresa FOREIGN KEY (empresa_id) REFERENCES crm_empresas (id) ON DELETE CASCADE,
                 CONSTRAINT fk_crm_cot_contacto FOREIGN KEY (contacto_id) REFERENCES crm_contactos (id) ON DELETE SET NULL,
                 CONSTRAINT fk_crm_cot_opp FOREIGN KEY (oportunidad_id) REFERENCES crm_oportunidades (id) ON DELETE SET NULL,
@@ -512,6 +660,7 @@ final class Schema
                 PRIMARY KEY (id),
                 KEY ix_crm_cot_items_cot (cotizacion_id),
                 KEY ix_crm_cot_items_prod (producto_id),
+                KEY ix_crm_cot_items_prod_cot (producto_id, cotizacion_id),
                 CONSTRAINT fk_crm_cot_items_cot FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones (id) ON DELETE CASCADE,
                 CONSTRAINT fk_crm_cot_items_producto FOREIGN KEY (producto_id) REFERENCES productos (id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
@@ -835,6 +984,10 @@ final class Schema
                 FOREIGN KEY (cotizacion_id) REFERENCES crm_cotizaciones(id) ON DELETE SET NULL,
                 FOREIGN KEY (usuario_id) REFERENCES crm_usuarios(id) ON DELETE SET NULL
             )",
+            "CREATE INDEX IF NOT EXISTS ix_crm_cot_empresa_id ON crm_cotizaciones (empresa_id, id)",
+            "CREATE INDEX IF NOT EXISTS ix_crm_cot_items_prod ON crm_cotizacion_items (producto_id)",
+            "CREATE INDEX IF NOT EXISTS ix_crm_cot_items_cot ON crm_cotizacion_items (cotizacion_id)",
+            "CREATE INDEX IF NOT EXISTS ix_crm_cot_items_prod_cot ON crm_cotizacion_items (producto_id, cotizacion_id)",
         ];
     }
 

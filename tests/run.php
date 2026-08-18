@@ -977,5 +977,144 @@ try {
 }
 assert_true($loginInact, 'Usuario inactivo no inicia sesión');
 
+$login = \Crm\Auth::login('ivan.p@example.net', 'Lpaezsis.2026');
+$colsEmp = $pdo->query('PRAGMA table_info(crm_empresas)')->fetchAll(PDO::FETCH_ASSOC);
+$colsCot = $pdo->query('PRAGMA table_info(crm_cotizaciones)')->fetchAll(PDO::FETCH_ASSOC);
+$nombresEmp = array();
+foreach ($colsEmp as $c) {
+    $nombresEmp[] = $c['name'];
+}
+$nombresCot = array();
+foreach ($colsCot as $c) {
+    $nombresCot[] = $c['name'];
+}
+assert_true(in_array('lista_precio_id', $nombresEmp, true), 'Columna lista_precio_id en empresas');
+assert_true(in_array('lista_precio_id', $nombresCot, true), 'Columna lista_precio_id en cotizaciones');
+$idxCot = $pdo->query('PRAGMA index_list(crm_cotizaciones)')->fetchAll(PDO::FETCH_ASSOC);
+$idxItems = $pdo->query('PRAGMA index_list(crm_cotizacion_items)')->fetchAll(PDO::FETCH_ASSOC);
+$idxCotN = array();
+foreach ($idxCot as $i) {
+    $idxCotN[] = $i['name'];
+}
+$idxItemN = array();
+foreach ($idxItems as $i) {
+    $idxItemN[] = $i['name'];
+}
+assert_true(in_array('ix_crm_cot_empresa_id', $idxCotN, true), 'Índice compuesto empresa_id,id');
+assert_true(in_array('ix_crm_cot_items_prod_cot', $idxItemN, true), 'Índice compuesto producto_id,cotizacion_id');
+
+$listasSeed = \Crm\ListasPrecios::index();
+assert_true(count($listasSeed['listas']) >= 1, 'Seed de lista de precios');
+$defLista = \Crm\ListasPrecios::predeterminada();
+assert_true(is_array($defLista) && (int) $defLista['es_default'] === 1, 'Hay lista predeterminada');
+
+assert_true(\Crm\Precios::aplicarAjuste(1000, 5) === 1050.0, 'Ajuste +5%');
+assert_true(\Crm\Precios::aplicarAjuste(1000, -10) === 900.0, 'Ajuste -10%');
+
+$listaDesc = \Crm\ListasPrecios::guardar(array(
+    'nombre' => 'Mayorista -10',
+    'porcentaje_ajuste' => -10,
+    'es_default' => 0,
+    'estado' => 'activa',
+));
+$listaDescId = (int) $listaDesc['lista']['id'];
+assert_true($listaDescId > 0, 'Alta de lista de precios');
+
+$otraDefault = \Crm\ListasPrecios::guardar(array(
+    'nombre' => 'Otra default',
+    'porcentaje_ajuste' => 0,
+    'es_default' => 1,
+    'estado' => 'activa',
+));
+$nDefault = (int) $pdo->query('SELECT COUNT(*) FROM crm_listas_precios WHERE es_default = 1')->fetchColumn();
+assert_true($nDefault === 1, 'Solo una lista predeterminada');
+assert_true((int) $otraDefault['lista']['es_default'] === 1, 'Nueva lista queda como default');
+
+$empLista = \Crm\Empresas::store(array(
+    'rut' => '76.222.333-3',
+    'razon_social' => 'Cliente Lista Precios SpA',
+    'industria' => 'Agroindustria',
+    'region' => 'Maule',
+    'origen' => 'web',
+    'estado' => 'activa',
+    'lista_precio_id' => $listaDescId,
+), $login);
+$empListaId = (int) $empLista['empresa']['id'];
+assert_true((int) $empLista['empresa']['lista_precio_id'] === $listaDescId, 'Empresa guarda lista_precio_id');
+
+$prodLista = $pdo->query("SELECT * FROM productos WHERE codigo = '13451' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$prodAlt = $pdo->query("SELECT * FROM productos WHERE codigo = '13514' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$base13451 = (float) $prodLista['precio_unitario'];
+$stockListaAntes = (float) $prodLista['stock'];
+$resLista = \Crm\Precios::resolver($empListaId, (int) $prodLista['id'], $listaDescId);
+assert_true($resLista['origen'] === 'lista', 'Sin historial usa lista de precios');
+assert_true(abs($resLista['precio_unitario'] - \Crm\Precios::aplicarAjuste($base13451, -10)) < 0.001, 'Precio con -10% sobre base');
+
+$cotHist = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empListaId,
+    'lista_precio_id' => $listaDescId,
+    'estado' => 'enviada',
+    'descuento' => 0,
+    'items' => array(
+        array(
+            'producto_id' => (int) $prodLista['id'],
+            'cantidad' => 1,
+            'precio_unitario' => 55555,
+        ),
+    ),
+), $login);
+assert_true((int) $cotHist['cotizacion']['lista_precio_id'] === $listaDescId, 'Cotización guarda lista_precio_id');
+assert_true((float) $cotHist['cotizacion']['items'][0]['precio_unitario'] === 55555.0, 'Precio histórico persistido');
+
+$resHist = \Crm\Precios::resolver($empListaId, (int) $prodLista['id'], $listaDescId);
+assert_true($resHist['origen'] === 'historial', 'Prioridad 1 historial del cliente');
+assert_true((float) $resHist['precio_unitario'] === 55555.0, 'Precio histórico precargado');
+assert_true(strpos((string) $resHist['badge'], 'Último precio cliente') !== false, 'Badge de último precio');
+
+$resAlt = \Crm\Precios::resolver($empListaId, (int) $prodAlt['id'], $listaDescId);
+assert_true($resAlt['origen'] === 'lista', 'SKU sin historial sigue en lista');
+
+\Crm\Cotizaciones::store(array(
+    'empresa_id' => $empListaId,
+    'estado' => 'rechazada',
+    'descuento' => 0,
+    'items' => array(
+        array(
+            'producto_id' => (int) $prodLista['id'],
+            'cantidad' => 1,
+            'precio_unitario' => 1,
+        ),
+    ),
+), $login);
+$resSkip = \Crm\Precios::resolver($empListaId, (int) $prodLista['id'], $listaDescId);
+assert_true((float) $resSkip['precio_unitario'] === 55555.0, 'Rechazada no pisa el último precio');
+
+$cotPedPrecio = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empListaId,
+    'estado' => 'borrador',
+    'descuento' => 0,
+    'items' => array(
+        array(
+            'tipo_item' => 'a_pedido',
+            'descripcion' => 'Carcasa sin ajuste automático',
+            'cantidad' => 1,
+            'precio_unitario' => 220000,
+            'costo_unitario' => 100000,
+        ),
+    ),
+), $login);
+assert_true((float) $cotPedPrecio['cotizacion']['items'][0]['precio_unitario'] === 220000.0, 'A pedido no aplica lista');
+
+$stockListaDespues = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '13451'")->fetchColumn();
+$precioInv = (float) $pdo->query("SELECT precio_unitario FROM productos WHERE codigo = '13451'")->fetchColumn();
+assert_true($stockListaAntes === $stockListaDespues, 'Lista de precios no altera stock');
+assert_true($precioInv === $base13451, 'Lista de precios no altera precio de inventario');
+
+$layoutSrc2 = (string) file_get_contents($root . '/includes/layout.php');
+assert_true(strpos($layoutSrc2, 'listas_precios.php') !== false, 'Menú incluye Listas de precios');
+$cotizadorSrc2 = (string) file_get_contents($root . '/cotizador.php');
+assert_true(strpos($cotizadorSrc2, 'lista_precio_id') !== false, 'Cotizador selector de lista');
+assert_true(strpos($cotizadorSrc2, 'api/precios.php') !== false, 'Cotizador consulta jerarquía de precios');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

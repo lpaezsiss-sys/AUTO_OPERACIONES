@@ -242,4 +242,16 @@ CREATE TABLE IF NOT EXISTS `crm_comisiones` (
     FOREIGN KEY (`vendedor_id`) REFERENCES `crm_vendedores` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `crm_listas_precios` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `nombre` VARCHAR(160) NOT NULL,
+  `porcentaje_ajuste` DECIMAL(8,2) NOT NULL DEFAULT 0,
+  `es_default` TINYINT(1) NOT NULL DEFAULT 0,
+  `estado` VARCHAR(20) NOT NULL DEFAULT 'activa',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_crm_listas_estado` (`estado`, `es_default`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;
