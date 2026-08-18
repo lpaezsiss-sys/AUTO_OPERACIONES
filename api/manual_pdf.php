@@ -25,9 +25,13 @@ try {
     http_response_code((int) $e->status);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(array('ok' => false, 'error' => $e->getMessage()));
-} catch (Exception $e) {
+} catch (\Throwable $e) {
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(array('ok' => false, 'error' => 'No se pudo generar el PDF del manual'));
+    $payload = array('ok' => false, 'error' => 'No se pudo generar el PDF del manual');
+    if (!crm_is_production()) {
+        $payload['detail'] = $e->getMessage();
+    }
+    echo json_encode($payload);
 }
 exit;

@@ -42,6 +42,9 @@ final class Manual
      */
     public static function generarPdf()
     {
+        if (!extension_loaded('gd')) {
+            Http::fail('El PDF del manual requiere la extensión PHP GD', 500);
+        }
         self::cargarDompdf();
         $cuerpo = self::html(true);
         $root = dirname(__DIR__);
