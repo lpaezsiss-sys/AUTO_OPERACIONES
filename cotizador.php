@@ -146,6 +146,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   var sug = document.getElementById("sugerencias");
   var empresasCache = [];
   var listasCache = [];
+  var marcasCatalogo = [];
 
   function defaultListaId() {
     var d = 0;

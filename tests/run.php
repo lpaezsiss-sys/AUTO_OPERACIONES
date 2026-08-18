@@ -1115,6 +1115,7 @@ assert_true(strpos($layoutSrc2, 'listas_precios.php') !== false, 'Menú incluye 
 $cotizadorSrc2 = (string) file_get_contents($root . '/cotizador.php');
 assert_true(strpos($cotizadorSrc2, 'lista_precio_id') !== false, 'Cotizador selector de lista');
 assert_true(strpos($cotizadorSrc2, 'api/precios.php') !== false, 'Cotizador consulta jerarquía de precios');
+assert_true(strpos($cotizadorSrc2, 'var marcasCatalogo') !== false, 'Cotizador declara marcasCatalogo');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
