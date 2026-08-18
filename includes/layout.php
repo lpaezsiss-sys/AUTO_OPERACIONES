@@ -51,6 +51,7 @@ function crm_layout_start($title, $page, array $user)
             <a class="nav-link<?php echo $page === 'productos' ? ' active' : ''; ?>" href="productos.php">Inventario</a>
             <a class="nav-link<?php echo $page === 'configuracion' ? ' active' : ''; ?>" href="configuracion.php">Empresa</a>
             <a class="nav-link<?php echo $page === 'marcas' ? ' active' : ''; ?>" href="marcas.php">Marcas</a>
+            <a class="nav-link<?php echo $page === 'manual' ? ' active' : ''; ?>" href="manual.php">Manual</a>
         </nav>
         <div class="sidebar-user">
             <div class="small text-uppercase opacity-75">Sesión</div>

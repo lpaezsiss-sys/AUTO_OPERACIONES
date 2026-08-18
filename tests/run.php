@@ -1117,5 +1117,23 @@ assert_true(strpos($cotizadorSrc2, 'lista_precio_id') !== false, 'Cotizador sele
 assert_true(strpos($cotizadorSrc2, 'api/precios.php') !== false, 'Cotizador consulta jerarquía de precios');
 assert_true(strpos($cotizadorSrc2, 'var marcasCatalogo') !== false, 'Cotizador declara marcasCatalogo');
 
+assert_true(is_file($root . '/MANUAL_USUARIO.md'), 'Existe MANUAL_USUARIO.md');
+$manualMd = (string) file_get_contents($root . '/MANUAL_USUARIO.md');
+assert_true(strpos($manualMd, '```mermaid') !== false, 'Manual incluye diagrama Mermaid');
+assert_true(strpos($manualMd, 'artifacts/cotizador_ultimo_precio_cliente.webp') !== false, 'Manual referencia badge de último precio');
+assert_true(strpos($manualMd, 'artifacts/listas_precios_listado.webp') !== false, 'Manual referencia listas de precios');
+assert_true(strpos($manualMd, 'artifacts/usuarios_listado.webp') !== false, 'Manual referencia usuarios');
+assert_true(strpos($manualMd, '[0:00') !== false && strpos($manualMd, 'inversionistas') !== false, 'Manual incluye guion para inversionistas');
+$layoutSrc3 = (string) file_get_contents($root . '/includes/layout.php');
+assert_true(strpos($layoutSrc3, 'manual.php') !== false, 'Menú incluye Manual');
+$htmlManual = \Crm\Manual::html(false);
+assert_true(strpos($htmlManual, 'class="mermaid"') !== false, 'HTML del manual conserva Mermaid');
+assert_true(strpos($htmlManual, 'manual-img') !== false, 'HTML del manual incluye imágenes demo');
+$htmlPdf = \Crm\Manual::html(true);
+assert_true(strpos($htmlPdf, 'flow-step') !== false, 'PDF del manual usa diagrama estático');
+$pdfManual = \Crm\Manual::generarPdf();
+assert_true(strpos($pdfManual, '%PDF') === 0, 'PDF del manual comienza con %PDF');
+assert_true(strlen($pdfManual) > 20000, 'PDF del manual tiene contenido');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

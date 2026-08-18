@@ -27,7 +27,9 @@ php scripts/test_local.php    # PASS / FAIL
 ./server.sh                   # http://localhost:8000
 ```
 
-Checklist manual antes de producción: `CHECKLIST_LOCAL.md`.
+Manual de usuario (local): `MANUAL_USUARIO.md` y vista `manual.php` (botón **Descargar Manual en PDF**).
+
+Checklist de despliegue: `CHECKLIST_LOCAL.md`.
 
 Usuario seed (solo entorno local / primera instalación):
 

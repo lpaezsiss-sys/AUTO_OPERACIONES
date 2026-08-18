@@ -191,6 +191,15 @@ body {
   border-left: 3px solid var(--yellow);
 }
 
+.manual-doc h1 { font-size: 1.65rem; color: var(--navy); }
+.manual-doc h2 { font-size: 1.25rem; color: var(--navy); border-bottom: 2px solid var(--yellow); padding-bottom: 0.25rem; margin-top: 1.5rem; }
+.manual-doc h3 { font-size: 1.05rem; color: var(--navy-2); margin-top: 1.15rem; }
+.manual-doc img.manual-img { max-width: 100%; height: auto; border: 1px solid #d5dee8; border-radius: 0.4rem; margin: 0.75rem 0 1rem; }
+.manual-doc table.manual-table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1rem; font-size: 0.9rem; }
+.manual-doc table.manual-table th { background: var(--navy); color: #fff; text-align: left; padding: 0.4rem 0.55rem; }
+.manual-doc table.manual-table td { border: 1px solid #d5dee8; padding: 0.4rem 0.55rem; vertical-align: top; }
+.manual-doc .mermaid { background: #fff; padding: 0.75rem; margin: 1rem 0; overflow-x: auto; }
+
 @media (max-width: 992px) {
   .app-shell { display: block; }
   .app-sidebar { width: 100%; height: auto; position: relative; }
