@@ -39,6 +39,7 @@ function crm_layout_start($title, $page, array $user)
             <a class="nav-link<?php echo $page === 'oportunidades' ? ' active' : ''; ?>" href="oportunidades.php">Oportunidades</a>
             <a class="nav-link<?php echo $page === 'cotizaciones' ? ' active' : ''; ?>" href="cotizaciones.php">Cotizaciones</a>
             <a class="nav-link<?php echo $page === 'cotizador' ? ' active' : ''; ?>" href="cotizador.php">Cotizador</a>
+            <a class="nav-link<?php echo $page === 'manual' ? ' active' : ''; ?>" href="manual.php">Manual</a>
             <a class="nav-link<?php echo $page === 'vendedores' ? ' active' : ''; ?>" href="vendedores.php">Vendedores</a>
             <?php if ((string) $user['rol'] === 'admin') { ?>
             <a class="nav-link<?php echo $page === 'usuarios' ? ' active' : ''; ?>" href="usuarios.php">Usuarios</a>
@@ -51,7 +52,6 @@ function crm_layout_start($title, $page, array $user)
             <a class="nav-link<?php echo $page === 'productos' ? ' active' : ''; ?>" href="productos.php">Inventario</a>
             <a class="nav-link<?php echo $page === 'configuracion' ? ' active' : ''; ?>" href="configuracion.php">Empresa</a>
             <a class="nav-link<?php echo $page === 'marcas' ? ' active' : ''; ?>" href="marcas.php">Marcas</a>
-            <a class="nav-link<?php echo $page === 'manual' ? ' active' : ''; ?>" href="manual.php">Manual</a>
         </nav>
         <div class="sidebar-user">
             <div class="small text-uppercase opacity-75">Sesión</div>
