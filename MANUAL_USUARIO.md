@@ -175,8 +175,8 @@ El ranking muestra **top por marca**. En sugerencias de alta, el botón **Conver
 
 ## 5. Cómo descargar este manual en PDF
 
-Con sesión iniciada: menú **Manual** → botón **Descargar Manual en PDF**.  
-El archivo lo genera el mismo motor Dompdf de las cotizaciones (`api/manual_pdf.php`).
+- **GitHub (sin login):** [docs/CRM_LPAEZsis_Manual_Usuario.pdf](https://github.com/lpaezsiss-sys/AUTO_OPERACIONES/raw/cursor/crm-industrial-omnicanal-fa62/docs/CRM_LPAEZsis_Manual_Usuario.pdf)
+- **En la app:** con sesión, menú **Manual** → **Descargar Manual en PDF** (`api/manual_pdf.php`, Dompdf).
 
 ---
 

@@ -27,7 +27,9 @@ php scripts/test_local.php    # PASS / FAIL
 ./server.sh                   # http://localhost:8000
 ```
 
-Manual de usuario (local): `MANUAL_USUARIO.md` y vista `manual.php` (botón **Descargar Manual en PDF**).
+Manual de usuario: `MANUAL_USUARIO.md` y vista `manual.php` (botón **Descargar Manual en PDF**).
+
+PDF en GitHub: [`docs/CRM_LPAEZsis_Manual_Usuario.pdf`](https://github.com/lpaezsiss-sys/AUTO_OPERACIONES/raw/cursor/crm-industrial-omnicanal-fa62/docs/CRM_LPAEZsis_Manual_Usuario.pdf).
 
 Checklist de despliegue: `CHECKLIST_LOCAL.md`.
 

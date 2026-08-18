@@ -334,6 +334,7 @@ final class Respaldo
             '.idea' => true,
             '.vscode' => true,
             '.cursor' => true,
+            'docs' => true,
         );
         if (isset($skipTop[$top])) {
             return true;
