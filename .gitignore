@@ -20,3 +20,4 @@ uploads/productos/*
 !uploads/productos/.htaccess
 downloads/*.zip
 sql/respaldo_completo_local.sql
+lib/pdf/deps/dompdf/dompdf/lib/fonts/*.afm.json

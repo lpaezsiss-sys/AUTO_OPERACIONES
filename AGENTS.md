@@ -5,3 +5,4 @@
 - Inventario: solo `SELECT` sobre `productos`. No duplicar lógica de stock.
 - API en `/api/` con header JSON. Configuración en `/config/db.php`.
 - Transacciones + `rollBack()` en escrituras multi-tabla.
+- Manual de usuario (`MANUAL_USUARIO.md`, `manual.php`, `api/manual_pdf.php`, `docs/*.pdf`): **no desplegar a producción** hasta autorización explícita.
