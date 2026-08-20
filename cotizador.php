@@ -176,8 +176,16 @@ crm_layout_start('Cotizador', 'cotizador', $user);
     fillListasSelect(listaId);
   }
 
+  function parseNum(v) {
+    if (typeof v === "number") {
+      return isFinite(v) ? v : 0;
+    }
+    var n = parseFloat(String(v == null ? "0" : v).replace(",", "."));
+    return isFinite(n) ? n : 0;
+  }
+
   function lineSub(it) {
-    return Math.round(Number(it.cantidad || 0) * Number(it.precio_unitario || 0) * (1 - Number(it.descuento_pct || 0) / 100));
+    return Math.round(parseNum(it.cantidad) * parseNum(it.precio_unitario) * (1 - parseNum(it.descuento_pct) / 100));
   }
 
   function tipoBadge(it) {
@@ -224,7 +232,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   function render() {
     var tb = document.querySelector("#tablaItems tbody");
     tb.innerHTML = items.map(function (it, i) {
-      var warn = !esLibre(it) && it.stock != null && Number(it.stock) < Number(it.cantidad);
+      var warn = !esLibre(it) && it.stock != null && parseNum(it.stock) < parseNum(it.cantidad);
       var libre = esLibre(it);
       var pedido = it.tipo_item === "a_pedido";
       return '<tr>' +
@@ -233,7 +241,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         '<td>' + (libre ? '<input class="form-control form-control-sm" value="' + crmEsc(it.descripcion || "") + '" data-i="' + i + '" data-k="descripcion">' : crmEsc(it.descripcion || "")) + '</td>' +
         '<td>' + marcaCell(it, i) + '</td>' +
         '<td><span class="badge badge-stock ' + (warn ? "low" : "") + '">' + (libre || it.stock == null ? "—" : it.stock) + '</span></td>' +
-        '<td><input class="form-control form-control-sm" type="number" min="1" value="' + it.cantidad + '" data-i="' + i + '" data-k="cantidad"></td>' +
+        '<td><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" value="' + it.cantidad + '" data-i="' + i + '" data-k="cantidad"></td>' +
         '<td><input class="form-control form-control-sm" type="number" min="0" value="' + it.precio_unitario + '" data-i="' + i + '" data-k="precio_unitario"></td>' +
         '<td>' + (pedido ? '<input class="form-control form-control-sm" type="number" min="0" value="' + (it.costo_unitario || 0) + '" data-i="' + i + '" data-k="costo_unitario">' : "—") + '</td>' +
         '<td><input class="form-control form-control-sm" type="number" min="0" max="100" value="' + it.descuento_pct + '" data-i="' + i + '" data-k="descuento_pct"></td>' +
@@ -246,7 +254,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
 
   function updateTotales() {
     var sub = items.reduce(function (s, it) { return s + lineSub(it); }, 0);
-    var desc = Number(document.getElementById("descuento").value || 0);
+    var desc = parseNum(document.getElementById("descuento").value);
     var neto = Math.max(0, sub - desc);
     var iva = Math.round(neto * 0.19);
     document.getElementById("totales").innerHTML =
@@ -383,6 +391,9 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       return;
     }
     items[i][k] = ev.target.value;
+    if (k === "cantidad" || k === "precio_unitario" || k === "costo_unitario" || k === "descuento_pct") {
+      items[i][k] = parseNum(ev.target.value);
+    }
     var row = ev.target.closest("tr");
     if (k === "marca_id") {
       var sel = ev.target;

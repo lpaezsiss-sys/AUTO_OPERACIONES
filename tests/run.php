@@ -1144,6 +1144,8 @@ $posNotas = strpos($cotizadorSrc2, 'id="notas"');
 $posMarcasPdf = strpos($cotizadorSrc2, 'id="marcasBox"');
 $posGuardar = strpos($cotizadorSrc2, 'id="btnGuardar"');
 assert_true($posNotas !== false && $posMarcasPdf !== false && $posGuardar !== false && $posNotas < $posMarcasPdf && $posMarcasPdf < $posGuardar, 'Marcas PDF van entre notas y guardar');
+assert_true(strpos($cotizadorSrc2, 'step="0.01"') !== false, 'Cotizador cantidad admite decimales');
+assert_true(strpos($cotizadorSrc2, 'function parseNum') !== false && strpos($cotizadorSrc2, 'replace(",", ".")') !== false, 'Cotizador parsea coma y punto');
 
 assert_true(is_file($root . '/MANUAL_USUARIO.md'), 'Existe MANUAL_USUARIO.md');
 $manualMd = (string) file_get_contents($root . '/MANUAL_USUARIO.md');
