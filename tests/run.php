@@ -1234,6 +1234,8 @@ $apiCotSrc = (string) file_get_contents($root . '/api/cotizaciones.php');
 assert_true(strpos($apiCotSrc, "action === 'folio'") !== false, 'PUT cotizaciones action=folio');
 $uiCot = (string) file_get_contents($root . '/cotizacion.php');
 assert_true(strpos($uiCot, 'btnCambiarFolio') !== false, 'UI Cambiar folio en ficha');
+assert_true(strpos($uiCot, 'step="0.01"') !== false, 'Ficha cantidad admite decimales');
+assert_true(strpos($uiCot, 'function parseNum') !== false && strpos($uiCot, 'replace(",", ".")') !== false, 'Ficha parsea coma y punto');
 $uiList = (string) file_get_contents($root . '/cotizaciones.php');
 assert_true(strpos($uiList, 'data-folio') !== false, 'UI Cambiar folio en listado');
 

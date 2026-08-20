@@ -127,8 +127,15 @@ function aplicarListaEmpresa() {
   var listaId = emp && emp.lista_precio_id ? emp.lista_precio_id : defaultListaId();
   fillListasSelect(listaId);
 }
+function parseNum(v) {
+  if (typeof v === "number") {
+    return isFinite(v) ? v : 0;
+  }
+  var n = parseFloat(String(v == null ? "0" : v).replace(",", "."));
+  return isFinite(n) ? n : 0;
+}
 function lineSub(it) {
-  return Math.round(Number(it.cantidad||0) * Number(it.precio_unitario||0) * (1 - Number(it.descuento_pct||0)/100));
+  return Math.round(parseNum(it.cantidad) * parseNum(it.precio_unitario) * (1 - parseNum(it.descuento_pct) / 100));
 }
 function tipoLabel(it) {
   if (it.tipo_item === "servicio") return "Servicio";
@@ -166,16 +173,16 @@ function extraRow(it, i) {
 function renderItems() {
   var tb = document.querySelector("#items tbody");
   tb.innerHTML = items.map(function (it, i) {
-    var warn = !esLibre(it) && it.stock_actual != null && Number(it.stock_actual) < Number(it.cantidad);
+    var warn = !esLibre(it) && it.stock_actual != null && parseNum(it.stock_actual) < parseNum(it.cantidad);
     var libre = esLibre(it);
     var pedido = it.tipo_item === "a_pedido";
-    return '<tr><td>'+tipoLabel(it)+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+crmEsc(it.codigo||"")+'">':crmEsc(it.codigo||""))+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+crmEsc(it.descripcion||"")+'">':crmEsc(it.descripcion||""))+'</td><td>'+marcaCell(it,i)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(libre||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="number" min="1" value="'+it.cantidad+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="number" min="0" value="'+it.precio_unitario+'"></td><td>'+(pedido?'<input data-i="'+i+'" data-k="costo_unitario" class="form-control form-control-sm" type="number" min="0" value="'+(it.costo_unitario||0)+'">':'—')+'</td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="number" min="0" max="100" value="'+it.descuento_pct+'"></td><td class="text-end line-sub">'+crmClp(lineSub(it))+'</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>'+extraRow(it,i);
+    return '<tr><td>'+tipoLabel(it)+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+crmEsc(it.codigo||"")+'">':crmEsc(it.codigo||""))+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+crmEsc(it.descripcion||"")+'">':crmEsc(it.descripcion||""))+'</td><td>'+marcaCell(it,i)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(libre||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="number" min="0.01" step="0.01" value="'+it.cantidad+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="number" min="0" value="'+it.precio_unitario+'"></td><td>'+(pedido?'<input data-i="'+i+'" data-k="costo_unitario" class="form-control form-control-sm" type="number" min="0" value="'+(it.costo_unitario||0)+'">':'—')+'</td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="number" min="0" max="100" value="'+it.descuento_pct+'"></td><td class="text-end line-sub">'+crmClp(lineSub(it))+'</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>'+extraRow(it,i);
   }).join("");
   updateTotalesCot();
 }
 function updateTotalesCot() {
   var sub = items.reduce(function (s, it) { return s + lineSub(it); }, 0);
-  var desc = Number(document.querySelector('[name=descuento]').value || 0);
+  var desc = parseNum(document.querySelector('[name=descuento]').value);
   var neto = Math.max(0, sub - desc);
   var iva = Math.round(neto * 0.19);
   document.getElementById("totales").innerHTML = '<div>Subtotal '+crmClp(sub)+'</div><div>IVA 19% '+crmClp(iva)+'</div><div class="fw-bold">Total '+crmClp(neto+iva)+'</div>';
@@ -303,6 +310,9 @@ document.querySelector("#items tbody").addEventListener("input", function (ev) {
   var k = ev.target.getAttribute("data-k");
   if (i == null) return;
   items[i][k] = ev.target.value;
+  if (k === "cantidad" || k === "precio_unitario" || k === "costo_unitario" || k === "descuento_pct") {
+    items[i][k] = parseNum(ev.target.value);
+  }
   var row = ev.target.closest("tr");
   if (k === "marca_id") {
     items[i].marca_id = Number(ev.target.value || 0);
