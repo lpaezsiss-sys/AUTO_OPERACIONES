@@ -154,6 +154,7 @@ final class Schema
         }
         Marcas::sembrarSiVacio($pdo);
         self::ensureListasPrecios($pdo);
+        self::ensureSecuenciaCotizaciones($pdo);
     }
 
     /**
@@ -308,6 +309,63 @@ final class Schema
             );
         }
         ListasPrecios::sembrarSiVacio($pdo);
+    }
+
+    /**
+     * Piso del folio automático COT (354). No usa AUTO_INCREMENT del id.
+     * Folios menores quedan libres si no hay colisión (UNIQUE folio).
+     *
+     * @param PDO $pdo
+     * @return void
+     */
+    private static function ensureSecuenciaCotizaciones(PDO $pdo)
+    {
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? 'sqlite' : 'mysql';
+        if ($driver === 'sqlite') {
+            $pdo->exec(
+                "CREATE TABLE IF NOT EXISTS crm_secuencias (
+                    codigo TEXT NOT NULL PRIMARY KEY,
+                    prefijo TEXT NOT NULL,
+                    siguiente INTEGER NOT NULL,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )"
+            );
+            $pdo->exec(
+                "INSERT OR IGNORE INTO crm_secuencias (codigo, prefijo, siguiente, updated_at)
+                 VALUES ('COT', 'COT', 354, CURRENT_TIMESTAMP)"
+            );
+            $pdo->exec(
+                "UPDATE crm_secuencias SET siguiente = 354, updated_at = CURRENT_TIMESTAMP
+                 WHERE codigo = 'COT' AND siguiente < 354"
+            );
+            self::ensureIndex(
+                $pdo,
+                'crm_cotizaciones',
+                'uq_crm_cotizaciones_folio',
+                'CREATE UNIQUE INDEX IF NOT EXISTS uq_crm_cotizaciones_folio ON crm_cotizaciones (folio)'
+            );
+            return;
+        }
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS crm_secuencias (
+                codigo VARCHAR(16) NOT NULL,
+                prefijo VARCHAR(16) NOT NULL,
+                siguiente INT UNSIGNED NOT NULL,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (codigo)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+        $pdo->exec(
+            "INSERT INTO crm_secuencias (codigo, prefijo, siguiente)
+             VALUES ('COT', 'COT', 354)
+             ON DUPLICATE KEY UPDATE siguiente = GREATEST(siguiente, 354)"
+        );
+        self::ensureIndex(
+            $pdo,
+            'crm_cotizaciones',
+            'uq_crm_cotizaciones_folio',
+            'ALTER TABLE crm_cotizaciones ADD UNIQUE INDEX uq_crm_cotizaciones_folio (folio)'
+        );
     }
 
     /**

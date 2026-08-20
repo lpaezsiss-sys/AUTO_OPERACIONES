@@ -242,6 +242,18 @@ CREATE TABLE IF NOT EXISTS `crm_comisiones` (
     FOREIGN KEY (`vendedor_id`) REFERENCES `crm_vendedores` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `crm_secuencias` (
+  `codigo` VARCHAR(16) NOT NULL,
+  `prefijo` VARCHAR(16) NOT NULL,
+  `siguiente` INT UNSIGNED NOT NULL,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`codigo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `crm_secuencias` (`codigo`, `prefijo`, `siguiente`)
+VALUES ('COT', 'COT', 354)
+ON DUPLICATE KEY UPDATE `siguiente` = GREATEST(`siguiente`, 354);
+
 CREATE TABLE IF NOT EXISTS `crm_listas_precios` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `nombre` VARCHAR(160) NOT NULL,

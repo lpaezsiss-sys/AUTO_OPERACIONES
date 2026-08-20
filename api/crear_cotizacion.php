@@ -174,18 +174,7 @@ function crm_guardar_cotizacion(array $user)
     $pdo->beginTransaction();
     try {
         $comercial = \Crm\Cotizaciones::condicionesComerciales($data);
-        $year = date('Y');
-        $likeFolio = 'COT-' . $year . '-%';
-        $last = $pdo->prepare(
-            'SELECT folio FROM crm_cotizaciones WHERE folio LIKE ? ORDER BY folio DESC LIMIT 1'
-        );
-        $last->execute(array($likeFolio));
-        $prev = $last->fetchColumn();
-        $n = 1;
-        if (is_string($prev) && preg_match('/-(\d+)$/', $prev, $m)) {
-            $n = ((int) $m[1]) + 1;
-        }
-        $folio = 'COT-' . $year . '-' . str_pad((string) $n, 4, '0', STR_PAD_LEFT);
+        $folio = \Crm\Codes::next('crm_cotizaciones', 'folio', 'COT');
 
         $insCot = $pdo->prepare(
             'INSERT INTO crm_cotizaciones

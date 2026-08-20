@@ -122,16 +122,38 @@ $cot = \Crm\Cotizaciones::store(array(
     ),
 ), $login);
 $cotId = (int) $cot['cotizacion']['id'];
-assert_true(strpos($cot['cotizacion']['folio'], 'COT-') === 0, 'Folio COT generado');
+$yearFolio = date('Y');
+assert_true($cot['cotizacion']['folio'] === 'COT-' . $yearFolio . '-0354', 'Folio COT generado en 354');
 $peekA = \Crm\Codes::peek('crm_cotizaciones', 'folio', 'COT');
 $peekB = \Crm\Codes::peek('crm_cotizaciones', 'folio', 'COT');
 assert_true($peekA === $peekB, 'Peek no consume el correlativo');
+assert_true($peekA === 'COT-' . $yearFolio . '-0355', 'Peek siguiente es 355');
 assert_true($peekA === \Crm\Codes::next('crm_cotizaciones', 'folio', 'COT'), 'Peek coincide con next');
 $proximoApi = \Crm\Cotizaciones::proximoFolio();
 assert_true($proximoApi['proximo_folio'] === $peekA, 'API próximo folio coincide con peek');
 $countPeek = (int) $pdo->query('SELECT COUNT(*) FROM crm_cotizaciones')->fetchColumn();
 \Crm\Codes::peek('crm_cotizaciones', 'folio', 'COT');
 assert_true((int) $pdo->query('SELECT COUNT(*) FROM crm_cotizaciones')->fetchColumn() === $countPeek, 'Peek no inserta cotización');
+
+$hist = \Crm\Cotizaciones::actualizarFolio($cotId, array('nuevo_numero' => '100'));
+assert_true($hist['cotizacion']['folio'] === 'COT-' . $yearFolio . '-0100', 'Permite folio histórico menor a 354');
+assert_true(\Crm\Codes::peek('crm_cotizaciones', 'folio', 'COT') === 'COT-' . $yearFolio . '-0354', 'Histórico no consume ni baja el 354');
+$cotAuto = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'borrador',
+    'descuento' => 0,
+    'items' => array(array('producto_id' => (int) $prod['id'], 'cantidad' => 1)),
+), $login);
+assert_true($cotAuto['cotizacion']['folio'] === 'COT-' . $yearFolio . '-0354', 'Siguiente automática es 354 con 100 ocupado');
+try {
+    \Crm\Cotizaciones::actualizarFolio((int) $cotAuto['cotizacion']['id'], array('nuevo_numero' => '100'));
+    assert_true(false, 'Histórico duplicado debe fallar');
+} catch (\Crm\ApiException $e) {
+    assert_true($e->status === 409, 'Folio histórico duplicado = 409');
+}
+$seqRow = $pdo->query("SELECT siguiente FROM crm_secuencias WHERE codigo = 'COT'")->fetch(PDO::FETCH_ASSOC);
+assert_true(is_array($seqRow) && (int) $seqRow['siguiente'] === 354, 'Tabla crm_secuencias piso 354');
+
 assert_true((float) $cot['cotizacion']['items'][0]['stock_al_cotizar'] === (float) $prod['stock'], 'Snapshot de stock desde productos');
 $neto = (float) $cot['cotizacion']['subtotal'];
 $iva = (float) $cot['cotizacion']['iva'];

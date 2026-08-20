@@ -363,7 +363,7 @@ var btnFolio = document.getElementById("btnCambiarFolio");
 if (btnFolio) {
   btnFolio.addEventListener("click", function () {
     var actual = document.getElementById("folioBadge") ? document.getElementById("folioBadge").textContent : "";
-    var nuevo = window.prompt("Nuevo número de cotización (COT-YYYY-NNNN). Solo si aún no está procesada.", actual);
+    var nuevo = window.prompt("Nuevo número de cotización (COT-YYYY-NNNN o correlativo). Históricos menores a 354 se permiten si están libres.", actual);
     if (nuevo == null) return;
     crmApi("api/cotizacion_folio.php?id=" + cotId, { method: "PUT", body: { id: cotId, nuevo_numero: nuevo } })
       .then(function (d) {

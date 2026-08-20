@@ -37,7 +37,7 @@ document.getElementById("rows").addEventListener("click", function (ev) {
   var folioId = ev.target.getAttribute("data-folio");
   if (folioId) {
     var actual = ev.target.getAttribute("data-actual") || "";
-    var nuevo = window.prompt("Nuevo número de cotización (COT-YYYY-NNNN). Solo si aún no está procesada.", actual);
+    var nuevo = window.prompt("Nuevo número de cotización (COT-YYYY-NNNN o correlativo). Históricos menores a 354 se permiten si están libres.", actual);
     if (nuevo == null) return;
     crmApi("api/cotizacion_folio.php?id="+folioId, { method: "PUT", body: { id: Number(folioId), nuevo_numero: nuevo } })
       .then(function (d) {
