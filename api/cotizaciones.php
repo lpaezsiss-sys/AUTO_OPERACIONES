@@ -21,7 +21,13 @@ require __DIR__ . '/_init.php';
         return \Crm\Cotizaciones::store(\Crm\Http::body(), $user);
     }
     if ($method === 'PUT' || $method === 'PATCH') {
-        return \Crm\Cotizaciones::update($id, \Crm\Http::body(), $user);
+        $body = \Crm\Http::body();
+        $action = isset($_GET['action']) ? (string) $_GET['action'] : (isset($body['action']) ? (string) $body['action'] : '');
+        if ($action === 'folio' || $action === 'actualizar-numero' || $action === 'actualizar_numero') {
+            \Crm\Auth::requireAdmin();
+            return \Crm\Cotizaciones::actualizarFolio($id, $body);
+        }
+        return \Crm\Cotizaciones::update($id, $body, $user);
     }
     if ($method === 'DELETE') {
         return \Crm\Cotizaciones::destroy($id);

@@ -61,6 +61,7 @@ function crm_layout_start($title, $page, array $user)
         </div>
     </aside>
     <main class="app-main">
+        <script>window.crmRol = <?php echo json_encode((string) $user['rol']); ?>;</script>
         <div id="crmToast" class="toast align-items-center text-bg-dark border-0" role="status">
             <div class="d-flex">
                 <div class="toast-body" id="crmToastBody"></div>

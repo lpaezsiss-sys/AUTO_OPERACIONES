@@ -27,6 +27,9 @@ crm_layout_start($folioAsignado !== '' ? $folioAsignado : 'Nueva cotización', '
         <?php } ?>
         <?php if ($id) { ?>
         <a class="btn btn-sm btn-outline-primary" href="api/cotizacion_pdf.php?id=<?php echo (int) $id; ?>" target="_blank">PDF</a>
+        <?php if ((string) $user['rol'] === 'admin') { ?>
+        <button class="btn btn-sm btn-outline-secondary" type="button" id="btnCambiarFolio" hidden>Cambiar folio</button>
+        <?php } ?>
         <button class="btn btn-sm btn-outline-danger" type="button" id="btnEliminarCot">Eliminar</button>
         <?php } ?>
     </div>
@@ -254,6 +257,10 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
     badge.classList.remove("badge-folio-new");
     badge.classList.add("badge-folio-ok");
   }
+  var btnFolioLoad = document.getElementById("btnCambiarFolio");
+  if (btnFolioLoad) {
+    btnFolioLoad.hidden = !c.folio_editable;
+  }
   document.querySelector('[name=empresa_id]').value = c.empresa_id;
   pendingContactoId = c.contacto_id || "";
   loadContactos(c.empresa_id, pendingContactoId);
@@ -342,6 +349,35 @@ document.getElementById("formCot").addEventListener("submit", function (ev) {
     .then(function (d) { crmToast("Cotización "+d.cotizacion.folio+" guardada"); window.location.href = "cotizacion.php?id="+d.cotizacion.id; })
     .catch(function (e) { crmToast(e.message, true); });
 });
+function aplicarFolioEnPantalla(folio) {
+  document.getElementById("title").textContent = folio;
+  var badge = document.getElementById("folioBadge");
+  if (badge) {
+    badge.textContent = folio;
+    badge.classList.remove("badge-folio-new");
+    badge.classList.add("badge-folio-ok");
+  }
+  document.title = folio + " · CRM LPAEZsis";
+}
+var btnFolio = document.getElementById("btnCambiarFolio");
+if (btnFolio) {
+  btnFolio.addEventListener("click", function () {
+    var actual = document.getElementById("folioBadge") ? document.getElementById("folioBadge").textContent : "";
+    var nuevo = window.prompt("Nuevo número de cotización (COT-YYYY-NNNN). Solo si aún no está procesada.", actual);
+    if (nuevo == null) return;
+    crmApi("api/cotizacion_folio.php?id=" + cotId, { method: "PUT", body: { id: cotId, nuevo_numero: nuevo } })
+      .then(function (d) {
+        aplicarFolioEnPantalla(d.cotizacion.folio);
+        if (d.cotizacion.folio_editable) {
+          btnFolio.hidden = false;
+        } else {
+          btnFolio.hidden = true;
+        }
+        crmToast(d.message || ("Folio " + d.cotizacion.folio));
+      })
+      .catch(function (e) { crmToast(e.message, true); });
+  });
+}
 var btnDel = document.getElementById("btnEliminarCot");
 if (btnDel) {
   btnDel.addEventListener("click", function () {

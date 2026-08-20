@@ -22,13 +22,34 @@ crm_layout_start('Cotizaciones', 'cotizaciones', $user);
 </div>
 <script>
 crmApi("api/cotizaciones.php").then(function (d) {
+  var isAdmin = window.crmRol === "admin";
   document.getElementById("rows").innerHTML = (d.cotizaciones||[]).map(function (c) {
-    return '<tr><td><a href="cotizacion.php?id='+c.id+'">'+c.folio+'</a></td><td>'+c.razon_social+'</td><td>'+c.estado+'</td><td>'+c.fecha_emision+'</td><td class="text-end">'+crmClp(c.total)+'</td>' +
-      '<td class="text-nowrap"><a class="btn btn-sm btn-outline-primary me-1" href="api/cotizacion_pdf.php?id='+c.id+'" target="_blank">PDF</a>' +
+    var folioBtn = (isAdmin && c.folio_editable)
+      ? '<button class="btn btn-sm btn-outline-secondary me-1" type="button" data-folio="'+c.id+'" data-actual="'+crmEsc(c.folio)+'">Nº</button>'
+      : "";
+    return '<tr><td><a href="cotizacion.php?id='+c.id+'">'+crmEsc(c.folio)+'</a></td><td>'+crmEsc(c.razon_social)+'</td><td>'+crmEsc(c.estado)+'</td><td>'+crmEsc(c.fecha_emision)+'</td><td class="text-end">'+crmClp(c.total)+'</td>' +
+      '<td class="text-nowrap">'+folioBtn +
+      '<a class="btn btn-sm btn-outline-primary me-1" href="api/cotizacion_pdf.php?id='+c.id+'" target="_blank">PDF</a>' +
       '<button class="btn btn-sm btn-outline-danger" type="button" data-del="'+c.id+'">Eliminar</button></td></tr>';
   }).join("");
 }).catch(function (e) { crmToast(e.message, true); });
 document.getElementById("rows").addEventListener("click", function (ev) {
+  var folioId = ev.target.getAttribute("data-folio");
+  if (folioId) {
+    var actual = ev.target.getAttribute("data-actual") || "";
+    var nuevo = window.prompt("Nuevo número de cotización (COT-YYYY-NNNN). Solo si aún no está procesada.", actual);
+    if (nuevo == null) return;
+    crmApi("api/cotizacion_folio.php?id="+folioId, { method: "PUT", body: { id: Number(folioId), nuevo_numero: nuevo } })
+      .then(function (d) {
+        var link = ev.target.closest("tr").querySelector("td a");
+        if (link && d.cotizacion) link.textContent = d.cotizacion.folio;
+        ev.target.setAttribute("data-actual", d.cotizacion.folio);
+        if (!d.cotizacion.folio_editable) ev.target.remove();
+        crmToast(d.message || "Folio actualizado");
+      })
+      .catch(function (e) { crmToast(e.message, true); });
+    return;
+  }
   var id = ev.target.getAttribute("data-del");
   if (!id) return;
   if (!window.confirm("¿Eliminar esta cotización y sus ítems?")) return;

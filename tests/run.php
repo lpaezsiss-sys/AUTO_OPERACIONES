@@ -1135,5 +1135,77 @@ $pdfManual = \Crm\Manual::generarPdf();
 assert_true(strpos($pdfManual, '%PDF') === 0, 'PDF del manual comienza con %PDF');
 assert_true(strlen($pdfManual) > 20000, 'PDF del manual tiene contenido');
 
+assert_true(\Crm\Cotizaciones::normalizarFolio('99') === 'COT-' . date('Y') . '-0099', 'Normaliza correlativo a COT-YYYY-NNNN');
+assert_true(\Crm\Cotizaciones::normalizarFolio('cot-2026-7') === 'COT-2026-0007', 'Normaliza folio con padding');
+
+$cotFolioA = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'borrador',
+    'descuento' => 0,
+    'items' => array(array('producto_id' => (int) $prod['id'], 'cantidad' => 1)),
+), $login);
+$cotFolioB = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'borrador',
+    'descuento' => 0,
+    'items' => array(array('producto_id' => (int) $prod['id'], 'cantidad' => 1)),
+), $login);
+$idFolioA = (int) $cotFolioA['cotizacion']['id'];
+$folioB = (string) $cotFolioB['cotizacion']['folio'];
+assert_true($cotFolioA['cotizacion']['folio_editable'] === true, 'Borrador permite cambiar folio');
+
+$nuevoFolio = 'COT-' . date('Y') . '-8801';
+$ren = \Crm\Cotizaciones::actualizarFolio($idFolioA, array('nuevo_numero' => $nuevoFolio));
+assert_true($ren['cotizacion']['folio'] === $nuevoFolio, 'Admin cambia folio de cotización libre');
+$same = \Crm\Cotizaciones::actualizarFolio($idFolioA, array('folio' => $nuevoFolio));
+assert_true($same['cotizacion']['folio'] === $nuevoFolio, 'Mismo folio no falla');
+
+try {
+    \Crm\Cotizaciones::actualizarFolio($idFolioA, array('nuevo_numero' => $folioB));
+    assert_true(false, 'Folio duplicado debe fallar');
+} catch (\Crm\ApiException $e) {
+    assert_true($e->status === 409, 'Folio duplicado = 409');
+}
+
+try {
+    \Crm\Cotizaciones::actualizarFolio($idFolioA, array('nuevo_numero' => 'FOO-1'));
+    assert_true(false, 'Folio inválido debe fallar');
+} catch (\Crm\ApiException $e) {
+    assert_true($e->status === 400, 'Folio inválido = 400');
+}
+
+$cotAcept = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'aceptada',
+    'descuento' => 0,
+    'items' => array(array('producto_id' => (int) $prod['id'], 'cantidad' => 1)),
+), $login);
+assert_true($cotAcept['cotizacion']['folio_editable'] === false, 'Aceptada no es editable');
+try {
+    \Crm\Cotizaciones::actualizarFolio((int) $cotAcept['cotizacion']['id'], array('nuevo_numero' => 'COT-' . date('Y') . '-9901'));
+    assert_true(false, 'Aceptada no debe cambiar folio');
+} catch (\Crm\ApiException $e) {
+    assert_true($e->status === 403, 'Folio usado = 403');
+}
+
+$vendLogin = \Crm\Auth::login('nathan.k@example.net', 'Lpaezsis.2026');
+assert_true($vendLogin['rol'] === 'vendedor', 'Login vendedor para folio');
+try {
+    \Crm\Cotizaciones::actualizarFolio($idFolioA, array('nuevo_numero' => 'COT-' . date('Y') . '-8803'));
+    assert_true(false, 'Vendedor no cambia folio');
+} catch (\Crm\ApiException $e) {
+    assert_true($e->status === 403, 'Vendedor folio = 403');
+}
+\Crm\Auth::login('ivan.p@example.net', 'Lpaezsis.2026');
+
+$apiFolioSrc = (string) file_get_contents($root . '/api/cotizacion_folio.php');
+assert_true(strpos($apiFolioSrc, 'actualizarFolio') !== false, 'Endpoint dedicado de folio');
+$apiCotSrc = (string) file_get_contents($root . '/api/cotizaciones.php');
+assert_true(strpos($apiCotSrc, "action === 'folio'") !== false, 'PUT cotizaciones action=folio');
+$uiCot = (string) file_get_contents($root . '/cotizacion.php');
+assert_true(strpos($uiCot, 'btnCambiarFolio') !== false, 'UI Cambiar folio en ficha');
+$uiList = (string) file_get_contents($root . '/cotizaciones.php');
+assert_true(strpos($uiList, 'data-folio') !== false, 'UI Cambiar folio en listado');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

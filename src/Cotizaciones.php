@@ -26,7 +26,15 @@ final class Cotizaciones
         $sql .= ' ORDER BY c.created_at DESC';
         $stmt = crm_pdo()->prepare($sql);
         $stmt->execute($params);
-        return array('cotizaciones' => $stmt->fetchAll(PDO::FETCH_ASSOC));
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!is_array($rows)) {
+            $rows = array();
+        }
+        foreach ($rows as &$row) {
+            $row['folio_editable'] = self::esFolioEditable((int) $row['id'], isset($row['estado']) ? (string) $row['estado'] : '');
+        }
+        unset($row);
+        return array('cotizaciones' => $rows);
     }
 
     /**
@@ -97,6 +105,7 @@ final class Cotizaciones
         $cot['vendedor'] = $vendId > 0 ? Vendedores::obtener($pdo, $vendId) : null;
         $cot['marca_ids'] = Marcas::idsDeCotizacion((int) $id, $pdo);
         $cot['marcas'] = Marcas::paraPdf((int) $id, $pdo);
+        $cot['folio_editable'] = self::esFolioEditable((int) $id, isset($cot['estado']) ? (string) $cot['estado'] : '');
         return array('cotizacion' => $cot);
     }
 
@@ -449,6 +458,110 @@ final class Cotizaciones
             'subtotal' => $line,
             'stock_al_cotizar' => $stockSnap,
         );
+    }
+
+    /**
+     * Folio modificable solo si la cotización no fue procesada (aceptada / comisión vigente).
+     *
+     * @param int $id
+     * @param string $estado
+     * @return bool
+     */
+    public static function esFolioEditable($id, $estado = '')
+    {
+        $id = (int) $id;
+        $estado = strtolower(trim((string) $estado));
+        $bloqueados = array('aceptada', 'ganada', 'facturada', 'cerrada');
+        if ($id <= 0 || in_array($estado, $bloqueados, true)) {
+            return false;
+        }
+        $stmt = crm_pdo()->prepare(
+            "SELECT COUNT(*) FROM crm_comisiones
+             WHERE cotizacion_id = ? AND estado IN ('pendiente','aprobada','pagada')"
+        );
+        $stmt->execute(array($id));
+        return (int) $stmt->fetchColumn() === 0;
+    }
+
+    /**
+     * Normaliza COT-YYYY-NNNN. Acepta el folio completo o solo el correlativo.
+     *
+     * @param string $raw
+     * @return string
+     */
+    public static function normalizarFolio($raw)
+    {
+        $raw = strtoupper(trim((string) $raw));
+        $raw = preg_replace('/\s+/', '', $raw);
+        if (!is_string($raw) || $raw === '') {
+            return '';
+        }
+        if (preg_match('/^COT-(\d{4})-(\d{1,8})$/', $raw, $m)) {
+            return 'COT-' . $m[1] . '-' . str_pad($m[2], 4, '0', STR_PAD_LEFT);
+        }
+        if (preg_match('/^\d{1,8}$/', $raw)) {
+            return 'COT-' . date('Y') . '-' . str_pad($raw, 4, '0', STR_PAD_LEFT);
+        }
+        return $raw;
+    }
+
+    /**
+     * Cambia el folio. Solo admin. 409 si está tomado, 403 si ya se usó.
+     *
+     * @param int $id
+     * @param array $body
+     * @return array
+     */
+    public static function actualizarFolio($id, array $body)
+    {
+        Auth::requireAdmin();
+        $id = (int) $id;
+        if ($id <= 0 && isset($body['id'])) {
+            $id = crm_int($body['id'], 0);
+        }
+        $raw = '';
+        if (isset($body['nuevo_numero'])) {
+            $raw = (string) $body['nuevo_numero'];
+        } elseif (isset($body['folio'])) {
+            $raw = (string) $body['folio'];
+        }
+        $folio = self::normalizarFolio($raw);
+        if ($id <= 0 || $folio === '') {
+            Http::fail('ID de cotización y nuevo número son requeridos', 400);
+        }
+        if (!preg_match('/^COT-\d{4}-\d{4,8}$/', $folio) || strlen($folio) > 32) {
+            Http::fail('El folio debe tener formato COT-YYYY-NNNN', 400);
+        }
+
+        $pdo = crm_pdo();
+        $stmt = $pdo->prepare('SELECT id, folio, estado FROM crm_cotizaciones WHERE id = ? LIMIT 1');
+        $stmt->execute(array($id));
+        $cot = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$cot) {
+            Http::fail('Cotización no encontrada', 404);
+        }
+        $actual = (string) $cot['folio'];
+        if ($actual === $folio) {
+            $pack = self::show($id);
+            $pack['message'] = 'El número de cotización no cambió';
+            return $pack;
+        }
+        if (!self::esFolioEditable($id, (string) $cot['estado'])) {
+            Http::fail('No se puede modificar el número: esta cotización ya fue procesada o utilizada', 403);
+        }
+
+        $dup = $pdo->prepare('SELECT id FROM crm_cotizaciones WHERE folio = ? AND id != ? LIMIT 1');
+        $dup->execute(array($folio, $id));
+        if ($dup->fetchColumn()) {
+            Http::fail('El número de cotización ya existe en el sistema', 409);
+        }
+
+        $upd = $pdo->prepare('UPDATE crm_cotizaciones SET folio = ?, updated_at = ? WHERE id = ?');
+        $upd->execute(array($folio, crm_now(), $id));
+
+        $pack = self::show($id);
+        $pack['message'] = 'Número de cotización actualizado correctamente';
+        return $pack;
     }
 
     /**
