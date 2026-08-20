@@ -78,11 +78,6 @@ crm_layout_start('Cotizador', 'cotizador', $user);
             <label class="form-label">Lugar de entrega</label>
             <input class="form-control" id="lugar_entrega" placeholder="Ciudad / faena">
         </div>
-        <div class="col-12">
-            <label class="form-label">Marcas en el PDF</label>
-            <div id="marcasBox" class="d-flex flex-wrap gap-3 border rounded p-2 bg-white"></div>
-            <div class="form-text">Si no marca ninguna, el PDF usa las marcas globales activas.</div>
-        </div>
         <div class="col-md-6">
             <label class="form-label">Buscar producto (SKU o nombre)</label>
             <div class="position-relative">
@@ -129,6 +124,12 @@ crm_layout_start('Cotizador', 'cotizador', $user);
             <div>IVA 19% $0</div>
             <div class="fw-bold">Total $0</div>
         </div>
+    </div>
+
+    <div class="mt-3">
+        <label class="form-label">Marcas en el PDF</label>
+        <div id="marcasBox" class="d-flex flex-wrap gap-3 border rounded p-2 bg-white"></div>
+        <div class="form-text">Si no marca ninguna, el PDF usa las marcas globales activas.</div>
     </div>
 
     <button class="btn mt-3" id="btnGuardar" type="button" style="background:#fec001;color:#05294B;font-weight:700">
