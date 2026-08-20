@@ -701,7 +701,8 @@ assert_true((int) $itPed['marca_id'] === $marcaSeedId, 'A pedido guarda marca_id
 assert_true((string) $itPed['marca_nombre'] === $marcaSeedNom, 'A pedido copia nombre de marca');
 assert_true(abs((float) $itPed['costo_unitario'] - 60000) < 0.001, 'Costo unitario persistido');
 $htmlPed = \Crm\CotizacionPdf::html($pedido1['cotizacion']);
-assert_true(strpos($htmlPed, '[A pedido]') !== false, 'PDF marca ítem a pedido');
+assert_true(strpos($htmlPed, '[A pedido]') === false, 'PDF no imprime etiqueta A pedido');
+assert_true(strpos($htmlPed, (string) $itPed['descripcion']) !== false, 'PDF muestra descripción a pedido');
 assert_true(strpos($htmlPed, $marcaSeedNom) !== false, 'PDF incluye marca del ítem a pedido');
 
 $pedidoLibre = \Crm\Cotizaciones::store(array(
