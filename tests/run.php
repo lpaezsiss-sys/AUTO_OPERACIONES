@@ -704,6 +704,7 @@ $htmlPed = \Crm\CotizacionPdf::html($pedido1['cotizacion']);
 assert_true(strpos($htmlPed, '[A pedido]') === false, 'PDF no imprime etiqueta A pedido');
 assert_true(strpos($htmlPed, (string) $itPed['descripcion']) !== false, 'PDF muestra descripción a pedido');
 assert_true(strpos($htmlPed, $marcaSeedNom) !== false, 'PDF incluye marca del ítem a pedido');
+assert_true(strpos($htmlPed, '2,00') !== false, 'PDF cantidad con 2 decimales');
 
 $pedidoLibre = \Crm\Cotizaciones::store(array(
     'empresa_id' => $empId,

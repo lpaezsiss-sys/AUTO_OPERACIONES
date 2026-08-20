@@ -248,7 +248,7 @@ h1, h2, h3 { margin: 0; padding: 0; }
                     </tr>
                 </table>
             </td>
-            <td class="td num<?php echo $alt; ?>" valign="top"><?php echo $h(number_format($cant, 0, ',', '.')); ?></td>
+            <td class="td num<?php echo $alt; ?>" valign="top"><?php echo $h(number_format($cant, 2, ',', '.')); ?></td>
             <td class="td<?php echo $alt; ?>" valign="top"><?php echo $h($un); ?></td>
             <td class="td num<?php echo $alt; ?>" valign="top">$<?php echo $h(number_format($pu, 0, ',', '.')); ?></td>
             <td class="td num<?php echo $alt; ?>" valign="top">$<?php echo $h(number_format($lin, 0, ',', '.')); ?></td>
