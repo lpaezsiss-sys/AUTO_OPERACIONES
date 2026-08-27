@@ -18,9 +18,9 @@
     try {
       data = await res.json();
     } catch (e) {
-      data = { ok: false, error: "Respuesta inválida" };
+      data = { ok: false, success: false, error: "Respuesta inválida (HTTP " + res.status + ")" };
     }
-    if (!res.ok || data.ok === false) {
+    if (!res.ok || data.ok === false || data.success === false) {
       var err = new Error(data.error || "Error de API");
       err.status = res.status;
       throw err;
@@ -42,6 +42,30 @@
       currency: "CLP",
       maximumFractionDigits: 0,
     }).format(Number(n || 0));
+  };
+
+  /**
+   * Alineado con crm_float(): 24.38, 24,38 y 1.234,56.
+   */
+  window.crmParseNum = function (v) {
+    if (typeof v === "number") {
+      return isFinite(v) ? v : 0;
+    }
+    if (v == null) {
+      return 0;
+    }
+    var s = String(v).trim();
+    if (s === "") {
+      return 0;
+    }
+    if (/^-?\d+(\.\d+)?$/.test(s)) {
+      var direct = parseFloat(s);
+      return isFinite(direct) ? direct : 0;
+    }
+    var stripped = s.replace(/[^\d,.\-]/g, "");
+    var normalized = stripped.replace(/\./g, "").replace(/,/g, ".");
+    var n = parseFloat(normalized);
+    return isFinite(n) ? n : 0;
   };
 
   window.crmToast = function (msg, danger) {

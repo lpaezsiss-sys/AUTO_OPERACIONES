@@ -12,14 +12,27 @@ header('Cache-Control: no-store');
 
 require dirname(__DIR__) . '/includes/bootstrap.php';
 
+/**
+ * @param array $payload
+ * @param int $code
+ * @return void
+ */
+function crm_cotizador_json(array $payload, $code = 200)
+{
+    if (!array_key_exists('success', $payload)) {
+        $payload['success'] = !empty($payload['ok']);
+    }
+    http_response_code((int) $code);
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 $action = isset($_GET['action']) ? trim((string) $_GET['action']) : '';
 $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper((string) $_SERVER['REQUEST_METHOD']) : 'GET';
 
 $user = \Crm\Auth::user();
 if ($user === null) {
-    http_response_code(401);
-    echo json_encode(array('ok' => false, 'error' => 'No autenticado'));
-    exit;
+    crm_cotizador_json(\Crm\Http::payloadFail('No autenticado'), 401);
 }
 
 try {
@@ -28,20 +41,20 @@ try {
     } elseif ($method === 'POST' && $action === 'guardar') {
         crm_guardar_cotizacion($user);
     } else {
-        http_response_code(400);
-        echo json_encode(array('ok' => false, 'error' => 'Acción no válida'));
+        crm_cotizador_json(\Crm\Http::payloadFail('Acción no válida'), 400);
     }
-} catch (PDOException $e) {
-    $pdo = crm_pdo();
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
+} catch (\Throwable $e) {
+    try {
+        $pdo = crm_pdo();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+    } catch (\Throwable $ignored) {
     }
-    http_response_code(500);
-    $out = array('ok' => false, 'error' => 'Error de base de datos');
-    if (crm_debug()) {
-        $out['detail'] = $e->getMessage();
-    }
-    echo json_encode($out);
+    $msg = $e instanceof PDOException
+        ? ('Error de base de datos: ' . $e->getMessage())
+        : $e->getMessage();
+    crm_cotizador_json(\Crm\Http::payloadFail($msg), 500);
 }
 
 /**
@@ -54,8 +67,7 @@ function crm_buscar_producto()
 {
     $q = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
     if ($q === '') {
-        echo json_encode(array('ok' => true, 'productos' => array()));
-        exit;
+        crm_cotizador_json(array('ok' => true, 'productos' => array()));
     }
 
     $like = '%' . $q . '%';
@@ -80,8 +92,7 @@ function crm_buscar_producto()
     }
     unset($row);
 
-    echo json_encode(array('ok' => true, 'productos' => $rows));
-    exit;
+    crm_cotizador_json(array('ok' => true, 'productos' => $rows));
 }
 
 /**
@@ -97,15 +108,13 @@ function crm_guardar_cotizacion(array $user)
     $raw = is_string($raw) ? $raw : '';
     $data = json_decode($raw, true);
     if (!is_array($data)) {
-        http_response_code(400);
-        echo json_encode(array('ok' => false, 'error' => 'JSON inválido'));
-        exit;
+        crm_cotizador_json(\Crm\Http::payloadFail('JSON inválido'), 400);
     }
 
     $empresaId = isset($data['empresa_id']) ? (int) $data['empresa_id'] : 0;
     $items = isset($data['items']) && is_array($data['items']) ? $data['items'] : array();
     $notas = isset($data['notas']) ? trim((string) $data['notas']) : '';
-    $descuento = isset($data['descuento']) ? (float) $data['descuento'] : 0.0;
+    $descuento = crm_float(isset($data['descuento']) ? $data['descuento'] : 0, 0);
     $contactoId = isset($data['contacto_id']) ? (int) $data['contacto_id'] : 0;
     $oportunidadId = isset($data['oportunidad_id']) ? (int) $data['oportunidad_id'] : 0;
     $estado = isset($data['estado']) ? trim((string) $data['estado']) : 'borrador';
@@ -115,22 +124,16 @@ function crm_guardar_cotizacion(array $user)
     $listaPrecioIdSql = null;
     if ($listaPrecioId > 0) {
         if (\Crm\ListasPrecios::obtener($listaPrecioId) === null) {
-            http_response_code(404);
-            echo json_encode(array('ok' => false, 'error' => 'Lista de precios no encontrada'));
-            exit;
+            crm_cotizador_json(\Crm\Http::payloadFail('Lista de precios no encontrada'), 404);
         }
         $listaPrecioIdSql = $listaPrecioId;
     }
 
     if ($empresaId <= 0) {
-        http_response_code(400);
-        echo json_encode(array('ok' => false, 'error' => 'Debe indicar la empresa'));
-        exit;
+        crm_cotizador_json(\Crm\Http::payloadFail('Debe indicar la empresa'), 400);
     }
     if (empty($items)) {
-        http_response_code(400);
-        echo json_encode(array('ok' => false, 'error' => 'La cotización requiere al menos un ítem'));
-        exit;
+        crm_cotizador_json(\Crm\Http::payloadFail('La cotización requiere al menos un ítem'), 400);
     }
     if ($descuento < 0) {
         $descuento = 0.0;
@@ -140,9 +143,7 @@ function crm_guardar_cotizacion(array $user)
     $emp = $pdo->prepare('SELECT id FROM crm_empresas WHERE id = ? LIMIT 1');
     $emp->execute(array($empresaId));
     if (!$emp->fetch(PDO::FETCH_ASSOC)) {
-        http_response_code(404);
-        echo json_encode(array('ok' => false, 'error' => 'Empresa no encontrada'));
-        exit;
+        crm_cotizador_json(\Crm\Http::payloadFail('Empresa no encontrada'), 404);
     }
 
     if ($contactoId > 0) {
@@ -150,14 +151,10 @@ function crm_guardar_cotizacion(array $user)
         $cto->execute(array($contactoId));
         $ctoRow = $cto->fetch(PDO::FETCH_ASSOC);
         if (!$ctoRow) {
-            http_response_code(404);
-            echo json_encode(array('ok' => false, 'error' => 'Contacto no encontrado'));
-            exit;
+            crm_cotizador_json(\Crm\Http::payloadFail('Contacto no encontrado'), 404);
         }
         if ((int) $ctoRow['empresa_id'] !== $empresaId) {
-            http_response_code(400);
-            echo json_encode(array('ok' => false, 'error' => 'El contacto no pertenece a la empresa seleccionada'));
-            exit;
+            crm_cotizador_json(\Crm\Http::payloadFail('El contacto no pertenece a la empresa seleccionada'), 400);
         }
     }
 
@@ -258,23 +255,22 @@ function crm_guardar_cotizacion(array $user)
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        http_response_code((int) $e->status);
-        echo json_encode(array('ok' => false, 'error' => $e->getMessage()));
-        exit;
-    } catch (Exception $e) {
+        crm_cotizador_json(\Crm\Http::payloadFail($e->getMessage()), (int) $e->status);
+    } catch (\Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
         $msg = $e->getMessage();
+        if ($e instanceof PDOException) {
+            $msg = 'Error de base de datos: ' . $msg;
+        }
         $code = (strpos($msg, 'no encontrado') !== false || strpos($msg, 'requiere') !== false || strpos($msg, 'cantidad') !== false)
             ? 400
             : 500;
-        http_response_code($code);
-        echo json_encode(array('ok' => false, 'error' => $msg));
-        exit;
+        crm_cotizador_json(\Crm\Http::payloadFail($msg), $code);
     }
 
-    echo json_encode(array(
+    crm_cotizador_json(array(
         'ok' => true,
         'id' => $cotizacionId,
         'folio' => $folio,
@@ -284,5 +280,4 @@ function crm_guardar_cotizacion(array $user)
         'total' => $total,
         'iva_pct' => $ivaPct,
     ));
-    exit;
 }

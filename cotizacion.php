@@ -67,7 +67,7 @@ crm_layout_start($folioAsignado !== '' ? $folioAsignado : 'Nueva cotización', '
         <div class="col-md-3"><label class="form-label">Condiciones de pago</label><input class="form-control" name="condiciones_pago"></div>
         <div class="col-md-3"><label class="form-label">Plazo de entrega</label><input class="form-control" name="plazo_entrega"></div>
         <div class="col-md-3"><label class="form-label">Lugar de entrega</label><input class="form-control" name="lugar_entrega"></div>
-        <div class="col-md-3"><label class="form-label">Descuento global</label><input class="form-control" type="number" min="0" name="descuento" value="0"></div>
+        <div class="col-md-3"><label class="form-label">Descuento global</label><input class="form-control" type="text" inputmode="decimal" lang="es" autocomplete="off" name="descuento" value="0"></div>
         <div class="col-md-6"><label class="form-label">Notas</label><input class="form-control" name="notas"></div>
         <div class="col-12">
             <label class="form-label">Marcas en el PDF</label>
@@ -128,11 +128,22 @@ function aplicarListaEmpresa() {
   fillListasSelect(listaId);
 }
 function parseNum(v) {
-  if (typeof v === "number") {
-    return isFinite(v) ? v : 0;
-  }
-  var n = parseFloat(String(v == null ? "0" : v).replace(",", "."));
-  return isFinite(n) ? n : 0;
+  return window.crmParseNum(v);
+}
+function sanitizeItems(list) {
+  return (list || []).map(function (it) {
+    var row = {};
+    for (var k in it) {
+      if (Object.prototype.hasOwnProperty.call(it, k)) {
+        row[k] = it[k];
+      }
+    }
+    row.cantidad = parseNum(it.cantidad);
+    row.precio_unitario = parseNum(it.precio_unitario);
+    row.costo_unitario = parseNum(it.costo_unitario);
+    row.descuento_pct = parseNum(it.descuento_pct);
+    return row;
+  });
 }
 function lineSub(it) {
   return Math.round(parseNum(it.cantidad) * parseNum(it.precio_unitario) * (1 - parseNum(it.descuento_pct) / 100));
@@ -176,7 +187,7 @@ function renderItems() {
     var warn = !esLibre(it) && it.stock_actual != null && parseNum(it.stock_actual) < parseNum(it.cantidad);
     var libre = esLibre(it);
     var pedido = it.tipo_item === "a_pedido";
-    return '<tr><td>'+tipoLabel(it)+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+crmEsc(it.codigo||"")+'">':crmEsc(it.codigo||""))+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+crmEsc(it.descripcion||"")+'">':crmEsc(it.descripcion||""))+'</td><td>'+marcaCell(it,i)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(libre||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="number" min="0.01" step="0.01" value="'+it.cantidad+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="number" min="0" value="'+it.precio_unitario+'"></td><td>'+(pedido?'<input data-i="'+i+'" data-k="costo_unitario" class="form-control form-control-sm" type="number" min="0" value="'+(it.costo_unitario||0)+'">':'—')+'</td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="number" min="0" max="100" value="'+it.descuento_pct+'"></td><td class="text-end line-sub">'+crmClp(lineSub(it))+'</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>'+extraRow(it,i);
+    return '<tr><td>'+tipoLabel(it)+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+crmEsc(it.codigo||"")+'">':crmEsc(it.codigo||""))+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+crmEsc(it.descripcion||"")+'">':crmEsc(it.descripcion||""))+'</td><td>'+marcaCell(it,i)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(libre||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.cantidad)+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.precio_unitario)+'"></td><td>'+(pedido?'<input data-i="'+i+'" data-k="costo_unitario" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.costo_unitario||0)+'">':'—')+'</td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.descuento_pct)+'"></td><td class="text-end line-sub">'+crmClp(lineSub(it))+'</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>'+extraRow(it,i);
   }).join("");
   updateTotalesCot();
 }
@@ -348,8 +359,8 @@ document.querySelector("#items tbody").addEventListener("change", function (ev) 
 document.getElementById("formCot").addEventListener("submit", function (ev) {
   ev.preventDefault();
   var body = crmForm("formCot");
-  body.items = items;
-  body.descuento = Number(body.descuento || 0);
+  body.items = sanitizeItems(items);
+  body.descuento = parseNum(body.descuento);
   body.marca_ids = Array.prototype.map.call(document.querySelectorAll("#marcasBox input:checked"), function (el) {
     return Number(el.value);
   });

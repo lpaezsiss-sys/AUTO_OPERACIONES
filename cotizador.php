@@ -51,7 +51,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         </div>
         <div class="col-md-2">
             <label class="form-label">Descuento</label>
-            <input class="form-control" id="descuento" type="number" min="0" value="0">
+            <input class="form-control" id="descuento" type="text" inputmode="decimal" lang="es" autocomplete="off" value="0">
         </div>
         <div class="col-md-2">
             <label class="form-label">Moneda</label>
@@ -177,11 +177,22 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   }
 
   function parseNum(v) {
-    if (typeof v === "number") {
-      return isFinite(v) ? v : 0;
-    }
-    var n = parseFloat(String(v == null ? "0" : v).replace(",", "."));
-    return isFinite(n) ? n : 0;
+    return window.crmParseNum(v);
+  }
+  function sanitizeItems(list) {
+    return (list || []).map(function (it) {
+      var row = {};
+      for (var k in it) {
+        if (Object.prototype.hasOwnProperty.call(it, k)) {
+          row[k] = it[k];
+        }
+      }
+      row.cantidad = parseNum(it.cantidad);
+      row.precio_unitario = parseNum(it.precio_unitario);
+      row.costo_unitario = parseNum(it.costo_unitario);
+      row.descuento_pct = parseNum(it.descuento_pct);
+      return row;
+    });
   }
 
   function lineSub(it) {
@@ -241,10 +252,10 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         '<td>' + (libre ? '<input class="form-control form-control-sm" value="' + crmEsc(it.descripcion || "") + '" data-i="' + i + '" data-k="descripcion">' : crmEsc(it.descripcion || "")) + '</td>' +
         '<td>' + marcaCell(it, i) + '</td>' +
         '<td><span class="badge badge-stock ' + (warn ? "low" : "") + '">' + (libre || it.stock == null ? "—" : it.stock) + '</span></td>' +
-        '<td><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" value="' + it.cantidad + '" data-i="' + i + '" data-k="cantidad"></td>' +
-        '<td><input class="form-control form-control-sm" type="number" min="0" value="' + it.precio_unitario + '" data-i="' + i + '" data-k="precio_unitario"></td>' +
-        '<td>' + (pedido ? '<input class="form-control form-control-sm" type="number" min="0" value="' + (it.costo_unitario || 0) + '" data-i="' + i + '" data-k="costo_unitario">' : "—") + '</td>' +
-        '<td><input class="form-control form-control-sm" type="number" min="0" max="100" value="' + it.descuento_pct + '" data-i="' + i + '" data-k="descuento_pct"></td>' +
+        '<td><input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.cantidad) + '" data-i="' + i + '" data-k="cantidad"></td>' +
+        '<td><input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.precio_unitario) + '" data-i="' + i + '" data-k="precio_unitario"></td>' +
+        '<td>' + (pedido ? '<input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.costo_unitario || 0) + '" data-i="' + i + '" data-k="costo_unitario">' : "—") + '</td>' +
+        '<td><input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.descuento_pct) + '" data-i="' + i + '" data-k="descuento_pct"></td>' +
         '<td class="text-end line-sub">' + crmClp(lineSub(it)) + '</td>' +
         '<td><button class="btn btn-sm btn-outline-danger" type="button" data-del="' + i + '">x</button></td>' +
         '</tr>' + extraRow(it, i);
@@ -485,7 +496,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         vendedor_id: Number(document.getElementById("vendedor_id").value || 0),
         lista_precio_id: Number(document.getElementById("lista_precio_id").value || 0),
         estado: document.getElementById("estado").value,
-        descuento: Number(document.getElementById("descuento").value || 0),
+        descuento: parseNum(document.getElementById("descuento").value),
         moneda: document.getElementById("moneda").value,
         validez_oferta: document.getElementById("validez_oferta").value,
         condiciones_pago: document.getElementById("condiciones_pago").value,
@@ -495,11 +506,15 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         marca_ids: Array.prototype.map.call(document.querySelectorAll("#marcasBox input:checked"), function (el) {
           return Number(el.value);
         }),
-        items: items
+        items: sanitizeItems(items)
       })
-    }).then(function (r) { return r.json().then(function (d) { return { r: r, d: d }; }); })
+    }).then(function (r) {
+      return r.json().then(function (d) { return { r: r, d: d }; }).catch(function () {
+        return { r: r, d: { ok: false, success: false, error: "Respuesta inválida (HTTP " + r.status + ")" } };
+      });
+    })
       .then(function (pack) {
-        if (!pack.r.ok || pack.d.ok === false) {
+        if (!pack.r.ok || pack.d.ok === false || pack.d.success === false) {
           throw new Error(pack.d.error || "No se pudo guardar");
         }
         okMsg.innerHTML = "Guardada " + pack.d.folio + " · Total " + crmClp(pack.d.total) +

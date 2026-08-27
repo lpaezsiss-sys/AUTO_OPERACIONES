@@ -101,6 +101,8 @@ function crm_int($value, $default = 0)
 }
 
 /**
+ * Convierte cantidades/precios a float. Acepta 24.38, 24,38 y 1.234,56.
+ *
  * @param mixed $value
  * @param float $default
  */

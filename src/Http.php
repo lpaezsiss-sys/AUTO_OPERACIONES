@@ -69,6 +69,25 @@ final class Http
 
     /**
      * @param array $data
+     * @return array
+     */
+    public static function payloadOk(array $data = array())
+    {
+        return array('ok' => true, 'success' => true) + $data;
+    }
+
+    /**
+     * @param string $message
+     * @param array $extra
+     * @return array
+     */
+    public static function payloadFail($message, array $extra = array())
+    {
+        return array('ok' => false, 'success' => false, 'error' => (string) $message) + $extra;
+    }
+
+    /**
+     * @param array $data
      * @param int $code
      * @return void
      */
@@ -97,7 +116,7 @@ final class Http
      */
     public static function ok(array $data = array(), $code = 200)
     {
-        self::json(array('ok' => true) + $data, (int) $code);
+        self::json(self::payloadOk($data), (int) $code);
     }
 
     /**
@@ -114,17 +133,25 @@ final class Http
             }
             self::ok();
         } catch (ApiException $e) {
-            self::json(array('ok' => false, 'error' => $e->getMessage()) + $e->extra, $e->status);
+            self::json(self::payloadFail($e->getMessage(), $e->extra), $e->status);
         } catch (\PDOException $e) {
-            $pdo = crm_pdo();
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
+            try {
+                $pdo = crm_pdo();
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+            } catch (\Throwable $ignored) {
             }
-            $payload = array('ok' => false, 'error' => 'Error de base de datos');
-            if (crm_debug()) {
-                $payload['detail'] = $e->getMessage();
+            self::json(self::payloadFail('Error de base de datos: ' . $e->getMessage()), 500);
+        } catch (\Throwable $e) {
+            try {
+                $pdo = crm_pdo();
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+            } catch (\Throwable $ignored) {
             }
-            self::json($payload, 500);
+            self::json(self::payloadFail($e->getMessage()), 500);
         }
     }
 }

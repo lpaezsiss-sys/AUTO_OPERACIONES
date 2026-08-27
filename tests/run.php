@@ -43,6 +43,14 @@ assert_true(\Crm\Rut::isValid('76.543.210-3'), 'RUT válido 76.543.210-3');
 assert_true(!\Crm\Rut::isValid('76.543.210-K'), 'RUT inválido rechazado');
 assert_true(\Crm\Rut::format('765432103') === '76.543.210-3', 'Formato RUT');
 
+assert_true(abs(crm_float('24,38') - 24.38) < 0.0001, 'crm_float coma decimal');
+assert_true(abs(crm_float('1.234,56') - 1234.56) < 0.0001, 'crm_float miles chilenos');
+assert_true(abs(crm_float('24.38') - 24.38) < 0.0001, 'crm_float punto decimal');
+assert_true(abs(crm_float(24.38) - 24.38) < 0.0001, 'crm_float float nativo');
+$errJson = \Crm\Http::payloadFail('Incorrect decimal value for column cantidad');
+assert_true($errJson['ok'] === false && $errJson['success'] === false, 'JSON de error incluye success=false');
+assert_true(strpos($errJson['error'], 'cantidad') !== false, 'JSON de error expone el detalle');
+
 $pdo = crm_pdo();
 assert_true(crm_pdo_driver() === 'sqlite', 'Driver sqlite de prueba');
 $prodCount = (int) $pdo->query('SELECT COUNT(*) FROM productos')->fetchColumn();
@@ -186,6 +194,41 @@ $stockBefore = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '
 ), $login);
 $stockAfter = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '13451'")->fetchColumn();
 assert_true($stockBefore === $stockAfter, 'CRM no modifica stock de productos');
+
+$cotComma = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'borrador',
+    'descuento' => '1.000,50',
+    'items' => array(
+        array(
+            'producto_id' => (int) $prod['id'],
+            'cantidad' => '24,38',
+            'precio_unitario' => '1.234,56',
+        ),
+    ),
+), $login);
+$itComma = $cotComma['cotizacion']['items'][0];
+assert_true(abs((float) $itComma['cantidad'] - 24.38) < 0.001, 'Guarda cantidad 24,38 como DECIMAL');
+assert_true(abs((float) $itComma['precio_unitario'] - 1234.56) < 0.001, 'Guarda precio 1.234,56');
+assert_true(abs((float) $cotComma['cotizacion']['descuento'] - 1000.50) < 0.001, 'Guarda descuento 1.000,50');
+
+$cotPedComma = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'estado' => 'borrador',
+    'descuento' => 0,
+    'items' => array(
+        array(
+            'tipo_item' => 'a_pedido',
+            'descripcion' => 'Item con coma decimal',
+            'cantidad' => '18,29',
+            'precio_unitario' => '100,5',
+            'costo_unitario' => '80,25',
+        ),
+    ),
+), $login);
+$itPedComma = $cotPedComma['cotizacion']['items'][0];
+assert_true(abs((float) $itPedComma['cantidad'] - 18.29) < 0.001, 'A pedido cantidad 18,29');
+assert_true(abs((float) $itPedComma['costo_unitario'] - 80.25) < 0.001, 'A pedido costo 80,25');
 
 $act = \Crm\Actividades::store(array(
     'empresa_id' => $empId,
@@ -1144,8 +1187,16 @@ $posNotas = strpos($cotizadorSrc2, 'id="notas"');
 $posMarcasPdf = strpos($cotizadorSrc2, 'id="marcasBox"');
 $posGuardar = strpos($cotizadorSrc2, 'id="btnGuardar"');
 assert_true($posNotas !== false && $posMarcasPdf !== false && $posGuardar !== false && $posNotas < $posMarcasPdf && $posMarcasPdf < $posGuardar, 'Marcas PDF van entre notas y guardar');
-assert_true(strpos($cotizadorSrc2, 'step="0.01"') !== false, 'Cotizador cantidad admite decimales');
-assert_true(strpos($cotizadorSrc2, 'function parseNum') !== false && strpos($cotizadorSrc2, 'replace(",", ".")') !== false, 'Cotizador parsea coma y punto');
+$appJsSrc = (string) file_get_contents($root . '/assets/js/app.js');
+assert_true(strpos($appJsSrc, 'window.crmParseNum') !== false && strpos($appJsSrc, 'replace(/,/g, ".")') !== false, 'crmParseNum convierte coma a punto');
+assert_true(strpos($cotizadorSrc2, 'crmParseNum') !== false, 'Cotizador usa crmParseNum');
+assert_true(strpos($cotizadorSrc2, 'inputmode="decimal"') !== false && strpos($cotizadorSrc2, 'sanitizeItems') !== false, 'Cotizador cantidad admite decimales con coma');
+$crearSrc = (string) file_get_contents($root . '/api/crear_cotizacion.php');
+assert_true(strpos($crearSrc, 'crm_float(') !== false, 'crear_cotizacion sanitiza descuento con crm_float');
+assert_true(strpos($crearSrc, 'payloadFail') !== false && strpos($crearSrc, 'catch (\\Throwable') !== false, 'crear_cotizacion JSON de error y Throwable');
+$httpSrc = (string) file_get_contents($root . '/src/Http.php');
+assert_true(strpos($httpSrc, 'catch (\\Throwable') !== false, 'Http captura Throwable');
+assert_true(strpos($httpSrc, 'success') !== false && strpos($httpSrc, 'payloadFail') !== false, 'Http JSON incluye success');
 
 assert_true(is_file($root . '/MANUAL_USUARIO.md'), 'Existe MANUAL_USUARIO.md');
 $manualMd = (string) file_get_contents($root . '/MANUAL_USUARIO.md');
@@ -1234,8 +1285,8 @@ $apiCotSrc = (string) file_get_contents($root . '/api/cotizaciones.php');
 assert_true(strpos($apiCotSrc, "action === 'folio'") !== false, 'PUT cotizaciones action=folio');
 $uiCot = (string) file_get_contents($root . '/cotizacion.php');
 assert_true(strpos($uiCot, 'btnCambiarFolio') !== false, 'UI Cambiar folio en ficha');
-assert_true(strpos($uiCot, 'step="0.01"') !== false, 'Ficha cantidad admite decimales');
-assert_true(strpos($uiCot, 'function parseNum') !== false && strpos($uiCot, 'replace(",", ".")') !== false, 'Ficha parsea coma y punto');
+assert_true(strpos($uiCot, 'inputmode="decimal"') !== false && strpos($uiCot, 'sanitizeItems') !== false, 'Ficha cantidad admite decimales con coma');
+assert_true(strpos($uiCot, 'crmParseNum') !== false, 'Ficha parsea coma y punto');
 $uiList = (string) file_get_contents($root . '/cotizaciones.php');
 assert_true(strpos($uiList, 'data-folio') !== false, 'UI Cambiar folio en listado');
 
