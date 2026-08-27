@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  // BlueHosting/cPanel suele ser debian-openssl-1.0.x
+  binaryTargets = ["native", "debian-openssl-1.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id                 String     @id @default(cuid())
+  code               String     @unique
+  name               String
+  description        String     @default("")
+  stock              Float      @default(0)
+  averageUnitCost    Float      @default(0) // CUP / PMP
+  lowStockThreshold  Float      @default(2) // Umbral de bajo stock
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  movements          Movement[]
+}
+
+enum MovementType {
+  ENTRADA
+  SALIDA
+}
+
+model Movement {
+  id             String       @id @default(cuid())
+  type           MovementType
+  documentNumber String
+  productId      String
+  product        Product      @relation(fields: [productId], references: [id])
+  quantity       Float
+  unitPrice      Float        @default(0)
+  date           DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+
+  @@index([productId])
+  @@index([date])
+  @@index([type])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  name         String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
