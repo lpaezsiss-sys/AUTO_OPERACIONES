@@ -4,7 +4,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/Button";
 import { Field, Input, Select } from "@/components/FormFields";
-import { formatCurrency, formatNumber } from "@/lib/format";
+import { Modal } from "@/components/Modal";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { apiFetch } from "@/lib/apiFetch";
 import { calculateNewAverageCost } from "@/lib/inventory";
 
@@ -25,6 +26,27 @@ type LineDraft = {
   unitPrice: string;
 };
 
+type Movement = {
+  id: string;
+  type: DocType;
+  documentNumber: string;
+  quantity: number;
+  unitPrice: number;
+  date: string;
+  product: {
+    id: string;
+    code: string;
+    name: string;
+  };
+};
+
+type EditForm = {
+  documentNumber: string;
+  date: string;
+  quantity: string;
+  unitPrice: string;
+};
+
 function newLine(productId = ""): LineDraft {
   return {
     key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -32,6 +54,15 @@ function newLine(productId = ""): LineDraft {
     quantity: "",
     unitPrice: "",
   };
+}
+
+function toDateInput(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export default function DocumentosPage() {
@@ -50,6 +81,18 @@ export default function DocumentosPage() {
     text: string;
   } | null>(null);
 
+  const [recent, setRecent] = useState<Movement[]>([]);
+  const [recentLoading, setRecentLoading] = useState(true);
+  const [editing, setEditing] = useState<Movement | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({
+    documentNumber: "",
+    date: "",
+    quantity: "",
+    unitPrice: "",
+  });
+  const [editError, setEditError] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
   const loadProducts = useCallback(async () => {
     const res = await apiFetch("/api/products");
     const json = await res.json();
@@ -64,9 +107,24 @@ export default function DocumentosPage() {
     }
   }, []);
 
+  const loadRecent = useCallback(async () => {
+    setRecentLoading(true);
+    try {
+      const res = await apiFetch("/api/movements");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error al listar");
+      setRecent((json as Movement[]).slice(0, 30));
+    } catch {
+      setRecent([]);
+    } finally {
+      setRecentLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadProducts();
-  }, [loadProducts]);
+    loadRecent();
+  }, [loadProducts, loadRecent]);
 
   const previews = useMemo(() => {
     return lines.map((line) => {
@@ -113,7 +171,9 @@ export default function DocumentosPage() {
   }
 
   function removeLine(key: string) {
-    setLines((prev) => (prev.length <= 1 ? prev : prev.filter((l) => l.key !== key)));
+    setLines((prev) =>
+      prev.length <= 1 ? prev : prev.filter((l) => l.key !== key)
+    );
   }
 
   async function onSubmit(e: FormEvent) {
@@ -151,7 +211,7 @@ export default function DocumentosPage() {
       });
       setDocumentNumber("");
       setLines([newLine(products[0]?.id || "")]);
-      await loadProducts();
+      await Promise.all([loadProducts(), loadRecent()]);
     } catch (err) {
       setMessage({
         type: "error",
@@ -162,11 +222,75 @@ export default function DocumentosPage() {
     }
   }
 
+  function openEdit(m: Movement) {
+    setEditing(m);
+    setEditForm({
+      documentNumber: m.documentNumber,
+      date: toDateInput(m.date),
+      quantity: String(m.quantity),
+      unitPrice: String(m.unitPrice),
+    });
+    setEditError("");
+  }
+
+  async function onSaveEdit(e: FormEvent) {
+    e.preventDefault();
+    if (!editing) return;
+    setEditSaving(true);
+    setEditError("");
+    try {
+      const payload: Record<string, unknown> = {
+        documentNumber: editForm.documentNumber.trim(),
+        date: editForm.date,
+        quantity: Number(editForm.quantity),
+      };
+      if (editing.type === "ENTRADA") {
+        payload.unitPrice = Number(editForm.unitPrice);
+      }
+
+      const res = await apiFetch(`/api/movements/${editing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error al guardar");
+      setEditing(null);
+      await Promise.all([loadProducts(), loadRecent()]);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Error al guardar");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function onDelete(m: Movement) {
+    const label = `${m.type === "ENTRADA" ? "entrada" : "salida"} ${m.documentNumber} — ${m.product.code}`;
+    if (
+      !confirm(
+        `¿Eliminar el ítem de ${label}?\n\nSe recalculará el stock y el CUP del artículo.`
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await apiFetch(`/api/movements/${m.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error al eliminar");
+      if (editing?.id === m.id) setEditing(null);
+      await Promise.all([loadProducts(), loadRecent()]);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error al eliminar");
+    }
+  }
+
   return (
     <div>
       <PageHeader
         title="Documentos"
-        description="Ingresa facturas de compra (entrada) o guías de despacho/venta (salida). Puedes agregar varios productos en el mismo documento."
+        description="Ingresa facturas de compra (entrada) o guías de despacho/venta (salida). Más abajo puedes editar o eliminar si hubo error de digitación."
       />
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -419,6 +543,218 @@ export default function DocumentosPage() {
           </div>
         </aside>
       </div>
+
+      <section className="mt-8 animate-fade-up">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-[family-name:var(--font-fraunces)] text-xl font-semibold text-ink">
+              Corregir digitación
+            </h2>
+            <p className="mt-1 text-sm text-ink-muted">
+              Últimos ítems registrados. Edita N° documento, fecha, cantidad o
+              precio; o elimina el registro erróneo.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => loadRecent()}
+            disabled={recentLoading}
+          >
+            Actualizar lista
+          </Button>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-border/80 bg-surface shadow-[var(--shadow)]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-left text-sm">
+              <thead className="bg-bg-deep/60 text-xs uppercase tracking-wide text-ink-muted">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Fecha</th>
+                  <th className="px-4 py-3 font-semibold">Tipo</th>
+                  <th className="px-4 py-3 font-semibold">N° Documento</th>
+                  <th className="px-4 py-3 font-semibold">Producto</th>
+                  <th className="px-4 py-3 font-semibold text-right">Cant.</th>
+                  <th className="px-4 py-3 font-semibold text-right">P. unit.</th>
+                  <th className="px-4 py-3 font-semibold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentLoading ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-8 text-center text-ink-muted"
+                    >
+                      Cargando documentos…
+                    </td>
+                  </tr>
+                ) : recent.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-8 text-center text-ink-muted"
+                    >
+                      Aún no hay documentos para corregir.
+                    </td>
+                  </tr>
+                ) : (
+                  recent.map((m) => (
+                    <tr
+                      key={m.id}
+                      className="border-t border-border/70 transition-colors hover:bg-accent-soft/40"
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap text-ink-muted">
+                        {formatDate(m.date)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${
+                            m.type === "ENTRADA"
+                              ? "bg-entrada/10 text-entrada"
+                              : "bg-salida/10 text-salida"
+                          }`}
+                        >
+                          {m.type === "ENTRADA" ? "Entrada" : "Salida"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {m.documentNumber}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-medium">{m.product.name}</span>
+                        <span className="ml-2 font-mono text-xs text-ink-muted">
+                          {m.product.code}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {formatNumber(m.quantity)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {formatCurrency(m.unitPrice)}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="!px-2"
+                          onClick={() => openEdit(m)}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="!px-2 text-danger"
+                          onClick={() => onDelete(m)}
+                        >
+                          Eliminar
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <Modal
+        open={Boolean(editing)}
+        title={
+          editing
+            ? `Corregir ${editing.type === "ENTRADA" ? "entrada" : "salida"}`
+            : "Corregir documento"
+        }
+        onClose={() => {
+          if (!editSaving) setEditing(null);
+        }}
+      >
+        {editing ? (
+          <form onSubmit={onSaveEdit} className="space-y-4">
+            <p className="text-sm text-ink-muted">
+              {editing.product.code} — {editing.product.name}. Tras guardar se
+              recalcula el stock y el CUP.
+            </p>
+            <Field label="N° documento" htmlFor="edit-doc">
+              <Input
+                id="edit-doc"
+                value={editForm.documentNumber}
+                onChange={(e) =>
+                  setEditForm((f) => ({
+                    ...f,
+                    documentNumber: e.target.value,
+                  }))
+                }
+                required
+              />
+            </Field>
+            <Field label="Fecha" htmlFor="edit-date">
+              <Input
+                id="edit-date"
+                type="date"
+                value={editForm.date}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, date: e.target.value }))
+                }
+                required
+              />
+            </Field>
+            <Field label="Cantidad" htmlFor="edit-qty">
+              <Input
+                id="edit-qty"
+                type="number"
+                min="0.0001"
+                step="any"
+                value={editForm.quantity}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, quantity: e.target.value }))
+                }
+                required
+              />
+            </Field>
+            {editing.type === "ENTRADA" ? (
+              <Field label="Precio unitario" htmlFor="edit-price">
+                <Input
+                  id="edit-price"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={editForm.unitPrice}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, unitPrice: e.target.value }))
+                  }
+                  required
+                />
+              </Field>
+            ) : (
+              <p className="text-xs text-ink-muted">
+                En salidas el precio unitario es el CUP del momento y no se
+                edita aquí.
+              </p>
+            )}
+            {editError ? (
+              <p className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+                {editError}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={editSaving}
+                onClick={() => setEditing(null)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={editSaving}>
+                {editSaving ? "Guardando…" : "Guardar corrección"}
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Modal>
     </div>
   );
 }
