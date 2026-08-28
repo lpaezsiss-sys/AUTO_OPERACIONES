@@ -6,11 +6,18 @@ namespace Crm;
 
 final class Http
 {
+    public static function noCacheHeaders()
+    {
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+    }
+
     public static function jsonHeaders()
     {
         header('Content-Type: application/json; charset=utf-8');
         header('X-Content-Type-Options: nosniff');
-        header('Cache-Control: no-store');
+        self::noCacheHeaders();
         if (function_exists('crm_cors_headers')) {
             crm_cors_headers();
         }

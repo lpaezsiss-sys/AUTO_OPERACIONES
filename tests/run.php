@@ -1197,6 +1197,44 @@ assert_true(strpos($crearSrc, 'payloadFail') !== false && strpos($crearSrc, 'cat
 $httpSrc = (string) file_get_contents($root . '/src/Http.php');
 assert_true(strpos($httpSrc, 'catch (\\Throwable') !== false, 'Http captura Throwable');
 assert_true(strpos($httpSrc, 'success') !== false && strpos($httpSrc, 'payloadFail') !== false, 'Http JSON incluye success');
+assert_true(strpos($httpSrc, 'noCacheHeaders') !== false && strpos($httpSrc, 'Pragma: no-cache') !== false, 'Http envía cabeceras no-cache');
+assert_true(strpos($crearSrc, 'Pragma: no-cache') !== false && strpos($crearSrc, "(float) \$row['stock']") !== false, 'buscar_producto no-cache y stock float');
+assert_true(strpos($appJsSrc, 'cache: "no-store"') !== false && strpos($appJsSrc, 'window.crmStockFromApi') !== false, 'crmApi no-store y crmStockFromApi');
+assert_true(strpos($cotizadorSrc2, 'crmStockFromApi(p, pr)') !== false, 'Cotizador usa stock fresco de precios+búsqueda');
+$preciosSrc = (string) file_get_contents($root . '/src/Precios.php');
+assert_true(strpos($preciosSrc, "'stock' => (float) \$prod['stock']") !== false, 'Precios::pack incluye stock actual');
+
+$prod13555 = $pdo->query("SELECT id, stock FROM productos WHERE codigo = '13555' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+assert_true(is_array($prod13555), 'Producto inventario 13555');
+$id13555 = (int) $prod13555['id'];
+$stock13555Orig = (float) $prod13555['stock'];
+$pdo->prepare('UPDATE productos SET stock = ? WHERE id = ?')->execute(array(77.5, $id13555));
+$precioConStock = \Crm\Precios::resolver(0, $id13555, 0);
+assert_true(isset($precioConStock['stock']) && (float) $precioConStock['stock'] === 77.5, 'Precios::resolver expone stock actualizado');
+$_GET['q'] = '13555';
+$idx13555 = \Crm\Productos::index();
+unset($_GET['q']);
+$hit13555 = null;
+foreach ($idx13555['productos'] as $pIdx) {
+    if ((string) $pIdx['codigo'] === '13555') {
+        $hit13555 = $pIdx;
+        break;
+    }
+}
+assert_true(is_array($hit13555) && (float) $hit13555['stock'] === 77.5, 'Productos::index lee stock actualizado');
+$like13555 = '%13555%';
+$buscarStmt = $pdo->prepare(
+    'SELECT id, codigo, codigo AS sku, nombre, descripcion, stock, precio_unitario, unidad
+     FROM productos
+     WHERE activo = 1 AND (nombre LIKE ? OR codigo LIKE ?)
+     ORDER BY nombre ASC LIMIT 20'
+);
+$buscarStmt->execute(array($like13555, $like13555));
+$buscar13555 = $buscarStmt->fetch(PDO::FETCH_ASSOC);
+assert_true(is_array($buscar13555) && (float) $buscar13555['stock'] === 77.5, 'SQL buscar_producto lee stock actualizado');
+$pdo->prepare('UPDATE productos SET stock = ? WHERE id = ?')->execute(array($stock13555Orig, $id13555));
+$stock13555Back = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '13555' LIMIT 1")->fetchColumn();
+assert_true($stock13555Back === $stock13555Orig, 'Test restaura stock 13555');
 
 assert_true(is_file($root . '/MANUAL_USUARIO.md'), 'Existe MANUAL_USUARIO.md');
 $manualMd = (string) file_get_contents($root . '/MANUAL_USUARIO.md');

@@ -151,6 +151,7 @@ final class Precios
         return array(
             'producto_id' => (int) $prod['id'],
             'codigo' => (string) $prod['codigo'],
+            'stock' => (float) $prod['stock'],
             'precio_base' => (float) $base,
             'precio_unitario' => (float) $precio,
             'origen' => (string) $origen,

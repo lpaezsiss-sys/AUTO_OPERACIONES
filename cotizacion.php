@@ -215,7 +215,7 @@ function addProducto(p) {
       cantidad: 1,
       precio_unitario: pr.precio_unitario != null ? pr.precio_unitario : p.precio_unitario,
       descuento_pct: 0,
-      stock_actual: p.stock,
+      stock_actual: window.crmStockFromApi(p, pr),
       precio_origen: pr.origen || "base",
       precio_badge: pr.origen === "historial" ? (pr.badge || "") : ""
     });

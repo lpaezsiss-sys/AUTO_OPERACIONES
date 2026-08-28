@@ -243,7 +243,8 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   function render() {
     var tb = document.querySelector("#tablaItems tbody");
     tb.innerHTML = items.map(function (it, i) {
-      var warn = !esLibre(it) && it.stock != null && parseNum(it.stock) < parseNum(it.cantidad);
+      var stockVal = window.crmStockFromApi(it);
+      var warn = !esLibre(it) && stockVal != null && parseNum(stockVal) < parseNum(it.cantidad);
       var libre = esLibre(it);
       var pedido = it.tipo_item === "a_pedido";
       return '<tr>' +
@@ -251,7 +252,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         '<td>' + (libre ? '<input class="form-control form-control-sm" value="' + crmEsc(it.codigo || "") + '" data-i="' + i + '" data-k="codigo">' : crmEsc(it.codigo || "")) + '</td>' +
         '<td>' + (libre ? '<input class="form-control form-control-sm" value="' + crmEsc(it.descripcion || "") + '" data-i="' + i + '" data-k="descripcion">' : crmEsc(it.descripcion || "")) + '</td>' +
         '<td>' + marcaCell(it, i) + '</td>' +
-        '<td><span class="badge badge-stock ' + (warn ? "low" : "") + '">' + (libre || it.stock == null ? "—" : it.stock) + '</span></td>' +
+        '<td><span class="badge badge-stock ' + (warn ? "low" : "") + '">' + (libre || stockVal == null ? "—" : stockVal) + '</span></td>' +
         '<td><input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.cantidad) + '" data-i="' + i + '" data-k="cantidad"></td>' +
         '<td><input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.precio_unitario) + '" data-i="' + i + '" data-k="precio_unitario"></td>' +
         '<td>' + (pedido ? '<input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.costo_unitario || 0) + '" data-i="' + i + '" data-k="costo_unitario">' : "—") + '</td>' +
@@ -291,7 +292,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         cantidad: 1,
         precio_unitario: pr.precio_unitario != null ? pr.precio_unitario : p.precio_unitario,
         descuento_pct: 0,
-        stock: p.stock,
+        stock: window.crmStockFromApi(p, pr),
         precio_origen: pr.origen || "base",
         precio_badge: pr.origen === "historial" ? (pr.badge || "") : ""
       });
@@ -370,10 +371,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         sug.style.display = "none";
         return;
       }
-      fetch("api/crear_cotizacion.php?action=buscar_producto&q=" + encodeURIComponent(q), {
-        credentials: "same-origin",
-        headers: { Accept: "application/json" }
-      }).then(function (r) { return r.json(); }).then(function (data) {
+      crmApi("api/crear_cotizacion.php?action=buscar_producto&q=" + encodeURIComponent(q)).then(function (data) {
         var list = data.productos || [];
         if (!list.length) {
           sug.innerHTML = '<div class="list-group-item small text-secondary">Sin resultados en inventario</div>';

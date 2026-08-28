@@ -4,12 +4,17 @@
   window.crmApi = async function (path, options) {
     options = options || {};
     var isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
-    var headers = { Accept: "application/json" };
+    var headers = {
+      Accept: "application/json",
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    };
     if (options.body && !isForm) {
       headers["Content-Type"] = "application/json";
     }
     var res = await fetch(path, {
       credentials: "same-origin",
+      cache: "no-store",
       method: options.method || "GET",
       headers: Object.assign(headers, options.headers || {}),
       body: options.body ? (isForm ? options.body : JSON.stringify(options.body)) : undefined,
@@ -42,6 +47,20 @@
       currency: "CLP",
       maximumFractionDigits: 0,
     }).format(Number(n || 0));
+  };
+
+  /**
+   * Stock fresco: respuesta de api/precios.php, si no el ítem de búsqueda.
+   * 0 es stock válido; null/undefined/"" se tratan como ausente.
+   */
+  window.crmStockFromApi = function (item, precio) {
+    if (precio && precio.stock != null && precio.stock !== "") {
+      return precio.stock;
+    }
+    if (item && item.stock != null && item.stock !== "") {
+      return item.stock;
+    }
+    return null;
   };
 
   /**

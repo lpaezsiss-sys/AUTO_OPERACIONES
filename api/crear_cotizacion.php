@@ -8,9 +8,12 @@ declare(strict_types=1);
  */
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
-header('Cache-Control: no-store');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 require dirname(__DIR__) . '/includes/bootstrap.php';
+\Crm\Http::noCacheHeaders();
 
 /**
  * @param array $payload
@@ -88,6 +91,8 @@ function crm_buscar_producto()
         $rows = array();
     }
     foreach ($rows as &$row) {
+        $row['stock'] = (float) $row['stock'];
+        $row['precio_unitario'] = (float) $row['precio_unitario'];
         $row = \Crm\ItemImagen::anexarAProducto($row);
     }
     unset($row);
