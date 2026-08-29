@@ -1,0 +1,45 @@
+DirectoryIndex index.php login.php
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # HTTPS forzado en el subdominio de producción
+    RewriteCond %{HTTP_HOST} ^(www\.)?crm\.lpaezsis\.cl$ [NC]
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+    RewriteRule ^ https://crm.lpaezsis.cl%{REQUEST_URI} [L,R=301]
+
+    RewriteCond %{HTTP_HOST} ^www\.crm\.lpaezsis\.cl$ [NC]
+    RewriteRule ^ https://crm.lpaezsis.cl%{REQUEST_URI} [L,R=301]
+
+    RewriteRule ^(config|src|includes|sql|tests|data|database|scripts|lib|templates)/ - [F]
+    RewriteRule ^\.env - [F]
+</IfModule>
+
+<Files ".env">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>
+
+<FilesMatch "^\.env">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_php7.c>
+    php_flag display_errors Off
+    php_flag display_startup_errors Off
+</IfModule>
