@@ -83,16 +83,17 @@ final class InventarioStock
         }
         $codeCol = $cols['code'];
         $like = self::likeNeedle($q);
+        $esc = self::likeEscapeSql();
         $sql = 'SELECT * FROM Product WHERE ' . self::quoteIdent($codeCol) . ' = ?';
         $params = array($q);
-        $sql .= ' OR ' . self::quoteIdent($codeCol) . " LIKE ? ESCAPE '\\'";
+        $sql .= ' OR ' . self::quoteIdent($codeCol) . ' LIKE ?' . $esc;
         $params[] = $like;
         if (isset($cols['name'])) {
-            $sql .= ' OR ' . self::quoteIdent($cols['name']) . " LIKE ? ESCAPE '\\'";
+            $sql .= ' OR ' . self::quoteIdent($cols['name']) . ' LIKE ?' . $esc;
             $params[] = $like;
         }
         if (isset($cols['description'])) {
-            $sql .= ' OR IFNULL(' . self::quoteIdent($cols['description']) . ", '') LIKE ? ESCAPE '\\'";
+            $sql .= ' OR IFNULL(' . self::quoteIdent($cols['description']) . ", '') LIKE ?" . $esc;
             $params[] = $like;
         }
         $sql .= ' ORDER BY CASE WHEN ' . self::quoteIdent($codeCol) . ' = ? THEN 0 ELSE 1 END, '
@@ -151,13 +152,23 @@ final class InventarioStock
     }
 
     /**
+     * LIKE needle con ESCAPE '!'. Evita ESCAPE '\' (MariaDB interpreta \' como comilla).
+     *
      * @param string $q
      * @return string
      */
     public static function likeNeedle($q)
     {
-        $q = str_replace(array('\\', '%', '_'), array('\\\\', '\\%', '\\_'), (string) $q);
+        $q = str_replace(array('!', '%', '_'), array('!!', '!%', '!_'), (string) $q);
         return '%' . $q . '%';
+    }
+
+    /**
+     * @return string
+     */
+    public static function likeEscapeSql()
+    {
+        return " ESCAPE '!'";
     }
 
     /**

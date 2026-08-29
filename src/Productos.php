@@ -30,7 +30,9 @@ final class Productos
                 WHERE activo = 1';
         $params = array();
         if ($q !== '') {
-            $sql .= ' AND (codigo LIKE ? ESCAPE \'\\\' OR nombre LIKE ? ESCAPE \'\\\' OR descripcion LIKE ? ESCAPE \'\\\')';
+            $sql .= ' AND (codigo LIKE ?' . InventarioStock::likeEscapeSql()
+                . ' OR nombre LIKE ?' . InventarioStock::likeEscapeSql()
+                . ' OR descripcion LIKE ?' . InventarioStock::likeEscapeSql() . ')';
             $like = InventarioStock::likeNeedle($q);
             $params[] = $like;
             $params[] = $like;
@@ -90,7 +92,8 @@ final class Productos
         }
         $sql .= ' FROM productos
                 WHERE activo = 1
-                  AND (nombre LIKE ? ESCAPE \'\\\' OR codigo LIKE ? ESCAPE \'\\\')
+                  AND (nombre LIKE ?' . InventarioStock::likeEscapeSql()
+            . ' OR codigo LIKE ?' . InventarioStock::likeEscapeSql() . ')
                 ORDER BY nombre ASC
                 LIMIT ' . $limit;
         $like = InventarioStock::likeNeedle($q);
