@@ -62,7 +62,7 @@ try {
 
 /**
  * GET ?action=buscar_producto&q=
- * LIKE sobre nombre y SKU (codigo) en la tabla de inventario `productos`.
+ * Catálogo CRM + SQLite de inventario (alta stock 0 si el SKU no existe en productos).
  *
  * @return void
  */
@@ -73,30 +73,7 @@ function crm_buscar_producto()
         crm_cotizador_json(array('ok' => true, 'productos' => array()));
     }
 
-    $like = '%' . $q . '%';
-    $colImg = \Crm\ItemImagen::columnaInventario(crm_pdo());
-    $sql = 'SELECT id, codigo, codigo AS sku, nombre, descripcion, stock, precio_unitario, unidad';
-    if ($colImg !== '') {
-        $sql .= ', ' . $colImg;
-    }
-    $sql .= ' FROM productos
-            WHERE activo = 1
-              AND (nombre LIKE ? OR codigo LIKE ?)
-            ORDER BY nombre ASC
-            LIMIT 20';
-    $stmt = crm_pdo()->prepare($sql);
-    $stmt->execute(array($like, $like));
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    if (!is_array($rows)) {
-        $rows = array();
-    }
-    foreach ($rows as &$row) {
-        $row['precio_unitario'] = (float) $row['precio_unitario'];
-        $row = \Crm\InventarioStock::aplicarAFila($row);
-        $row = \Crm\ItemImagen::anexarAProducto($row);
-    }
-    unset($row);
-
+    $rows = \Crm\Productos::buscarParaCotizador($q, 20);
     crm_cotizador_json(array('ok' => true, 'productos' => $rows));
 }
 

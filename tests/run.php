@@ -1198,7 +1198,7 @@ $httpSrc = (string) file_get_contents($root . '/src/Http.php');
 assert_true(strpos($httpSrc, 'catch (\\Throwable') !== false, 'Http captura Throwable');
 assert_true(strpos($httpSrc, 'success') !== false && strpos($httpSrc, 'payloadFail') !== false, 'Http JSON incluye success');
 assert_true(strpos($httpSrc, 'noCacheHeaders') !== false && strpos($httpSrc, 'Pragma: no-cache') !== false, 'Http envía cabeceras no-cache');
-assert_true(strpos($crearSrc, 'Pragma: no-cache') !== false && strpos($crearSrc, 'InventarioStock::aplicarAFila') !== false, 'buscar_producto no-cache y stock de inventario');
+assert_true(strpos($crearSrc, 'Pragma: no-cache') !== false && strpos($crearSrc, 'buscarParaCotizador') !== false, 'buscar_producto no-cache y cruza inventario');
 assert_true(strpos($appJsSrc, 'cache: "no-store"') !== false && strpos($appJsSrc, 'window.crmStockFromApi') !== false, 'crmApi no-store y crmStockFromApi');
 assert_true(strpos($cotizadorSrc2, 'crmStockFromApi(p, pr)') !== false, 'Cotizador usa stock fresco de precios+búsqueda');
 $preciosSrc = (string) file_get_contents($root . '/src/Precios.php');
@@ -1249,11 +1249,13 @@ $invPdo->exec(
         id TEXT PRIMARY KEY,
         code TEXT UNIQUE,
         name TEXT,
-        stock REAL
+        description TEXT,
+        stock REAL,
+        averageUnitCost REAL
     )'
 );
-$invPdo->prepare('INSERT INTO Product (id, code, name, stock) VALUES (?, ?, ?, ?)')->execute(
-    array('inv-13555', '13555', 'Correa Sonic 16 GRV 13555', 2)
+$invPdo->prepare('INSERT INTO Product (id, code, name, description, stock, averageUnitCost) VALUES (?, ?, ?, ?, ?, ?)')->execute(
+    array('inv-13555', '13555', 'Correa Sonic 16 GRV 13555', 'Correa', 2, 1000)
 );
 putenv('INV_SQLITE_PATH=' . $invDb);
 \Crm\InventarioStock::reset();
@@ -1266,6 +1268,68 @@ $filaBuscar = \Crm\InventarioStock::aplicarAFila($buscar13555);
 assert_true((float) $filaBuscar['stock'] === 2.0, 'buscar_producto overlay stock de inventario');
 $sinSku = \Crm\InventarioStock::stockPorCodigo('NO-EXISTE');
 assert_true($sinSku === null, 'SKU ausente en inventario no pisa el fallback');
+
+$antes12852 = $pdo->prepare("SELECT id FROM productos WHERE codigo = '12852-48' LIMIT 1");
+$antes12852->execute();
+assert_true($antes12852->fetchColumn() === false, 'SKU 12852-48 no está en catálogo CRM');
+$stock13451AntesInv = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '13451' LIMIT 1")->fetchColumn();
+$invPdo->prepare('INSERT INTO Product (id, code, name, description, stock, averageUnitCost) VALUES (?, ?, ?, ?, ?, ?)')->execute(
+    array('inv-12852-48', '12852-48', '3x48 P AIR KNIFE SONIC XE', 'Cuchillo de aire Sonic XE 3x48', 8, 15490)
+);
+\Crm\InventarioStock::reset();
+$hitsInvOnly = \Crm\InventarioStock::buscar('12852-48', 20);
+assert_true(count($hitsInvOnly) === 1 && (string) $hitsInvOnly[0]['code'] === '12852-48', 'InventarioStock::buscar encuentra 12852-48');
+$porNombre = \Crm\InventarioStock::buscar('AIR KNIFE', 20);
+$hitNombre = false;
+foreach ($porNombre as $hInv) {
+    if ((string) $hInv['code'] === '12852-48') {
+        $hitNombre = true;
+    }
+}
+assert_true($hitNombre, 'InventarioStock::buscar por nombre halla 12852-48');
+
+$cotizHits = \Crm\Productos::buscarParaCotizador('12852-48', 20);
+$hit12852 = null;
+foreach ($cotizHits as $pHit) {
+    if ((string) $pHit['codigo'] === '12852-48' || (string) $pHit['sku'] === '12852-48') {
+        $hit12852 = $pHit;
+        break;
+    }
+}
+assert_true(is_array($hit12852), 'Cotizador encuentra SKU solo de inventario');
+assert_true((int) $hit12852['id'] > 0, 'SKU de inventario tiene id CRM');
+assert_true((float) $hit12852['stock'] === 8.0, 'Cotizador muestra stock vivo 8 de SQLite');
+assert_true((float) $hit12852['precio_unitario'] === 15490.0, 'Precio inicial desde averageUnitCost');
+assert_true(strpos((string) $hit12852['nombre'], 'AIR KNIFE') !== false, 'Nombre copiado de inventario');
+$crm12852 = $pdo->query("SELECT id, stock, precio_unitario FROM productos WHERE codigo = '12852-48' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+assert_true(is_array($crm12852), 'SKU 12852-48 quedó en productos');
+assert_true((float) $crm12852['stock'] === 0.0, 'Alta desde inventario deja productos.stock = 0');
+assert_true((int) $crm12852['id'] === (int) $hit12852['id'], 'id CRM coincide con búsqueda');
+
+$segunda = \Crm\Productos::buscarParaCotizador('12852-48', 20);
+assert_true(count($segunda) >= 1, 'Segunda búsqueda sigue encontrando 12852-48');
+$dupCount = (int) $pdo->query("SELECT COUNT(*) FROM productos WHERE codigo = '12852-48'")->fetchColumn();
+assert_true($dupCount === 1, 'No duplica el SKU en catálogo CRM');
+$crmStock12852b = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '12852-48'")->fetchColumn();
+assert_true($crmStock12852b === 0.0, 'Rebuscar no actualiza productos.stock');
+
+$_GET['q'] = '12852';
+$idx12852 = \Crm\Productos::index();
+unset($_GET['q']);
+$idxHit = null;
+foreach ($idx12852['productos'] as $pIdx2) {
+    if ((string) $pIdx2['codigo'] === '12852-48') {
+        $idxHit = $pIdx2;
+        break;
+    }
+}
+assert_true(is_array($idxHit) && (float) $idxHit['stock'] === 8.0, 'Productos::index fusiona SKU de inventario');
+
+$stock13451DespInv = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '13451' LIMIT 1")->fetchColumn();
+assert_true($stock13451AntesInv === $stock13451DespInv, 'Alta de SKU inventario no altera stock de SKUs existentes');
+$crmStock13555 = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '13555' LIMIT 1")->fetchColumn();
+assert_true($crmStock13555 === $stock13555Orig, 'Overlay/alta no altera productos.stock de 13555');
+
 putenv('INV_SQLITE_PATH=');
 \Crm\InventarioStock::reset();
 $precioFallback = \Crm\Precios::resolver(0, $id13555, 0);
