@@ -7,7 +7,7 @@ namespace Crm;
 use PDO;
 
 /**
- * Lectura de stock/precio desde la tabla de inventario `productos`.
+ * Lectura de catálogo CRM (`productos`) y stock real desde inventario.lpaezsis.cl.
  * No duplica lógica de inventario: solo SELECT.
  */
 final class Productos
@@ -42,9 +42,9 @@ final class Productos
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($rows as &$row) {
-            $row['stock'] = (float) $row['stock'];
             $row['precio_unitario'] = (float) $row['precio_unitario'];
             $row['umbral_stock'] = (float) $row['umbral_stock'];
+            $row = InventarioStock::aplicarAFila($row);
             $row['bajo_stock'] = $row['stock'] <= $row['umbral_stock'];
             $row = ItemImagen::anexarAProducto($row);
         }
@@ -70,6 +70,7 @@ final class Productos
         if (!$row) {
             Http::fail('Producto no encontrado en inventario', 404);
         }
+        $row = InventarioStock::aplicarAFila($row);
         return ItemImagen::anexarAProducto($row);
     }
 

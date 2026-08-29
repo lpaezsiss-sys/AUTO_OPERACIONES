@@ -1198,11 +1198,11 @@ $httpSrc = (string) file_get_contents($root . '/src/Http.php');
 assert_true(strpos($httpSrc, 'catch (\\Throwable') !== false, 'Http captura Throwable');
 assert_true(strpos($httpSrc, 'success') !== false && strpos($httpSrc, 'payloadFail') !== false, 'Http JSON incluye success');
 assert_true(strpos($httpSrc, 'noCacheHeaders') !== false && strpos($httpSrc, 'Pragma: no-cache') !== false, 'Http envía cabeceras no-cache');
-assert_true(strpos($crearSrc, 'Pragma: no-cache') !== false && strpos($crearSrc, "(float) \$row['stock']") !== false, 'buscar_producto no-cache y stock float');
+assert_true(strpos($crearSrc, 'Pragma: no-cache') !== false && strpos($crearSrc, 'InventarioStock::aplicarAFila') !== false, 'buscar_producto no-cache y stock de inventario');
 assert_true(strpos($appJsSrc, 'cache: "no-store"') !== false && strpos($appJsSrc, 'window.crmStockFromApi') !== false, 'crmApi no-store y crmStockFromApi');
 assert_true(strpos($cotizadorSrc2, 'crmStockFromApi(p, pr)') !== false, 'Cotizador usa stock fresco de precios+búsqueda');
 $preciosSrc = (string) file_get_contents($root . '/src/Precios.php');
-assert_true(strpos($preciosSrc, "'stock' => (float) \$prod['stock']") !== false, 'Precios::pack incluye stock actual');
+assert_true(strpos($preciosSrc, 'InventarioStock::stockPorCodigo') !== false, 'Precios::pack prioriza stock de inventario SQLite');
 
 $prod13555 = $pdo->query("SELECT id, stock FROM productos WHERE codigo = '13555' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 assert_true(is_array($prod13555), 'Producto inventario 13555');
@@ -1235,6 +1235,44 @@ assert_true(is_array($buscar13555) && (float) $buscar13555['stock'] === 77.5, 'S
 $pdo->prepare('UPDATE productos SET stock = ? WHERE id = ?')->execute(array($stock13555Orig, $id13555));
 $stock13555Back = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '13555' LIMIT 1")->fetchColumn();
 assert_true($stock13555Back === $stock13555Orig, 'Test restaura stock 13555');
+
+$invDb = $root . '/data/test-inv-stock.sqlite';
+foreach (array($invDb, $invDb . '-wal', $invDb . '-shm', $invDb . '-journal') as $f) {
+    if (is_file($f)) {
+        unlink($f);
+    }
+}
+$invPdo = new PDO('sqlite:' . $invDb);
+$invPdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$invPdo->exec(
+    'CREATE TABLE Product (
+        id TEXT PRIMARY KEY,
+        code TEXT UNIQUE,
+        name TEXT,
+        stock REAL
+    )'
+);
+$invPdo->prepare('INSERT INTO Product (id, code, name, stock) VALUES (?, ?, ?, ?)')->execute(
+    array('inv-13555', '13555', 'Correa Sonic 16 GRV 13555', 2)
+);
+putenv('INV_SQLITE_PATH=' . $invDb);
+\Crm\InventarioStock::reset();
+$crmStock = (float) $pdo->query("SELECT stock FROM productos WHERE codigo = '13555'")->fetchColumn();
+assert_true($crmStock === $stock13555Orig, 'CRM productos.stock no se altera al leer inventario');
+assert_true(\Crm\InventarioStock::stockPorCodigo('13555') === 2.0, 'InventarioStock lee Product.stock=2');
+$precioInvLive = \Crm\Precios::resolver(0, $id13555, 0);
+assert_true((float) $precioInvLive['stock'] === 2.0, 'Precios usa stock 2 del SQLite aunque CRM tenga 5');
+$filaBuscar = \Crm\InventarioStock::aplicarAFila($buscar13555);
+assert_true((float) $filaBuscar['stock'] === 2.0, 'buscar_producto overlay stock de inventario');
+$sinSku = \Crm\InventarioStock::stockPorCodigo('NO-EXISTE');
+assert_true($sinSku === null, 'SKU ausente en inventario no pisa el fallback');
+putenv('INV_SQLITE_PATH=');
+\Crm\InventarioStock::reset();
+$precioFallback = \Crm\Precios::resolver(0, $id13555, 0);
+assert_true((float) $precioFallback['stock'] === $stock13555Orig, 'Sin INV_SQLITE_PATH vuelve a productos.stock');
+if (is_file($invDb)) {
+    unlink($invDb);
+}
 
 assert_true(is_file($root . '/MANUAL_USUARIO.md'), 'Existe MANUAL_USUARIO.md');
 $manualMd = (string) file_get_contents($root . '/MANUAL_USUARIO.md');

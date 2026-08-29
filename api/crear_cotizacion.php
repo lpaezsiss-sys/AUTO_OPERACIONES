@@ -91,8 +91,8 @@ function crm_buscar_producto()
         $rows = array();
     }
     foreach ($rows as &$row) {
-        $row['stock'] = (float) $row['stock'];
         $row['precio_unitario'] = (float) $row['precio_unitario'];
+        $row = \Crm\InventarioStock::aplicarAFila($row);
         $row = \Crm\ItemImagen::anexarAProducto($row);
     }
     unset($row);

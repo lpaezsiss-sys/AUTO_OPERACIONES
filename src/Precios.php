@@ -148,10 +148,15 @@ final class Precios
      */
     private static function pack(array $prod, $base, $precio, $origen, $lista, $hist, $badge)
     {
+        $stock = InventarioStock::stockPorCodigo((string) $prod['codigo']);
+        if ($stock === null) {
+            $stock = (float) $prod['stock'];
+        }
+
         return array(
             'producto_id' => (int) $prod['id'],
             'codigo' => (string) $prod['codigo'],
-            'stock' => (float) $prod['stock'],
+            'stock' => $stock,
             'precio_base' => (float) $base,
             'precio_unitario' => (float) $precio,
             'origen' => (string) $origen,
