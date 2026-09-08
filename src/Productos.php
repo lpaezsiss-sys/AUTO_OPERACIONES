@@ -7,6 +7,8 @@ namespace Crm;
 use PDO;
 use PDOException;
 
+require_once __DIR__ . '/ItemImagen.php';
+
 /**
  * Catálogo CRM (`productos`).
  * Stock de filas existentes: solo lectura + overlay de inventario (nunca UPDATE stock).
@@ -22,7 +24,10 @@ final class Productos
         $q = crm_str(isset($_GET['q']) ? $_GET['q'] : '', 120);
         $bajo = isset($_GET['bajo_stock']) && (string) $_GET['bajo_stock'] === '1';
         $colImg = ItemImagen::columnaInventario(crm_pdo());
-        $sql = 'SELECT id, codigo, nombre, descripcion, stock, precio_unitario, umbral_stock, unidad, activo, updated_at';
+        $sql = 'SELECT id, codigo, nombre, descripcion, stock, precio_unitario, umbral_stock, unidad, activo';
+        if (self::tablaTieneUpdatedAt()) {
+            $sql .= ', updated_at';
+        }
         if ($colImg !== '') {
             $sql .= ', ' . $colImg;
         }

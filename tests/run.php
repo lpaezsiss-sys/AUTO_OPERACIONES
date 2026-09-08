@@ -1430,6 +1430,17 @@ $uiCot = (string) file_get_contents($root . '/cotizacion.php');
 assert_true(strpos($uiCot, 'btnCambiarFolio') !== false, 'UI Cambiar folio en ficha');
 assert_true(strpos($uiCot, 'inputmode="decimal"') !== false && strpos($uiCot, 'sanitizeItems') !== false, 'Ficha cantidad admite decimales con coma');
 assert_true(strpos($uiCot, 'crmParseNum') !== false, 'Ficha parsea coma y punto');
+assert_true(strpos($uiCot, 'function aplicarCotizacion') !== false, 'Ficha aplica payload GET de cotización');
+assert_true(strpos($uiCot, 'crmSettle') !== false, 'Ficha no bloquea si un catálogo falla');
+assert_true(strpos($uiCot, 'api/cotizaciones.php?id=') !== false, 'Ficha pide GET cotización por id');
+$showEdit = \Crm\Cotizaciones::show($idFolioA);
+$cEdit = $showEdit['cotizacion'];
+foreach (array('empresa_id', 'contacto_id', 'vendedor_id', 'condiciones_pago', 'plazo_entrega', 'lugar_entrega', 'descuento', 'notas', 'items') as $kShow) {
+    assert_true(array_key_exists($kShow, $cEdit), 'show() expone ' . $kShow);
+}
+assert_true(is_array($cEdit['items']) && count($cEdit['items']) >= 1, 'show() incluye ítems');
+$prodSrc = (string) file_get_contents($root . '/src/Productos.php');
+assert_true(strpos($prodSrc, 'tablaTieneUpdatedAt()') !== false, 'Productos::index tolera productos sin updated_at');
 $uiList = (string) file_get_contents($root . '/cotizaciones.php');
 assert_true(strpos($uiList, 'data-folio') !== false, 'UI Cambiar folio en listado');
 

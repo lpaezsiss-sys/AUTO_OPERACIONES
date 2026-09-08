@@ -30,6 +30,11 @@ spl_autoload_register(static function ($class) {
     }
 });
 
+$crmItemImagenFile = dirname(__DIR__) . '/src/ItemImagen.php';
+if (is_file($crmItemImagenFile)) {
+    require_once $crmItemImagenFile;
+}
+
 if (PHP_SAPI !== 'cli') {
     crm_cors_headers();
     crm_cors_preflight();
