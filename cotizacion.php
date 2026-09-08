@@ -232,45 +232,48 @@ function renderMarcas(selectedIds) {
       img + '<span class="small">'+(m.nombre||m.archivo)+'</span></label>';
   }).join("") || '<span class="small text-secondary">No hay marcas cargadas.</span>';
 }
+var contactosSeq = 0;
+function crmSettle(promise) {
+  return promise.then(function (value) {
+    return { ok: true, value: value };
+  }).catch(function (err) {
+    return { ok: false, error: err };
+  });
+}
+function setSelectValue(sel, value, label) {
+  if (!sel) return;
+  var v = value == null || value === "" ? "" : String(value);
+  if (v !== "" && !Array.prototype.some.call(sel.options, function (opt) { return String(opt.value) === v; })) {
+    var opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = label || ("#" + v);
+    sel.appendChild(opt);
+  }
+  sel.value = v;
+}
 function loadContactos(empresaId, selected) {
   var sel = document.getElementById("selContacto");
+  var seq = ++contactosSeq;
   sel.innerHTML = '<option value="">(sin contacto)</option>';
   if (!empresaId) return Promise.resolve();
   return crmApi("api/contactos.php?empresa_id="+empresaId).then(function (d) {
+    if (seq !== contactosSeq) return;
     sel.innerHTML = '<option value="">(sin contacto)</option>' + (d.contactos||[]).map(function (c) {
       return '<option value="'+c.id+'">'+c.nombre+' '+(c.apellido||"")+(c.email?' · '+c.email:'')+'</option>';
     }).join("");
-    if (selected) sel.value = selected;
+    if (selected) setSelectValue(sel, selected, selected);
   }).catch(function (e) { crmToast(e.message, true); });
 }
-Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("api/vendedores.php"), crmApi("api/marcas.php"), crmApi("api/listas_precios.php")]).then(function (arr) {
-  empresasCache = arr[0].empresas || [];
-  document.getElementById("selEmpresa").innerHTML = empresasCache.map(function (e) {
-    return '<option value="'+e.id+'">'+e.razon_social+'</option>';
-  }).join("");
-  document.getElementById("selVendedor").innerHTML = '<option value="">(según usuario)</option>' +
-    (arr[2].vendedores||[]).filter(function (v) { return Number(v.activo) === 1; }).map(function (v) {
-      return '<option value="'+v.id+'">'+v.nombre_completo+' · '+Number(v.comision_porcentaje).toFixed(2)+'%</option>';
-    }).join("");
-  productos = arr[1].productos || [];
-  marcasCatalogo = arr[3].marcas || [];
-  listasCache = arr[4].listas || [];
-  fillListasSelect(defaultListaId());
-  renderMarcas([]);
-  var empSel = document.getElementById("selEmpresa");
-  loadContactos(empSel.value, "");
-  empSel.addEventListener("change", function () { loadContactos(empSel.value, ""); aplicarListaEmpresa(); });
-  aplicarListaEmpresa();
-  if (cotId) {
-    return crmApi("api/cotizaciones.php?id="+cotId);
+function aplicarCotizacion(payload) {
+  var c = payload && (payload.cotizacion || payload);
+  var listaItems = (c && c.items) || (payload && payload.items) || [];
+  if (!c || !c.id) {
+    crmToast("No se pudo cargar la cotización", true);
+    return;
   }
-  return null;
-}).then(function (d) {
-  if (!d) return;
-  var c = d.cotizacion;
-  document.getElementById("title").textContent = c.folio;
+  document.getElementById("title").textContent = c.folio || document.getElementById("title").textContent;
   var badge = document.getElementById("folioBadge");
-  if (badge) {
+  if (badge && c.folio) {
     badge.textContent = c.folio;
     badge.classList.remove("badge-folio-new");
     badge.classList.add("badge-folio-ok");
@@ -279,28 +282,72 @@ Promise.all([crmApi("api/empresas.php"), crmApi("api/productos.php"), crmApi("ap
   if (btnFolioLoad) {
     btnFolioLoad.hidden = !c.folio_editable;
   }
-  document.querySelector('[name=empresa_id]').value = c.empresa_id;
+  setSelectValue(document.querySelector('[name=empresa_id]'), c.empresa_id, c.razon_social);
   pendingContactoId = c.contacto_id || "";
   loadContactos(c.empresa_id, pendingContactoId);
-  document.querySelector('[name=vendedor_id]').value = c.vendedor_id || "";
+  setSelectValue(document.querySelector('[name=vendedor_id]'), c.vendedor_id || "", c.vendedor_nombre);
   if (document.getElementById("selListaPrecio")) {
     fillListasSelect(c.lista_precio_id || defaultListaId());
+    setSelectValue(document.getElementById("selListaPrecio"), c.lista_precio_id || "", "Lista");
   }
-  document.querySelector('[name=estado]').value = c.estado;
+  setSelectValue(document.querySelector('[name=estado]'), c.estado || "borrador");
   document.querySelector('[name=fecha_validez]').value = c.fecha_validez || "";
-  document.querySelector('[name=moneda]').value = c.moneda || "CLP";
+  setSelectValue(document.querySelector('[name=moneda]'), c.moneda || "CLP");
   document.querySelector('[name=validez_oferta]').value = c.validez_oferta || "";
   document.querySelector('[name=condiciones_pago]').value = c.condiciones_pago || "";
   document.querySelector('[name=plazo_entrega]').value = c.plazo_entrega || "";
   document.querySelector('[name=lugar_entrega]').value = c.lugar_entrega || "";
-  document.querySelector('[name=descuento]').value = c.descuento || 0;
+  document.querySelector('[name=descuento]').value = c.descuento != null ? c.descuento : 0;
   document.querySelector('[name=notas]').value = c.notas || "";
-  items = (c.items||[]).map(function (it) {
+  items = listaItems.map(function (it) {
     return { tipo_item: it.tipo_item || "producto", es_a_pedido: it.es_a_pedido || 0, producto_id: it.producto_id, marca_id: it.marca_id || 0, marca_nombre: it.marca_nombre || "", codigo: it.codigo, descripcion: it.descripcion, descripcion_detallada: it.descripcion_detallada || "", imagen_url: it.imagen_url || "", cantidad: it.cantidad, precio_unitario: it.precio_unitario, costo_unitario: it.costo_unitario || 0, descuento_pct: it.descuento_pct, stock_actual: it.stock_actual };
   });
   renderItems();
-  renderMarcas((c.marca_ids || []).map(Number));
-});
+  var marcaIds = (c.marca_ids && c.marca_ids.map) ? c.marca_ids : [];
+  renderMarcas(marcaIds.map(Number));
+}
+Promise.all([
+  crmSettle(crmApi("api/empresas.php")),
+  crmSettle(crmApi("api/productos.php")),
+  crmSettle(crmApi("api/vendedores.php")),
+  crmSettle(crmApi("api/marcas.php")),
+  crmSettle(crmApi("api/listas_precios.php")),
+  cotId ? crmSettle(crmApi("api/cotizaciones.php?id="+cotId)) : Promise.resolve({ ok: true, value: null })
+]).then(function (arr) {
+  function val(i) {
+    var r = arr[i];
+    if (r && r.ok) return r.value || {};
+    if (r && r.error && r.error.message) crmToast(r.error.message, true);
+    return {};
+  }
+  empresasCache = val(0).empresas || [];
+  document.getElementById("selEmpresa").innerHTML = empresasCache.map(function (e) {
+    return '<option value="'+e.id+'">'+e.razon_social+'</option>';
+  }).join("");
+  document.getElementById("selVendedor").innerHTML = '<option value="">(según usuario)</option>' +
+    (val(2).vendedores||[]).filter(function (v) { return Number(v.activo) === 1; }).map(function (v) {
+      return '<option value="'+v.id+'">'+v.nombre_completo+' · '+Number(v.comision_porcentaje).toFixed(2)+'%</option>';
+    }).join("");
+  productos = val(1).productos || [];
+  marcasCatalogo = val(3).marcas || [];
+  listasCache = val(4).listas || [];
+  fillListasSelect(defaultListaId());
+  renderMarcas([]);
+  var empSel = document.getElementById("selEmpresa");
+  empSel.addEventListener("change", function () { loadContactos(empSel.value, ""); aplicarListaEmpresa(); });
+  if (!cotId) {
+    loadContactos(empSel.value, "");
+    aplicarListaEmpresa();
+  }
+  var cotRes = arr[5];
+  if (cotId) {
+    if (cotRes && cotRes.ok && cotRes.value) {
+      aplicarCotizacion(cotRes.value);
+    } else {
+      crmToast((cotRes && cotRes.error && cotRes.error.message) ? cotRes.error.message : "No se pudo cargar la cotización", true);
+    }
+  }
+}).catch(function (e) { crmToast(e.message || "Error al cargar la ficha", true); });
 document.querySelector('[name=descuento]').addEventListener("input", updateTotalesCot);
 document.getElementById("btnAddPedido").addEventListener("click", function () {
   items.push({ tipo_item: "a_pedido", es_a_pedido: 1, producto_id: null, marca_id: 0, marca_nombre: "", codigo: "PEDIDO", descripcion: "", descripcion_detallada: "", imagen_url: "", cantidad: 1, precio_unitario: 0, costo_unitario: 0, descuento_pct: 0, stock_actual: null });
