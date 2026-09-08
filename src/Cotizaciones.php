@@ -6,6 +6,8 @@ namespace Crm;
 
 use PDO;
 
+require_once __DIR__ . '/ItemImagen.php';
+
 final class Cotizaciones
 {
     /**

@@ -7,6 +7,8 @@ namespace Crm;
 use PDO;
 use PDOException;
 
+require_once __DIR__ . '/ItemImagen.php';
+
 /**
  * Catálogo CRM (`productos`).
  * Stock de filas existentes: solo lectura + overlay de inventario (nunca UPDATE stock).

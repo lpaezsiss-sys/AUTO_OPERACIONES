@@ -75,7 +75,7 @@ final class ItemImagen
             return '';
         }
         if (preg_match('#^https?://#i', $raw)) {
-            return self::descargarRemota($raw);
+            return self::normalizarRuta($raw, false);
         }
         return self::normalizarRuta($raw, true);
     }
@@ -198,99 +198,6 @@ final class ItemImagen
             return '';
         }
         return $path;
-    }
-
-    /**
-     * @param string $url
-     * @return string
-     */
-    private static function descargarRemota($url)
-    {
-        $url = self::urlSegura($url);
-        $bin = self::bajar($url);
-        if ($bin === '') {
-            Http::fail('No se pudo descargar la imagen del ítem.');
-        }
-        if (strlen($bin) > self::MAX_BYTES) {
-            Http::fail('La imagen del ítem no debe superar 2 MB.');
-        }
-        $tmp = tempnam(sys_get_temp_dir(), 'crmimg');
-        if ($tmp === false) {
-            Http::fail('No se pudo crear un temporal para la imagen.', 500);
-        }
-        file_put_contents($tmp, $bin);
-        try {
-            $rel = self::guardarDesdeTmp($tmp, 'remoto.jpg');
-        } finally {
-            if (is_file($tmp)) {
-                @unlink($tmp);
-            }
-        }
-        return $rel;
-    }
-
-    /**
-     * @param string $url
-     * @return string
-     */
-    private static function urlSegura($url)
-    {
-        $url = trim((string) $url);
-        $p = parse_url($url);
-        if (!is_array($p) || empty($p['scheme']) || empty($p['host'])) {
-            Http::fail('URL de imagen inválida.');
-        }
-        $scheme = strtolower((string) $p['scheme']);
-        if ($scheme !== 'http' && $scheme !== 'https') {
-            Http::fail('La URL de imagen debe ser http o https.');
-        }
-        $host = strtolower((string) $p['host']);
-        if ($host === 'localhost' || $host === '127.0.0.1' || $host === '::1' || strpos($host, '0.0.0.0') === 0) {
-            Http::fail('URL de imagen no permitida.');
-        }
-        return $url;
-    }
-
-    /**
-     * @param string $url
-     * @return string
-     */
-    private static function bajar($url)
-    {
-        if (function_exists('curl_init')) {
-            $ch = curl_init($url);
-            if ($ch === false) {
-                return '';
-            }
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 6);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'CRM-LPAEZsis/1.0');
-            curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
-            $data = curl_exec($ch);
-            $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            if (!is_string($data) || $code >= 400) {
-                return '';
-            }
-            return $data;
-        }
-        $ctx = stream_context_create(array(
-            'http' => array(
-                'timeout' => 10,
-                'follow_location' => 1,
-                'max_redirects' => 3,
-                'header' => "User-Agent: CRM-LPAEZsis/1.0\r\n",
-            ),
-            'ssl' => array(
-                'verify_peer' => true,
-                'verify_peer_name' => true,
-            ),
-        ));
-        $data = @file_get_contents($url, false, $ctx, 0, self::MAX_BYTES + 1);
-        return is_string($data) ? $data : '';
     }
 
     /**
