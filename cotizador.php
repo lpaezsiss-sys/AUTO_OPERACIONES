@@ -82,7 +82,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
             <label class="form-label">Buscar producto (SKU o nombre)</label>
             <div class="position-relative">
                 <input class="form-control" id="buscar" autocomplete="off" placeholder="Escriba para buscar en inventario…">
-                <div id="sugerencias" class="list-group position-absolute w-100 shadow" style="z-index:20;display:none;max-height:260px;overflow:auto;"></div>
+                <div id="sugerencias" class="list-group position-absolute w-100 shadow" style="z-index:20;display:none;max-height:320px;overflow:auto;"></div>
             </div>
         </div>
         <div class="col-md-3 d-flex align-items-end">
@@ -147,7 +147,6 @@ crm_layout_start('Cotizador', 'cotizador', $user);
     return;
   }
   var items = [];
-  var timer = null;
   var buscar = document.getElementById("buscar");
   var sug = document.getElementById("sugerencias");
   var empresasCache = [];
@@ -304,6 +303,9 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       buscar.value = "";
       sug.style.display = "none";
       render();
+      var sku = p.sku || p.codigo || "";
+      var stockNow = window.crmStockFromApi(p, pr);
+      crmToastItemAdded("producto", sku + " · stock " + (stockNow == null ? "—" : stockNow));
     }).catch(function (e) { crmToast(e.message, true); });
   }
 
@@ -366,37 +368,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       }).join("");
   }).catch(function (e) { crmToast(e.message, true); });
 
-  buscar.addEventListener("input", function () {
-    var q = buscar.value;
-    if (timer) {
-      clearTimeout(timer);
-    }
-    timer = setTimeout(function () {
-      if (!q) {
-        sug.style.display = "none";
-        return;
-      }
-      crmApi("api/crear_cotizacion.php?action=buscar_producto&q=" + encodeURIComponent(q)).then(function (data) {
-        var list = data.productos || [];
-        if (!list.length) {
-          sug.innerHTML = '<div class="list-group-item small text-secondary">Sin resultados en inventario</div>';
-          sug.style.display = "block";
-          return;
-        }
-        sug.innerHTML = list.map(function (p, idx) {
-          return '<button type="button" class="list-group-item list-group-item-action" data-idx="' + idx + '">' +
-            '<strong>' + (p.sku || p.codigo) + '</strong> · ' + p.nombre +
-            ' <span class="small text-secondary">stock ' + p.stock + ' · ' + crmClp(p.precio_unitario) + '</span></button>';
-        }).join("");
-        sug.style.display = "block";
-        sug.querySelectorAll("button").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            addProducto(list[Number(btn.getAttribute("data-idx"))]);
-          });
-        });
-      }).catch(function (e) { crmToast(e.message || "Error de búsqueda", true); });
-    }, 250);
-  });
+  crmBindProductoSearch(buscar, sug, addProducto);
 
   document.querySelector("#tablaItems tbody").addEventListener("input", function (ev) {
     var i = ev.target.getAttribute("data-i");
@@ -468,6 +440,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       stock: null
     });
     render();
+    crmToastItemAdded("a_pedido");
   });
   document.getElementById("btnServicio").addEventListener("click", function () {
     items.push({
@@ -483,6 +456,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       stock: null
     });
     render();
+    crmToastItemAdded("servicio");
   });
   document.getElementById("descuento").addEventListener("input", render);
 
