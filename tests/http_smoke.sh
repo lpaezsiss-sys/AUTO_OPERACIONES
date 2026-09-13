@@ -13,7 +13,7 @@ json() {
 }
 
 health="$(json "$base/api/health.php")"
-echo "$health" | grep -q '"compat":"7.4"'
+echo "$health" | grep -q '"compat":"8.1"'
 echo "$health" | grep -q '"ok":true'
 
 json -X POST "$base/api/auth.php" -d '{"email":"ivan.p@example.net","password":"Lpaezsis.2026"}' | grep -q '"ok":true'
