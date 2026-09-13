@@ -100,6 +100,42 @@
     bootstrap.Toast.getOrCreateInstance(el, { delay: 3200 }).show();
   };
 
+  /**
+   * Disable a submit/action button and show a spinner while a request is in flight.
+   * Keeps the busy state at least 450ms so the user sees Guardando... and cannot double-click.
+   */
+  window.crmBusyButton = function (btn, busy, idleLabel) {
+    if (!btn) {
+      return;
+    }
+    if (btn._crmBusyTimer) {
+      clearTimeout(btn._crmBusyTimer);
+      btn._crmBusyTimer = null;
+    }
+    if (busy) {
+      if (!btn.getAttribute("data-idle-html")) {
+        btn.setAttribute("data-idle-html", btn.innerHTML);
+      }
+      btn._crmBusySince = Date.now();
+      btn.disabled = true;
+      btn.setAttribute("aria-busy", "true");
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Guardando...';
+      return;
+    }
+    var restore = function () {
+      btn._crmBusyTimer = null;
+      btn.disabled = false;
+      btn.removeAttribute("aria-busy");
+      btn.innerHTML = btn.getAttribute("data-idle-html") || idleLabel || "Guardar cotización";
+    };
+    var wait = 450 - (Date.now() - (btn._crmBusySince || 0));
+    if (wait > 0) {
+      btn._crmBusyTimer = setTimeout(restore, wait);
+      return;
+    }
+    restore();
+  };
+
   window.crmForm = function (id) {
     var form = document.getElementById(id);
     var data = {};

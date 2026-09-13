@@ -965,10 +965,17 @@ assert_true($dupAlta, 'Alta duplicada por código se rechaza');
 $cotizadorSrc = (string) file_get_contents($root . '/cotizador.php');
 assert_true(strpos($cotizadorSrc, 'folioBadge') !== false, 'Cotizador tiene badge de folio');
 assert_true(strpos($cotizadorSrc, 'api/cotizaciones.php?proximo=1') !== false, 'Cotizador pide próximo folio');
+assert_true(strpos($cotizadorSrc, 'URLSearchParams') !== false && strpos($cotizadorSrc, 'window.location.replace("cotizacion.php?id="') !== false, 'Cotizador redirige ?id= a ficha');
+assert_true(strpos($cotizadorSrc, 'crmBusyButton') !== false && strpos($cotizadorSrc, 'Guardando...') === false, 'Cotizador usa crmBusyButton para guardar');
 $cotFormSrc = (string) file_get_contents($root . '/cotizacion.php');
 assert_true(strpos($cotFormSrc, 'folioBadge') !== false, 'Formulario de cotización tiene badge de folio');
+assert_true(strpos($cotFormSrc, 'crmBusyButton') !== false, 'Ficha usa crmBusyButton al guardar');
+$appJsSrc = (string) file_get_contents($root . '/assets/js/app.js');
+assert_true(strpos($appJsSrc, 'window.crmBusyButton') !== false && strpos($appJsSrc, 'Guardando...') !== false, 'app.js define crmBusyButton con spinner');
+assert_true(strpos($appJsSrc, '450') !== false && strpos($appJsSrc, '_crmBusySince') !== false, 'crmBusyButton mantiene el estado de carga un mínimo de 450ms');
 $layoutSrc = (string) file_get_contents($root . '/includes/layout.php');
 assert_true(strpos($layoutSrc, 'usuarios.php') !== false, 'Menú incluye Usuarios');
+assert_true(strpos($layoutSrc, 'app.js?v=') !== false, 'layout cache-bust de app.js');
 assert_true(strpos($layoutSrc, "rol'] === 'admin'") !== false, 'Menú Usuarios restringido a admin');
 
 $listaUsers = \Crm\Usuarios::index();
@@ -1460,6 +1467,8 @@ assert_true(strpos($uiCot, 'crmParseNum') !== false, 'Ficha parsea coma y punto'
 assert_true(strpos($uiCot, 'function aplicarCotizacion') !== false, 'Ficha aplica payload GET de cotización');
 assert_true(strpos($uiCot, 'crmSettle') !== false, 'Ficha no bloquea si un catálogo falla');
 assert_true(strpos($uiCot, 'api/cotizaciones.php?id=') !== false, 'Ficha pide GET cotización por id');
+assert_true(strpos($uiCot, 'id="btnGuardar"') !== false, 'Ficha botón guardar identificable');
+assert_true(strpos($uiCot, 'crmBusyButton(btn, false)') !== false, 'Ficha rehabilita botón si el guardado falla');
 $showEdit = \Crm\Cotizaciones::show($idFolioA);
 $cEdit = $showEdit['cotizacion'];
 foreach (array('empresa_id', 'contacto_id', 'vendedor_id', 'condiciones_pago', 'plazo_entrega', 'lugar_entrega', 'descuento', 'notas', 'items') as $kShow) {
