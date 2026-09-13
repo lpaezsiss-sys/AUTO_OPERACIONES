@@ -3,9 +3,9 @@
 **Producto:** CRM Industrial Omnicanal B2B  
 **URL de producción:** https://crm.lpaezsis.cl  
 **Audiencia:** vendedores, administradores y stakeholders  
-**Versión del documento:** 2026-08-18  
+**Versión del documento:** 2026-09-13  
 
-Las pantallas de este CRM viven en la **raíz del sitio** (`cotizador.php`, `usuarios.php`, `listas_precios.php`, `estadisticas_a_pedido.php`). No existe una carpeta `vistas/`.
+Las pantallas de este CRM viven en la **raíz del sitio** (`cotizador.php`, `cotizacion.php`, `usuarios.php`, `listas_precios.php`, `estadisticas_a_pedido.php`). No existe una carpeta `vistas/`.
 
 ---
 
@@ -17,13 +17,22 @@ CRM LPAEZsis es el sistema de venta B2B de **LPAEZsis** para cotizar maquinaria,
 
 - la ficha del cliente (empresa, contacto, vendedor);
 - la **fijación de precio por cliente** (lista porcentual + último precio cotizado);
-- el **cotizador vivo** sobre inventario real;
+- el **cotizador vivo** sobre inventario real (stock leído del SQLite de inventario);
 - los **ítems a pedido** (demanda fuera de catálogo, con marca, costo, foto y PDF);
 - la conversión de esa demanda en SKU de catálogo **sin inflar stock**.
 
 El objetivo comercial es dejar de cotizar “en el aire”: cada propuesta nace con folio correlativo, precio defendible y rastro de margen.
 
-### 1.2 Control de accesos por rol
+### 1.2 Dos pantallas de cotización
+
+| Pantalla | Para qué | URL |
+|---|---|---|
+| **Cotizador** | Alta de una cotización nueva | `cotizador.php` |
+| **Ficha** | Editar una cotización existente | `cotizacion.php?id=N` |
+
+Si se abre `cotizador.php?id=N` (N numérico mayor que 0), la app **redirige** a `cotizacion.php?id=N`. Así no se edita una propuesta vieja en el formulario de alta.
+
+### 1.3 Control de accesos por rol
 
 | Rol | Perfil en pantalla | Qué puede hacer | Qué no puede hacer |
 |---|---|---|---|
@@ -32,13 +41,13 @@ El objetivo comercial es dejar de cotizar “en el aire”: cada propuesta nace 
 
 Las contraseñas se guardan con `password_hash` (nunca en texto plano). Un usuario inactivo no inicia sesión.
 
-### 1.3 Stack tecnológico
+### 1.4 Stack tecnológico
 
-- **PHP 7.4 LTS** (BlueHosting / cPanel). Sin sintaxis de PHP 8+.
+- **PHP 8.1** en producción (`crm.lpaezsis.cl`, CloudLinux PHP Selector / LiteSpeed). El código del CRM permanece con **sintaxis 7.4-safe**.
 - **PDO MySQL** en producción (`crm_*`); SQLite solo en laboratorio local.
 - UI: Bootstrap 5 + JavaScript (`fetch`).
 - PDF de cotización y de este manual: **Dompdf**.
-- Inventario: tabla `productos` en **solo lectura**, salvo el alta autorizada de un SKU nuevo con **stock 0** (`APD-YYYY-NNNN`).
+- Inventario: tabla `productos` en **solo lectura**, salvo el alta autorizada de un SKU nuevo con **stock 0** (`APD-YYYY-NNNN`). El stock **vivo** se lee del SQLite de inventario cuando está configurado.
 
 ---
 
@@ -59,7 +68,7 @@ flowchart TD
 
 1. **Selección de cliente.** En `cotizador.php` se elige la empresa. El contacto y el vendedor se completan a partir de esa ficha.
 2. **Carga de lista / historial.** El selector **Lista de precios** toma la lista de la empresa (o la predeterminada del sistema). Al agregar un SKU de catálogo, el motor consulta `api/precios.php`.
-3. **Productos de catálogo.** Búsqueda en vivo sobre `productos`. El precio se resuelve en este orden: último precio cotizado al cliente (excepto cotizaciones `rechazada` / `vencida`) → porcentaje de la lista → precio base de inventario.
+3. **Productos de catálogo.** Búsqueda en vivo sobre inventario. El precio se resuelve en este orden: último precio cotizado al cliente (excepto cotizaciones `rechazada` / `vencida`) → porcentaje de la lista → precio base de inventario.
 4. **Ítems a pedido.** Botón **Ítem a pedido**: no hay recálculo automático. El vendedor indica marca, costo, precio, foto y texto.
 5. **Descripciones e imágenes.** Cada línea admite descripción detallada y miniatura (URL o archivo PNG/JPEG).
 6. **PDF.** `api/cotizacion_pdf.php` genera la propuesta corporativa: miniatura 28 px, observaciones en gris, distintivo `[A pedido]`.
@@ -83,7 +92,30 @@ Cuando la cotización ya existe, el badge pasa al folio asignado (`COT-2026-0001
 
 ![Badge de próximo folio en el cotizador](artifacts/cotizador_badge_proximo_folio.webp)
 
-### 3.2 Lógica de precios: lista del cliente y último precio cotizado
+### 3.2 Búsqueda y selección de productos
+
+En **Cotizador** y en la **ficha** (`cotizacion.php`) el campo de búsqueda abre un listado en vivo (SKU o nombre). Cada fila muestra:
+
+- **SKU** (código);
+- **nombre** y, si existe, una descripción corta;
+- **stock** leído del inventario (SQLite cuando está disponible);
+- **precio unitario base**.
+
+El texto que usted escribe se **resalta en amarillo** sobre las coincidencias. Clic (o Enter) agrega la primera / la fila elegida a la tabla. Escape cierra el listado.
+
+Al agregar aparece un **toast**:
+
+- inventario: `Producto de inventario agregado · SKU · stock N`;
+- **Ítem a pedido:** `Ítem a pedido agregado. Complete descripción y precio.`;
+- **Servicio:** `Servicio agregado. Complete descripción y precio.`
+
+![Búsqueda de SKU 13451 con stock y precio](artifacts/bloque2_cotizador_sugerencia_13451.webp)
+
+![Toast al agregar un producto de inventario](artifacts/bloque2_toast_inventario.webp)
+
+![Búsqueda por nombre en la ficha de cotización](artifacts/bloque2_ficha_sugerencia_sonic.webp)
+
+### 3.3 Lógica de precios: lista del cliente y último precio cotizado
 
 Al elegir empresa, el cotizador carga su `lista_precio_id` (o la lista default **Lista general 0%**).
 
@@ -103,7 +135,7 @@ La lista **no modifica** el stock ni el precio almacenado en inventario.
 
 ![Selector de lista de precios en el cotizador](artifacts/cotizador_selector_lista.webp)
 
-### 3.3 Ítems a pedido
+### 3.4 Ítems a pedido
 
 Botón **Ítem a pedido** en el cotizador:
 
@@ -113,7 +145,22 @@ Botón **Ítem a pedido** en el cotizador:
 - **Miniatura e imagen:** archivo PNG/JPEG o URL. Se guarda en `uploads/cotizacion_items/`.
 - **Descripción detallada:** especificaciones técnicas; en el PDF se imprimen en gris bajo el título de la línea.
 
-### 3.4 Impresión PDF de la cotización
+### 3.5 Guardar (evitar doble clic)
+
+Al pulsar **Guardar cotización** el botón se deshabilita, muestra un spinner y el texto **Guardando…**. Si la petición falla, el botón se rehabilita de inmediato. En la ficha, tras un guardado correcto, se recarga `cotizacion.php?id=…` con el folio persistido.
+
+![Botón Guardando en la ficha](artifacts/bloque1_guardando_ficha.png)
+
+### 3.6 Editar una cotización existente
+
+Pantalla: `cotizacion.php?id=N`.
+
+- Carga empresa, contacto, vendedor, lista, condiciones e ítems.
+- La misma búsqueda en vivo de la sección 3.2.
+- El administrador puede **cambiar el folio** de un borrador (si está libre) y **eliminar** la cotización.
+- El PDF se abre desde el botón **PDF** de la ficha o del listado.
+
+### 3.7 Impresión PDF de la cotización
 
 Desde la cotización guardada se descarga el PDF corporativo (Dompdf):
 
@@ -180,64 +227,13 @@ El ranking muestra **top por marca**. En sugerencias de alta, el botón **Conver
 
 ---
 
-## Anexo A — Guion de video promocional para inversionistas (90 s)
-
-**Pieza:** pitch de producto, locución en español (neutro / Chile).  
-**Pantalla:** `https://crm.lpaezsis.cl` (o laboratorio local).  
-**Duración total:** 1:30.
-
-### Acto 1 — El problema `[0:00 – 0:20]`
-
-**Locución:**  
-En la venta industrial, el margen se pierde en dos sitios: cotizaciones informales de equipos especiales —WhatsApp, Excel, memoria del vendedor— y un precio distinto para cada cliente sin registro. El último descuento se vuelve el nuevo piso. El producto a pedido no deja rastro de demanda. El inventario se infla “por si acaso”.
-
-**En pantalla:** dashboard con pipeline; corte a una cotización hecha “a mano”.
-
-### Acto 2 — La solución comercial `[0:20 – 0:55]`
-
-**Locución:**  
-CRM LPAEZsis pone un cotizador inteligente frente al vendedor. Elige el cliente y la lista de precios se carga sola. Agrega un SKU y, en milisegundos, aparece el **último precio cotizado** a esa empresa —o el recargo de su lista—. Si el ítem no está en catálogo, lo carga **a pedido**: marca, costo, foto. El PDF sale con miniatura, observaciones en gris y el sello `[A pedido]`. Folio correlativo, sin pelearse el número.
-
-**En pantalla (demo, ~35 s):**
-
-1. Abrir cotizador → badge `Cotización Nueva (Próximo Nº: COT-2026-XXXX)`.
-2. Elegir cliente → lista **Lista general** (o la asignada).
-3. Buscar SKU → badge **Último precio cliente**.
-4. **Ítem a pedido** → marca + imagen.
-5. Abrir PDF → miniatura 28 px y `[A pedido]`.
-
-### Acto 3 — Inteligencia de negocio y retorno `[0:55 – 1:20]`
-
-**Locución:**  
-Cada línea a pedido alimenta el panel de estadísticas: monto, margen, conversión, top marcas. Cuando la demanda se confirma, **Convertir en producto** crea el SKU con stock cero. Catálogo que crece con el mercado, no con sobre-stock. Menos capital inmovilizado, más visibilidad de qué se está vendiendo fuera de lista.
-
-**En pantalla:** `estadisticas_a_pedido.php` (KPIs + botón Convertir).
-
-### Cierre pitch `[1:20 – 1:30]`
-
-**Locución:**  
-Usuarios por rol —admin y vendedor—, PHP 7.4 LTS y MySQL en una arquitectura liviana, lista para la nube. Control comercial, sin inflar el inventario. CRM LPAEZsis. crm.lpaezsis.cl.
-
-**En pantalla:** logo LPAEZsis + URL. Fundido.
-
-### Ficha técnica de producción
-
-| Campo | Valor |
-|---|---|
-| Duración | 90 segundos |
-| Relación | 16:9 |
-| Audio | Locución + música instrumental baja (industrial / corporativo) |
-| CTA final | Agendar demo · crm.lpaezsis.cl |
-| Restricción | No mostrar `.env`, passwords ni stock editable |
-
----
-
-## Anexo B — Referencia rápida de URLs
+## Anexo A — Referencia rápida de URLs
 
 | Recurso | Ruta |
 |---|---|
 | Login | `login.php` |
-| Cotizador | `cotizador.php` |
+| Cotizador (alta) | `cotizador.php` |
+| Ficha de cotización | `cotizacion.php?id=` |
 | Cotizaciones | `cotizaciones.php` |
 | Usuarios (admin) | `usuarios.php` |
 | Listas de precios (admin) | `listas_precios.php` |

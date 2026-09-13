@@ -12,7 +12,7 @@ crm_layout_start('Manual de usuario', 'manual', $user);
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
     <div>
         <h1 class="page-title h3 mb-1">Manual de usuario</h1>
-        <p class="text-secondary mb-0">CRM LPAEZsis · guía operativa, arquitectura y guion para inversionistas.</p>
+        <p class="text-secondary mb-0">CRM LPAEZsis · guía operativa y arquitectura.</p>
     </div>
     <a class="btn" style="background:#fec001;color:#05294B;font-weight:700" href="api/manual_pdf.php">Descargar Manual en PDF</a>
 </div>
