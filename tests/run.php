@@ -336,6 +336,9 @@ assert_true((float) $calc['totales']['iva_clp'] === 57456.0, 'IVA 19% sobre CIF'
 assert_true((float) $calc['totales']['gastos_locales_clp'] === 33000.0, 'Gastos locales CLP');
 assert_true((float) $calc['totales']['landed_clp'] === 392856.0, 'Landed = CIF + IVA + locales');
 assert_true((float) $calc['items'][0]['share'] === 0.666667, 'Share ítem A 200/300');
+assert_true((float) $calc['items'][0]['factor'] === 0.666667, 'Factor prorrateo FOB 2/3');
+assert_true(abs((float) $calc['items'][0]['landed_unitario_usd'] - 145.5022) < 0.0002, 'Unitario USD = CLP / TC');
+assert_true((float) $calc['totales']['landed_usd'] === 436.51, 'Landed total USD');
 
 $est = \Crm\Comex\LandedCostStore::guardar([
     'operacion_id' => $opLc['id'],
@@ -367,6 +370,26 @@ $pdfRow = \Crm\Comex\LandedCostStore::exportarPdf((int) $est['id']);
 $pdfLc = $root . '/' . $pdfRow['pdf_path'];
 assert_true(is_file($pdfLc) && str_starts_with((string) file_get_contents($pdfLc), '%PDF'), 'PDF landed cost');
 assert_true(str_contains((string) $pdfRow['pdf_path'], 'uploads/comex/pdf/'), 'PDF landed en uploads/');
+
+$xlsx = \Crm\Comex\LandedCostStore::exportarXlsx((int) $opLc['id']);
+$xlsxAbs = $root . '/' . $xlsx['xlsx_path'];
+assert_true(is_file($xlsxAbs) && filesize($xlsxAbs) > 32, 'XLSX matriz existe');
+$zx = new ZipArchive();
+assert_true($zx->open($xlsxAbs) === true, 'XLSX es zip OOXML');
+$sheet1 = (string) $zx->getFromName('xl/worksheets/sheet1.xml');
+$zx->close();
+assert_true(str_contains($sheet1, 'Estimacion') || str_contains($sheet1, 'Landed'), 'XLSX contiene matriz');
+$pdfMx = \Crm\Comex\LandedCostStore::exportarPdfMatriz((int) $opLc['id']);
+assert_true(is_file($root . '/' . $pdfMx['pdf_path']) && str_starts_with((string) file_get_contents($root . '/' . $pdfMx['pdf_path']), '%PDF'), 'PDF matriz Estimación vs Real');
+$dUsd = $pack['comparacion']['totales']['landed_usd']['delta'] ?? null;
+assert_true((float) $dUsd === 13.33, 'Delta landed USD = 12000/900');
+
+$uiFin = (string) file_get_contents($root . '/operacion.php');
+$jsFin = (string) file_get_contents($root . '/assets/js/financials.js');
+$jsCalc = (string) file_get_contents($root . '/assets/js/landed-calc.js');
+assert_true(str_contains($uiFin, 'tab=financials') && str_contains($uiFin, 'sheetGastos'), 'Finanzas en detalle de operación');
+assert_true(str_contains($jsFin, 'crmLandedCalcular') && str_contains($jsCalc, 'prorratear'), 'Recálculo en vivo JS');
+assert_true(str_contains($uiFin, 'Excel (xlsx)') && str_contains($uiFin, 'PDF matriz'), 'Exportación xlsx y PDF');
 
 $ui = (string) file_get_contents($root . '/landed.php');
 $layout = (string) file_get_contents($root . '/includes/layout.php');

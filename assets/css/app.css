@@ -271,4 +271,9 @@ body {
 .st-blocked { background: var(--yellow); color: var(--navy); }
 .progress { height: 6px; background: #d9e2ec; }
 .progress-bar { background: var(--navy); }
-.bitacora li { margin-bottom: 0.65rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e8eef4; }
+.sheet-table input, .sheet-table select {
+  min-width: 4.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.sheet-table td { white-space: nowrap; }
+.delta-cell { font-variant-numeric: tabular-nums; }
