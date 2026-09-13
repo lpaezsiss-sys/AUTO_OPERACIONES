@@ -110,6 +110,33 @@ final class Schema
                     FOREIGN KEY (landed_id) REFERENCES comex_landed_cost(id)
                 )',
                 'CREATE INDEX IF NOT EXISTS idx_landed_op ON comex_landed_cost(operacion_id)',
+                'CREATE TABLE IF NOT EXISTS comex_operacion_etapas (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    operacion_id INTEGER NOT NULL,
+                    codigo TEXT NOT NULL,
+                    nombre TEXT NOT NULL,
+                    fase TEXT NOT NULL,
+                    orden INTEGER NOT NULL,
+                    estado TEXT NOT NULL DEFAULT \'PENDING\',
+                    responsable TEXT DEFAULT \'\',
+                    fecha_estimada TEXT,
+                    fecha_real TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE (operacion_id, codigo),
+                    FOREIGN KEY (operacion_id) REFERENCES comex_operaciones(id)
+                )',
+                'CREATE INDEX IF NOT EXISTS idx_etapas_op ON comex_operacion_etapas(operacion_id)',
+                'CREATE INDEX IF NOT EXISTS idx_etapas_estado ON comex_operacion_etapas(estado)',
+                'CREATE TABLE IF NOT EXISTS comex_etapa_bitacora (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    etapa_id INTEGER NOT NULL,
+                    comentario TEXT NOT NULL,
+                    autor TEXT NOT NULL DEFAULT \'\',
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (etapa_id) REFERENCES comex_operacion_etapas(id)
+                )',
+                'CREATE INDEX IF NOT EXISTS idx_bitacora_etapa ON comex_etapa_bitacora(etapa_id)',
             ];
         }
 
@@ -204,6 +231,33 @@ final class Schema
                 landed_total_clp DECIMAL(18,4) NOT NULL DEFAULT 0,
                 KEY idx_landed_items (landed_id),
                 CONSTRAINT fk_landed_items FOREIGN KEY (landed_id) REFERENCES comex_landed_cost(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+            'CREATE TABLE IF NOT EXISTS comex_operacion_etapas (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                operacion_id INT UNSIGNED NOT NULL,
+                codigo VARCHAR(32) NOT NULL,
+                nombre VARCHAR(160) NOT NULL,
+                fase VARCHAR(16) NOT NULL,
+                orden TINYINT UNSIGNED NOT NULL,
+                estado VARCHAR(16) NOT NULL DEFAULT \'PENDING\',
+                responsable VARCHAR(120) DEFAULT \'\',
+                fecha_estimada DATE NULL,
+                fecha_real DATE NULL,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                UNIQUE KEY uq_etapa_op_cod (operacion_id, codigo),
+                KEY idx_etapas_op (operacion_id),
+                KEY idx_etapas_estado (estado),
+                CONSTRAINT fk_etapas_op FOREIGN KEY (operacion_id) REFERENCES comex_operaciones(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+            'CREATE TABLE IF NOT EXISTS comex_etapa_bitacora (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                etapa_id INT UNSIGNED NOT NULL,
+                comentario TEXT NOT NULL,
+                autor VARCHAR(120) NOT NULL DEFAULT \'\',
+                created_at DATETIME NOT NULL,
+                KEY idx_bitacora_etapa (etapa_id),
+                CONSTRAINT fk_bitacora_etapa FOREIGN KEY (etapa_id) REFERENCES comex_operacion_etapas(id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
         ];
     }

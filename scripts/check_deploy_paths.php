@@ -39,6 +39,8 @@ $archivosRaiz = [
     '.env.production' => 'Plantilla producción (INV_SQLITE_PATH)',
     '.webdavignore' => 'Exclusiones WebDAV 2078',
     'landed.php' => 'Módulo landed cost',
+    'operaciones.php' => 'Pipeline Kanban / lista',
+    'operacion.php' => 'Detalle de etapas y bitácora',
     'assets/css/app.css' => 'Estilos panel CRM',
     'composer.json' => 'PSR-4 Crm\\ → src/Crm/',
 ];

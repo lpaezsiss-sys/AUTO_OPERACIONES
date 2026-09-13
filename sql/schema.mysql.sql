@@ -97,3 +97,32 @@ CREATE TABLE IF NOT EXISTS comex_landed_items (
     KEY idx_landed_items (landed_id),
     CONSTRAINT fk_landed_items FOREIGN KEY (landed_id) REFERENCES comex_landed_cost(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS comex_operacion_etapas (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    operacion_id INT UNSIGNED NOT NULL,
+    codigo VARCHAR(32) NOT NULL,
+    nombre VARCHAR(160) NOT NULL,
+    fase VARCHAR(16) NOT NULL,
+    orden TINYINT UNSIGNED NOT NULL,
+    estado VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    responsable VARCHAR(120) DEFAULT '',
+    fecha_estimada DATE NULL,
+    fecha_real DATE NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY uq_etapa_op_cod (operacion_id, codigo),
+    KEY idx_etapas_op (operacion_id),
+    KEY idx_etapas_estado (estado),
+    CONSTRAINT fk_etapas_op FOREIGN KEY (operacion_id) REFERENCES comex_operaciones(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS comex_etapa_bitacora (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    etapa_id INT UNSIGNED NOT NULL,
+    comentario TEXT NOT NULL,
+    autor VARCHAR(120) NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL,
+    KEY idx_bitacora_etapa (etapa_id),
+    CONSTRAINT fk_bitacora_etapa FOREIGN KEY (etapa_id) REFERENCES comex_operacion_etapas(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

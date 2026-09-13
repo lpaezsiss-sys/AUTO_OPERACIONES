@@ -50,7 +50,7 @@ crm_layout_start('Dashboard', 'dashboard');
     <h2 class="h6" style="color:#05294B">Módulos</h2>
     <ul class="mb-0">
         <li><a href="landed.php">Landed cost</a> — prorrateo FOB, CIF, IVA 19%, Estimada vs Real</li>
-        <li><a href="operaciones.php">Operaciones</a> — importaciones / exportaciones</li>
+        <li><a href="operaciones.php">Pipeline</a> — 13 etapas Evaluación / Ejecución, Kanban y lista</li>
         <li><a href="fichas.php">Fichas</a> — SKU vinculados a prod.db</li>
         <li><a href="api/health.php"><code>api/health.php</code></a></li>
     </ul>
