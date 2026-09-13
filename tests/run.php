@@ -972,6 +972,7 @@ assert_true(strpos($cotFormSrc, 'folioBadge') !== false, 'Formulario de cotizaci
 assert_true(strpos($cotFormSrc, 'crmBusyButton') !== false, 'Ficha usa crmBusyButton al guardar');
 $appJsSrc = (string) file_get_contents($root . '/assets/js/app.js');
 assert_true(strpos($appJsSrc, 'window.crmBusyButton') !== false && strpos($appJsSrc, 'Guardando...') !== false, 'app.js define crmBusyButton con spinner');
+assert_true(strpos($appJsSrc, '450') !== false && strpos($appJsSrc, '_crmBusySince') !== false, 'crmBusyButton mantiene el estado de carga un mínimo de 450ms');
 $layoutSrc = (string) file_get_contents($root . '/includes/layout.php');
 assert_true(strpos($layoutSrc, 'usuarios.php') !== false, 'Menú incluye Usuarios');
 assert_true(strpos($layoutSrc, "rol'] === 'admin'") !== false, 'Menú Usuarios restringido a admin');

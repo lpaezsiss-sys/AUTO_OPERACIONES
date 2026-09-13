@@ -419,7 +419,12 @@ document.getElementById("formCot").addEventListener("submit", function (ev) {
   var method = cotId ? "PUT" : "POST";
   var url = cotId ? "api/cotizaciones.php?id="+cotId : "api/cotizaciones.php";
   crmApi(url, { method: method, body: body })
-    .then(function (d) { crmToast("Cotización "+d.cotizacion.folio+" guardada"); window.location.href = "cotizacion.php?id="+d.cotizacion.id; })
+    .then(function (d) {
+      crmToast("Cotización "+d.cotizacion.folio+" guardada");
+      window.setTimeout(function () {
+        window.location.href = "cotizacion.php?id="+d.cotizacion.id;
+      }, 450);
+    })
     .catch(function (e) {
       crmBusyButton(btn, false);
       crmToast(e.message, true);
