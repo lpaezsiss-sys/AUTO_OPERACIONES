@@ -14,10 +14,12 @@ Copiar plantilla y completar credenciales MySQL de cPanel:
 bash scripts/install-env.sh
 ```
 
-`INV_SQLITE_PATH` queda fijado al SQLite de inventario (solo lectura):
+`INV_SQLITE_PATH` apunta al SQLite de inventario. La lectura usa `query_only`; al confirmar una importación/exportación se escribe `Movement` con WAL y `busy_timeout`:
 
 ```env
 INV_SQLITE_PATH=/home/sistem29/app/data/prod.db
+INV_SQLITE_WAL=1
+INV_SQLITE_BUSY_TIMEOUT_MS=8000
 ```
 
 No commitear `.env` con contraseñas. Apache responde **403** a `.env` y a `config/`, `src/`, `includes/`, `sql/`, `data/`.
@@ -27,7 +29,7 @@ No commitear `.env` con contraseñas. Apache responde **403** a `.env` y a `conf
 - Namespaces PSR-4 `Crm\` → `src/Crm/` (case-sensitive en Linux).
 - Autoload sin Composer en el servidor (`Crm\Autoloader`).
 - Extensiones: `pdo_sqlite`, `sqlite3`, `pdo_mysql`, `mbstring`, `gd`, `zip`, `fileinfo`, `curl`, `json`.
-- Inventario: `Crm\Inventory\InventarioStock` — `SELECT` sobre Prisma `Product`.
+- Inventario: `Crm\Inventory\SqliteConnector` — Prisma `Product`/`Movement`. Fichas y operaciones COMEX se vinculan por SKU.
 
 ## Uploads y WebDAV
 

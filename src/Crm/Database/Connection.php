@@ -5,25 +5,23 @@ declare(strict_types=1);
 namespace Crm\Database;
 
 use Crm\Env;
+use Crm\Inventory\SqliteConnector;
 use PDO;
 use PDOException;
 use RuntimeException;
 
 /**
- * PDO de la app COMEX (MySQL en producción, SQLite en tests)
- * y PDO de solo lectura al SQLite de inventario.
+ * PDO de la app COMEX (MySQL en producción, SQLite en tests).
+ * Inventario compartido: {@see SqliteConnector} (INV_SQLITE_PATH / prod.db).
  */
 final class Connection
 {
     private static ?PDO $app = null;
 
-    /** @var PDO|null|false false = aún no intentado */
-    private static PDO|null|false $inventory = false;
-
     public static function reset(): void
     {
         self::$app = null;
-        self::$inventory = false;
+        SqliteConnector::reset();
     }
 
     /** @return array<int, mixed> */
@@ -87,32 +85,12 @@ final class Connection
 
     public static function inventory(): ?PDO
     {
-        if (self::$inventory !== false) {
-            return self::$inventory instanceof PDO ? self::$inventory : null;
-        }
-
-        self::$inventory = null;
-        $path = trim((string) Env::getInstance()->get('INV_SQLITE_PATH', ''));
-        if ($path === '') {
-            return null;
-        }
-
-        try {
-            self::$inventory = self::sqlite($path, false);
-        } catch (\Throwable) {
-            self::$inventory = null;
-        }
-
-        return self::$inventory;
+        return SqliteConnector::read();
     }
 
     public static function inventoryPath(): string
     {
-        $path = trim((string) Env::getInstance()->get('INV_SQLITE_PATH', ''));
-        if ($path === '' || $path === ':memory:' || str_starts_with($path, '/')) {
-            return $path;
-        }
-        return Env::getInstance()->root() . '/' . ltrim($path, '/');
+        return SqliteConnector::path();
     }
 
     private static function sqlite(string $path, bool $createDir): PDO
@@ -125,6 +103,8 @@ final class Connection
         if ($path === ':memory:') {
             $pdo = new PDO('sqlite::memory:', null, null, self::options());
             $pdo->exec('PRAGMA foreign_keys = ON');
+            $pdo->exec('PRAGMA busy_timeout = 5000');
+            $pdo->exec('PRAGMA journal_mode = WAL');
             return $pdo;
         }
 
@@ -138,16 +118,14 @@ final class Connection
         }
 
         if (!$createDir && !is_file($path)) {
-            throw new RuntimeException('SQLite de inventario no encontrado: ' . $path);
+            throw new RuntimeException('SQLite no encontrado: ' . $path);
         }
 
         $pdo = new PDO('sqlite:' . $path, null, null, self::options());
         $pdo->exec('PRAGMA foreign_keys = ON');
-        if ($createDir) {
-            $pdo->exec('PRAGMA journal_mode = WAL');
-        } else {
-            $pdo->exec('PRAGMA query_only = ON');
-        }
+        $pdo->exec('PRAGMA busy_timeout = 5000');
+        $pdo->exec('PRAGMA journal_mode = WAL');
+        $pdo->exec('PRAGMA synchronous = NORMAL');
 
         return $pdo;
     }

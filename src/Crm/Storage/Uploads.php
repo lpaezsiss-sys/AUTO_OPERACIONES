@@ -26,6 +26,14 @@ final class Uploads
         return $root . '/' . ltrim($safe, '/');
     }
 
+    /** @var list<string> */
+    public const SUBDIRS = [
+        'comex',
+        'comex/productos',
+        'comex/items',
+        'comex/pdf',
+    ];
+
     public static function ensure(): string
     {
         $dir = self::path();
@@ -33,11 +41,13 @@ final class Uploads
             throw new \RuntimeException('No se pudo crear uploads/.');
         }
         self::chmodDir($dir);
-        $comex = self::path('comex');
-        if (!is_dir($comex) && !mkdir($comex, self::DIR_MODE, true) && !is_dir($comex)) {
-            throw new \RuntimeException('No se pudo crear uploads/comex/.');
+        foreach (self::SUBDIRS as $sub) {
+            $path = self::path($sub);
+            if (!is_dir($path) && !mkdir($path, self::DIR_MODE, true) && !is_dir($path)) {
+                throw new \RuntimeException('No se pudo crear uploads/' . $sub . '/');
+            }
+            self::chmodDir($path);
         }
-        self::chmodDir($comex);
         return $dir;
     }
 
@@ -71,7 +81,7 @@ final class Uploads
         return $masked === 0755 || $masked === 0775;
     }
 
-    private static function chmodDir(string $dir): void
+    public static function chmodDir(string $dir): void
     {
         $current = (int) fileperms($dir) & 0777;
         if (!self::isSafeMode($current)) {

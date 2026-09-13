@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Crm\Comex;
 
 use Crm\Database\Connection;
-use Crm\Inventory\InventarioStock;
+use Crm\Inventory\SqliteConnector;
 use Crm\Platform;
 use Crm\Storage\Uploads;
 
@@ -33,6 +33,7 @@ final class Health
         }
 
         $uploads = Uploads::status();
+        $inventory = SqliteConnector::status($debug);
 
         return [
             'service' => 'comex-lpaezsis',
@@ -50,7 +51,7 @@ final class Health
             'db' => $appDb,
             'driver' => $appDriver,
             'db_error' => $appError,
-            'inventory' => InventarioStock::status($debug),
+            'inventory' => $inventory,
             'uploads' => $uploads,
         ];
     }

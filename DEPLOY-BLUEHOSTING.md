@@ -26,7 +26,13 @@ Ecosistema:
 INV_SQLITE_PATH=/home/sistem29/app/data/prod.db
 ```
 
-Esa ruta es el SQLite de producción de inventario (`Product`). COMEX solo hace `SELECT`. El archivo debe ser legible por el usuario CageFS `sistem29`.
+Esa ruta es el SQLite de producción de inventario (`Product` + `Movement`). COMEX lee el catálogo y, al **confirmar** una operación, escribe `ENTRADA` (importación) o `SALIDA` (exportación) con WAL. El archivo **y** `/home/sistem29/app/data/` deben ser escribibles por `sistem29` (CageFS) para `prod.db-wal` / `prod.db-shm`.
+
+```env
+INV_SQLITE_WAL=1
+INV_SQLITE_BUSY_TIMEOUT_MS=8000
+INV_SQLITE_RETRIES=8
+```
 
 `.htaccess` deniega HTTP a `.env` (403). Aun así, **no** sincronizar `.env` por WebDAV para no pisar secretos del servidor.
 
@@ -47,7 +53,7 @@ Cada carpeta sensible tiene su propio `.htaccess` con `Require all denied`.
 bash scripts/ensure_uploads_perms.sh
 ```
 
-Directorios `775` (aceptable `755`). `.htaccess` dentro de `uploads/` bloquea ejecución PHP. El contenido de usuario **no** se despliega: está en `.gitignore` y en `.webdavignore`.
+Directorios `775` (aceptable `755`), archivos `644`. Imágenes de ficha: `uploads/comex/productos/`. PDF de operación: `uploads/comex/pdf/`. `.htaccess` bloquea ejecución PHP.
 
 ## 5. WebDAV (puerto 2078)
 
