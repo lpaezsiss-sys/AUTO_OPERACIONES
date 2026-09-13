@@ -30,6 +30,7 @@ uploads/comex/*
 !uploads/comex/items/
 !uploads/comex/pdf/
 !uploads/comex/xlsx/
+!uploads/comex/docs/
 uploads/comex/productos/*
 !uploads/comex/productos/.gitkeep
 !uploads/comex/productos/.htaccess
@@ -42,6 +43,9 @@ uploads/comex/pdf/*
 uploads/comex/xlsx/*
 !uploads/comex/xlsx/.gitkeep
 !uploads/comex/xlsx/.htaccess
+uploads/comex/docs/*
+!uploads/comex/docs/.gitkeep
+!uploads/comex/docs/.htaccess
 
 downloads/*
 !downloads/.gitkeep

@@ -7,32 +7,40 @@ require __DIR__ . '/includes/layout.php';
 
 $id = (int) ($_GET['id'] ?? 0);
 $tab = strtolower((string) ($_GET['tab'] ?? 'pipeline'));
-if ($tab !== 'financials') {
+if (!in_array($tab, ['pipeline', 'financials', 'documents'], true)) {
     $tab = 'pipeline';
 }
-crm_layout_start($tab === 'financials' ? 'Finanzas' : 'Operación', 'operaciones');
+$titles = [
+    'pipeline' => 'Operación',
+    'financials' => 'Finanzas',
+    'documents' => 'Documentos',
+];
+crm_layout_start($titles[$tab], 'operaciones');
+$pipe = $tab === 'pipeline';
 $fin = $tab === 'financials';
+$docs = $tab === 'documents';
 ?>
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
     <div>
         <a href="operaciones.php" class="small text-secondary text-decoration-none">← Pipeline</a>
         <h1 class="page-title h3 mb-1" id="tituloOp">Operación</h1>
-        <p class="text-secondary mb-0" id="subOp">Detalle operativo y financiero</p>
+        <p class="text-secondary mb-0" id="subOp">Detalle operativo, documental y financiero</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
         <div class="btn-group" role="group" aria-label="Módulo">
-            <a class="btn <?php echo $fin ? 'btn-outline-secondary' : 'btn-navy'; ?>" href="operacion.php?id=<?php echo $id; ?>">Pipeline</a>
+            <a class="btn <?php echo $pipe ? 'btn-navy' : 'btn-outline-secondary'; ?>" href="operacion.php?id=<?php echo $id; ?>">Pipeline</a>
+            <a class="btn <?php echo $docs ? 'btn-navy' : 'btn-outline-secondary'; ?>" href="operacion.php?id=<?php echo $id; ?>&amp;tab=documents">Documentos</a>
             <a class="btn <?php echo $fin ? 'btn-navy' : 'btn-outline-secondary'; ?>" href="operacion.php?id=<?php echo $id; ?>&amp;tab=financials">Finanzas</a>
         </div>
-        <div class="btn-group <?php echo $fin ? 'd-none' : ''; ?>" id="btnsPipelineVista" role="group">
+        <div class="btn-group <?php echo $pipe ? '' : 'd-none'; ?>" id="btnsPipelineVista" role="group">
             <button class="btn btn-navy" type="button" id="btnKanban">Kanban</button>
             <button class="btn btn-outline-secondary" type="button" id="btnLista">Lista</button>
         </div>
-        <button class="btn btn-yellow <?php echo $fin ? 'd-none' : ''; ?>" type="button" id="btnAvanzar">Avanzar etapa</button>
+        <button class="btn btn-yellow <?php echo $pipe ? '' : 'd-none'; ?>" type="button" id="btnAvanzar">Avanzar etapa</button>
     </div>
 </div>
 
-<div id="tabPipeline" class="<?php echo $fin ? 'd-none' : ''; ?>">
+<div id="tabPipeline" class="<?php echo $pipe ? '' : 'd-none'; ?>">
 <div class="row g-3 mb-3" id="kpis"></div>
 <div id="vistaKanban" class="pipeline-wrap"></div>
 <div id="vistaLista" class="d-none card card-soft p-3">
@@ -48,6 +56,58 @@ $fin = $tab === 'financials';
         </table>
     </div>
 </div>
+</div>
+
+<div id="tabDocumentos" class="<?php echo $docs ? '' : 'd-none'; ?>">
+    <p class="text-secondary">Repositorio de embarque: Factura Comercial, Packing List, BL/AWB, Certificados y DIN/DUS. Cada carga registra usuario y fecha.</p>
+    <div class="row g-3 mb-3" id="docTipos"></div>
+    <div class="card card-soft p-3 mb-3">
+        <h2 class="h6 mb-3" style="color:#05294B">Subir documento</h2>
+        <form id="formDoc" enctype="multipart/form-data">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label" for="docTipo">Tipo</label>
+                    <select id="docTipo" name="tipo" class="form-select" required>
+                        <option value="FACTURA_COMERCIAL">Factura Comercial</option>
+                        <option value="PACKING_LIST">Packing List</option>
+                        <option value="BL_AWB">BL / AWB</option>
+                        <option value="CERTIFICADO">Certificados</option>
+                        <option value="DIN_DUS">DIN / DUS</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label" for="docUsuario">Usuario</label>
+                    <input id="docUsuario" name="usuario" class="form-control" value="COMEX" required>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label" for="docArchivo">Archivo (PDF, JPG, PNG, WEBP · máx. 8 MB)</label>
+                    <input id="docArchivo" name="archivo" class="form-control" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/*" required>
+                </div>
+                <div class="col-12 col-md-2">
+                    <button class="btn btn-yellow w-100" type="submit">Subir</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="row g-3">
+        <div class="col-12 col-lg-5">
+            <div class="card card-soft p-3">
+                <h2 class="h6 mb-2" style="color:#05294B">Archivos</h2>
+                <div id="listaDocs" class="doc-list"></div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-7">
+            <div class="card card-soft p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h2 class="h6 mb-0" style="color:#05294B">Previsualización</h2>
+                    <a class="small d-none" id="docDownload" href="#" target="_blank" rel="noopener">Descargar</a>
+                </div>
+                <div id="previewEmpty" class="text-secondary py-5 text-center">Seleccione un documento para previsualizar.</div>
+                <iframe id="previewPdf" class="doc-preview d-none" title="Vista previa PDF"></iframe>
+                <img id="previewImg" class="doc-preview-img d-none" alt="Vista previa">
+            </div>
+        </div>
+    </div>
 </div>
 
 <div id="tabFinanzas" class="<?php echo $fin ? '' : 'd-none'; ?>">
@@ -179,4 +239,5 @@ window.COMEX_IVA_PCT = <?php echo json_encode(crm_iva_pct()); ?>;
 <script src="assets/js/landed-calc.js"></script>
 <script src="assets/js/operacion.js"></script>
 <script src="assets/js/financials.js"></script>
+<script src="assets/js/documentos.js"></script>
 <?php crm_layout_end(); ?>

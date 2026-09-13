@@ -33,6 +33,7 @@ final class Uploads
         'comex/items',
         'comex/pdf',
         'comex/xlsx',
+        'comex/docs',
     ];
 
     public static function ensure(): string
