@@ -972,6 +972,12 @@ assert_true(strpos($cotFormSrc, 'folioBadge') !== false, 'Formulario de cotizaci
 assert_true(strpos($cotFormSrc, 'crmBusyButton') !== false, 'Ficha usa crmBusyButton al guardar');
 $appJsSrc = (string) file_get_contents($root . '/assets/js/app.js');
 assert_true(strpos($appJsSrc, 'window.crmBusyButton') !== false && strpos($appJsSrc, 'Guardando...') !== false, 'app.js define crmBusyButton con spinner');
+assert_true(strpos($appJsSrc, 'window.crmHighlightMatch') !== false && strpos($appJsSrc, 'crm-hl') !== false, 'app.js resalta coincidencias de búsqueda');
+assert_true(strpos($appJsSrc, 'window.crmSuggestProductoHtml') !== false && strpos($appJsSrc, 'Stock ') !== false, 'app.js fila de sugerencia SKU/stock/precio');
+assert_true(strpos($appJsSrc, 'window.crmBindProductoSearch') !== false, 'app.js bind de búsqueda de productos');
+assert_true(strpos($appJsSrc, 'Producto de inventario agregado') !== false, 'Toast de ítem de inventario');
+assert_true(strpos($appJsSrc, 'Ítem a pedido agregado') !== false, 'Toast de ítem a pedido');
+assert_true(strpos($appJsSrc, 'Servicio agregado') !== false, 'Toast de servicio');
 assert_true(strpos($appJsSrc, '450') !== false && strpos($appJsSrc, '_crmBusySince') !== false, 'crmBusyButton mantiene el estado de carga un mínimo de 450ms');
 $layoutSrc = (string) file_get_contents($root . '/includes/layout.php');
 assert_true(strpos($layoutSrc, 'usuarios.php') !== false, 'Menú incluye Usuarios');
@@ -1227,6 +1233,8 @@ assert_true($posNotas !== false && $posMarcasPdf !== false && $posGuardar !== fa
 $appJsSrc = (string) file_get_contents($root . '/assets/js/app.js');
 assert_true(strpos($appJsSrc, 'window.crmParseNum') !== false && strpos($appJsSrc, 'replace(/,/g, ".")') !== false, 'crmParseNum convierte coma a punto');
 assert_true(strpos($cotizadorSrc2, 'crmParseNum') !== false, 'Cotizador usa crmParseNum');
+assert_true(strpos($cotizadorSrc2, 'crmBindProductoSearch') !== false, 'Cotizador usa búsqueda compartida');
+assert_true(strpos($cotizadorSrc2, 'crmToastItemAdded') !== false, 'Cotizador toasts al agregar ítems');
 assert_true(strpos($cotizadorSrc2, 'inputmode="decimal"') !== false && strpos($cotizadorSrc2, 'sanitizeItems') !== false, 'Cotizador cantidad admite decimales con coma');
 $crearSrc = (string) file_get_contents($root . '/api/crear_cotizacion.php');
 assert_true(strpos($crearSrc, 'crm_float(') !== false, 'crear_cotizacion sanitiza descuento con crm_float');
@@ -1469,6 +1477,8 @@ assert_true(strpos($uiCot, 'crmSettle') !== false, 'Ficha no bloquea si un catá
 assert_true(strpos($uiCot, 'api/cotizaciones.php?id=') !== false, 'Ficha pide GET cotización por id');
 assert_true(strpos($uiCot, 'id="btnGuardar"') !== false, 'Ficha botón guardar identificable');
 assert_true(strpos($uiCot, 'crmBusyButton(btn, false)') !== false, 'Ficha rehabilita botón si el guardado falla');
+assert_true(strpos($uiCot, 'id="prodSug"') !== false && strpos($uiCot, 'crmBindProductoSearch') !== false, 'Ficha autocomplete de productos');
+assert_true(strpos($uiCot, 'crmToastItemAdded') !== false, 'Ficha toasts al agregar ítems');
 $showEdit = \Crm\Cotizaciones::show($idFolioA);
 $cEdit = $showEdit['cotizacion'];
 foreach (array('empresa_id', 'contacto_id', 'vendedor_id', 'condiciones_pago', 'plazo_entrega', 'lugar_entrega', 'descuento', 'notas', 'items') as $kShow) {

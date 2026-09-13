@@ -79,7 +79,10 @@ crm_layout_start($folioAsignado !== '' ? $folioAsignado : 'Nueva cotización', '
     <div class="d-flex justify-content-between align-items-center mb-2">
         <h2 class="h6 mb-0">Ítems (inventario, a pedido o servicio)</h2>
         <div class="d-flex gap-2">
-            <input id="prodQ" class="form-control form-control-sm" placeholder="Buscar SKU">
+            <div class="position-relative" style="min-width:240px">
+                <input id="prodQ" class="form-control form-control-sm" placeholder="Buscar SKU o nombre" autocomplete="off">
+                <div id="prodSug" class="list-group position-absolute end-0 shadow" style="z-index:20;display:none;min-width:320px;max-height:320px;overflow:auto;"></div>
+            </div>
             <button class="btn btn-sm btn-outline-primary" type="button" id="btnAddProd">Agregar producto</button>
             <button class="btn btn-sm btn-outline-warning" type="button" id="btnAddPedido">Ítem a pedido</button>
             <button class="btn btn-sm btn-outline-secondary" type="button" id="btnAddServ">Agregar servicio</button>
@@ -219,7 +222,15 @@ function addProducto(p) {
       precio_origen: pr.origen || "base",
       precio_badge: pr.origen === "historial" ? (pr.badge || "") : ""
     });
+    document.getElementById("prodQ").value = "";
+    var sug = document.getElementById("prodSug");
+    if (sug) {
+      sug.style.display = "none";
+    }
     renderItems();
+    var sku = p.sku || p.codigo || "";
+    var stockNow = window.crmStockFromApi(p, pr);
+    crmToastItemAdded("producto", sku + " · stock " + (stockNow == null ? "—" : stockNow));
   }).catch(function (e) { crmToast(e.message, true); });
 }
 function renderMarcas(selectedIds) {
@@ -352,16 +363,28 @@ document.querySelector('[name=descuento]').addEventListener("input", updateTotal
 document.getElementById("btnAddPedido").addEventListener("click", function () {
   items.push({ tipo_item: "a_pedido", es_a_pedido: 1, producto_id: null, marca_id: 0, marca_nombre: "", codigo: "PEDIDO", descripcion: "", descripcion_detallada: "", imagen_url: "", cantidad: 1, precio_unitario: 0, costo_unitario: 0, descuento_pct: 0, stock_actual: null });
   renderItems();
+  crmToastItemAdded("a_pedido");
 });
 document.getElementById("btnAddServ").addEventListener("click", function () {
   items.push({ tipo_item: "servicio", producto_id: null, codigo: "SERV", descripcion: "", descripcion_detallada: "", imagen_url: "", cantidad: 1, precio_unitario: 0, descuento_pct: 0, stock_actual: null });
   renderItems();
+  crmToastItemAdded("servicio");
 });
+crmBindProductoSearch(document.getElementById("prodQ"), document.getElementById("prodSug"), addProducto);
 document.getElementById("btnAddProd").addEventListener("click", function () {
-  var q = document.getElementById("prodQ").value.toLowerCase();
-  var p = productos.filter(function (x) { return String(x.codigo).toLowerCase()===q || String(x.nombre).toLowerCase().indexOf(q)>=0; })[0];
-  if (!p) { crmToast("Producto no encontrado en inventario", true); return; }
-  addProducto(p);
+  var q = document.getElementById("prodQ").value;
+  if (!String(q || "").trim()) {
+    crmToast("Escriba un SKU o nombre para buscar", true);
+    return;
+  }
+  crmApi("api/crear_cotizacion.php?action=buscar_producto&q=" + encodeURIComponent(q)).then(function (data) {
+    var list = data.productos || [];
+    if (!list[0]) {
+      crmToast("Producto no encontrado en inventario", true);
+      return;
+    }
+    addProducto(list[0]);
+  }).catch(function (e) { crmToast(e.message, true); });
 });
 document.querySelector("#items tbody").addEventListener("input", function (ev) {
   var i = ev.target.getAttribute("data-i");

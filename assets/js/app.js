@@ -87,6 +87,121 @@
     return isFinite(n) ? n : 0;
   };
 
+  window.crmHighlightMatch = function (text, query) {
+    var raw = String(text == null ? "" : text);
+    var escaped = window.crmEsc(raw);
+    var q = String(query == null ? "" : query).trim();
+    if (!q) {
+      return escaped;
+    }
+    var tokens = q.split(/\s+/).filter(Boolean);
+    var i;
+    for (i = 0; i < tokens.length; i++) {
+      var tok = tokens[i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (!tok) {
+        continue;
+      }
+      escaped = escaped.replace(new RegExp("(" + tok + ")", "ig"), '<mark class="crm-hl">$1</mark>');
+    }
+    return escaped;
+  };
+
+  window.crmSuggestProductoHtml = function (p, query) {
+    var sku = (p && (p.sku || p.codigo)) || "";
+    var name = (p && p.nombre) || "";
+    var short = "";
+    if (p && p.descripcion && p.descripcion !== name) {
+      short = String(p.descripcion);
+      if (short.length > 90) {
+        short = short.slice(0, 87) + "…";
+      }
+    }
+    var stock = window.crmStockFromApi(p);
+    var stockLabel = stock == null || stock === "" ? "—" : String(stock);
+    var low = stock != null && stock !== "" && Number(stock) <= 0;
+    return '<div class="crm-suggest-row">' +
+      '<div class="crm-suggest-sku">' + window.crmHighlightMatch(sku, query) + '</div>' +
+      '<div class="crm-suggest-name">' + window.crmHighlightMatch(name, query) + '</div>' +
+      (short ? '<div class="crm-suggest-desc">' + window.crmHighlightMatch(short, query) + '</div>' : "") +
+      '<div class="crm-suggest-meta">' +
+      '<span class="badge badge-stock' + (low ? " low" : "") + '">Stock ' + window.crmEsc(stockLabel) + '</span>' +
+      '<span class="crm-suggest-price">' + window.crmClp(p ? p.precio_unitario : 0) + '</span>' +
+      "</div></div>";
+  };
+
+  window.crmToastItemAdded = function (tipo, extra) {
+    if (tipo === "producto") {
+      window.crmToast("Producto de inventario agregado" + (extra ? " · " + extra : ""));
+      return;
+    }
+    if (tipo === "a_pedido") {
+      window.crmToast("Ítem a pedido agregado. Complete descripción y precio.");
+      return;
+    }
+    if (tipo === "servicio") {
+      window.crmToast("Servicio agregado. Complete descripción y precio.");
+    }
+  };
+
+  window.crmBindProductoSearch = function (input, box, onPick) {
+    var timer = null;
+    if (!input || !box || typeof onPick !== "function") {
+      return;
+    }
+    input.setAttribute("autocomplete", "off");
+    var renderList = function (list, q) {
+      if (!list.length) {
+        box.innerHTML = '<div class="list-group-item small text-secondary">Sin resultados en inventario</div>';
+        box.style.display = "block";
+        return;
+      }
+      box.innerHTML = list.map(function (p, idx) {
+        return '<button type="button" class="list-group-item list-group-item-action crm-suggest-item" data-idx="' + idx + '">' +
+          window.crmSuggestProductoHtml(p, q) + "</button>";
+      }).join("");
+      box.style.display = "block";
+      Array.prototype.forEach.call(box.querySelectorAll("button[data-idx]"), function (btn) {
+        btn.addEventListener("click", function () {
+          onPick(list[Number(btn.getAttribute("data-idx"))]);
+          input.value = "";
+          box.style.display = "none";
+        });
+      });
+    };
+    var runSearch = function (q) {
+      if (!String(q || "").trim()) {
+        box.style.display = "none";
+        box.innerHTML = "";
+        return;
+      }
+      window.crmApi("api/crear_cotizacion.php?action=buscar_producto&q=" + encodeURIComponent(q)).then(function (data) {
+        renderList(data.productos || [], q);
+      }).catch(function (e) {
+        window.crmToast(e.message || "Error de búsqueda", true);
+      });
+    };
+    input.addEventListener("input", function () {
+      var q = input.value;
+      if (timer) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(function () { runSearch(q); }, 250);
+    });
+    input.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") {
+        box.style.display = "none";
+        return;
+      }
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        var first = box.querySelector("button[data-idx]");
+        if (first) {
+          first.click();
+        }
+      }
+    });
+  };
+
   window.crmToast = function (msg, danger) {
     var el = document.getElementById("crmToast");
     var body = document.getElementById("crmToastBody");
