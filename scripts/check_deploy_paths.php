@@ -38,7 +38,8 @@ $archivosRaiz = [
     '.env.example' => 'Plantilla de entorno',
     '.env.production' => 'Plantilla producción (INV_SQLITE_PATH)',
     '.webdavignore' => 'Exclusiones WebDAV 2078',
-    'router.php' => 'Router php -S',
+    'landed.php' => 'Módulo landed cost',
+    'assets/css/app.css' => 'Estilos panel CRM',
     'composer.json' => 'PSR-4 Crm\\ → src/Crm/',
 ];
 foreach ($archivosRaiz as $rel => $label) {
@@ -46,7 +47,7 @@ foreach ($archivosRaiz as $rel => $label) {
     deploy_check(is_file($path), 'Raíz: ' . $rel, is_file($path) ? $label : 'ausente');
 }
 
-$dirs = ['api', 'src/Crm', 'src/Crm/Inventory', 'src/Crm/Comex', 'src/Crm/Storage', 'includes', 'uploads', 'uploads/comex', 'uploads/comex/productos', 'uploads/comex/items', 'uploads/comex/pdf', 'config', 'sql', 'data', 'scripts', 'deploy', 'tests'];
+$dirs = ['api', 'src/Crm', 'src/Crm/Inventory', 'src/Crm/Comex', 'src/Crm/Storage', 'includes', 'uploads', 'uploads/comex', 'uploads/comex/productos', 'uploads/comex/items', 'uploads/comex/pdf', 'assets/css', 'assets/js', 'config', 'sql', 'data', 'scripts', 'deploy', 'tests'];
 foreach ($dirs as $dir) {
     deploy_check(is_dir($root . '/' . $dir), 'Carpeta: ' . $dir . '/', is_dir($root . '/' . $dir) ? 'OK' : 'ausente');
 }
