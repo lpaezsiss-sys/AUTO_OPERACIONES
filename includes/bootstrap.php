@@ -83,7 +83,7 @@ function crm_now()
  */
 function crm_str($value, $max = 500)
 {
-    $s = trim((string) $value);
+    $s = trim(crm_string($value));
     if (function_exists('mb_substr')) {
         return mb_substr($s, 0, (int) $max);
     }
@@ -139,7 +139,7 @@ function crm_float($value, $default = 0.0)
  */
 function crm_h($value)
 {
-    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars(crm_string($value), ENT_QUOTES, 'UTF-8');
 }
 
 function crm_page_user()

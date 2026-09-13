@@ -217,7 +217,7 @@ final class Respaldo
                 }
             }
             if ($ddl !== '') {
-                $lines[] = rtrim($ddl, ';') . ';';
+                $lines[] = rtrim(crm_string($ddl), ';') . ';';
                 $lines[] = '';
             }
             self::dumpFilas($pdo, $table, $lines);

@@ -30,7 +30,7 @@ final class Schema
      * @param PDO|null $pdo
      * @return void
      */
-    public static function ensureUpgrades($pdo = null)
+    public static function ensureUpgrades(?PDO $pdo = null)
     {
         $pdo = $pdo instanceof PDO ? $pdo : crm_pdo();
         if (!self::hasColumn($pdo, 'crm_cotizaciones', 'vendedor_id')) {
