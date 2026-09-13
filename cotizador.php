@@ -141,6 +141,11 @@ crm_layout_start('Cotizador', 'cotizador', $user);
 <script>
 (function () {
   "use strict";
+  var idParam = new URLSearchParams(window.location.search).get("id");
+  if (idParam && /^\d+$/.test(String(idParam)) && Number(idParam) > 0) {
+    window.location.replace("cotizacion.php?id=" + idParam);
+    return;
+  }
   var items = [];
   var timer = null;
   var buscar = document.getElementById("buscar");
@@ -482,8 +487,13 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   document.getElementById("descuento").addEventListener("input", render);
 
   document.getElementById("btnGuardar").addEventListener("click", function () {
+    var btn = document.getElementById("btnGuardar");
+    if (!btn || btn.disabled) {
+      return;
+    }
     var okMsg = document.getElementById("okMsg");
     okMsg.hidden = true;
+    crmBusyButton(btn, true);
     fetch("api/crear_cotizacion.php?action=guardar", {
       method: "POST",
       credentials: "same-origin",
@@ -525,7 +535,11 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         badge.classList.add("badge-folio-ok");
         items = [];
         render();
-      }).catch(function (e) { crmToast(e.message, true); });
+        crmBusyButton(btn, false);
+      }).catch(function (e) {
+        crmBusyButton(btn, false);
+        crmToast(e.message, true);
+      });
   });
 
   render();

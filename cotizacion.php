@@ -92,7 +92,7 @@ crm_layout_start($folioAsignado !== '' ? $folioAsignado : 'Nueva cotización', '
         </table>
     </div>
     <div class="text-end" id="totales"></div>
-    <button class="btn mt-3" style="background:#fec001;color:#05294B;font-weight:700" type="submit">Guardar cotización</button>
+    <button class="btn mt-3" id="btnGuardar" style="background:#fec001;color:#05294B;font-weight:700" type="submit">Guardar cotización</button>
 </form>
 <script>
 var cotId = <?php echo (int) $id; ?>;
@@ -405,6 +405,11 @@ document.querySelector("#items tbody").addEventListener("change", function (ev) 
 });
 document.getElementById("formCot").addEventListener("submit", function (ev) {
   ev.preventDefault();
+  var btn = ev.submitter || document.getElementById("btnGuardar");
+  if (btn && btn.disabled) {
+    return;
+  }
+  crmBusyButton(btn, true);
   var body = crmForm("formCot");
   body.items = sanitizeItems(items);
   body.descuento = parseNum(body.descuento);
@@ -415,7 +420,10 @@ document.getElementById("formCot").addEventListener("submit", function (ev) {
   var url = cotId ? "api/cotizaciones.php?id="+cotId : "api/cotizaciones.php";
   crmApi(url, { method: method, body: body })
     .then(function (d) { crmToast("Cotización "+d.cotizacion.folio+" guardada"); window.location.href = "cotizacion.php?id="+d.cotizacion.id; })
-    .catch(function (e) { crmToast(e.message, true); });
+    .catch(function (e) {
+      crmBusyButton(btn, false);
+      crmToast(e.message, true);
+    });
 });
 function aplicarFolioEnPantalla(folio) {
   document.getElementById("title").textContent = folio;

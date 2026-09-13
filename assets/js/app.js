@@ -100,6 +100,27 @@
     bootstrap.Toast.getOrCreateInstance(el, { delay: 3200 }).show();
   };
 
+  /**
+   * Disable a submit/action button and show a spinner while a request is in flight.
+   */
+  window.crmBusyButton = function (btn, busy, idleLabel) {
+    if (!btn) {
+      return;
+    }
+    if (busy) {
+      if (!btn.getAttribute("data-idle-html")) {
+        btn.setAttribute("data-idle-html", btn.innerHTML);
+      }
+      btn.disabled = true;
+      btn.setAttribute("aria-busy", "true");
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Guardando...';
+      return;
+    }
+    btn.disabled = false;
+    btn.removeAttribute("aria-busy");
+    btn.innerHTML = btn.getAttribute("data-idle-html") || idleLabel || "Guardar cotización";
+  };
+
   window.crmForm = function (id) {
     var form = document.getElementById(id);
     var data = {};
