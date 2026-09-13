@@ -46,7 +46,7 @@ foreach ($archivosRaiz as $rel => $label) {
     deploy_check(is_file($path), 'Raíz: ' . $rel, is_file($path) ? $label : 'ausente');
 }
 
-$dirs = ['api', 'src/Crm', 'src/Crm/Inventory', 'src/Crm/Comex', 'includes', 'uploads', 'uploads/comex', 'config', 'sql', 'data', 'scripts', 'deploy', 'tests'];
+$dirs = ['api', 'src/Crm', 'src/Crm/Inventory', 'src/Crm/Comex', 'src/Crm/Storage', 'includes', 'uploads', 'uploads/comex', 'uploads/comex/productos', 'uploads/comex/items', 'uploads/comex/pdf', 'config', 'sql', 'data', 'scripts', 'deploy', 'tests'];
 foreach ($dirs as $dir) {
     deploy_check(is_dir($root . '/' . $dir), 'Carpeta: ' . $dir . '/', is_dir($root . '/' . $dir) ? 'OK' : 'ausente');
 }
