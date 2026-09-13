@@ -1,0 +1,19 @@
+{
+  "createdAt": "2026-09-13T13:28:56.288134+00:00",
+  "source": "https://inventario.lpaezsis.cl",
+  "type": "logical-api-backup",
+  "counts": {
+    "products": 20,
+    "movements": 36,
+    "entradas": 21,
+    "salidas": 15
+  },
+  "totals": {
+    "stockUnits": 73.0,
+    "inventoryValue": 8265086.67
+  },
+  "dashboardKeys": [
+    "items",
+    "summary"
+  ]
+}
