@@ -1390,6 +1390,10 @@ assert_true(strpos($manualMd, 'artifacts/cotizador_ultimo_precio_cliente.webp') 
 assert_true(strpos($manualMd, 'artifacts/listas_precios_listado.webp') !== false, 'Manual referencia listas de precios');
 assert_true(strpos($manualMd, 'artifacts/usuarios_listado.webp') !== false, 'Manual referencia usuarios');
 assert_true(strpos($manualMd, '[0:00') !== false && strpos($manualMd, 'inversionistas') !== false, 'Manual incluye guion para inversionistas');
+assert_true(strpos($manualMd, 'cotizacion.php?id=') !== false, 'Manual documenta la ficha de edición');
+assert_true(strpos($manualMd, 'Guardando') !== false, 'Manual documenta el estado de guardado');
+assert_true(strpos($manualMd, 'resalta') !== false && strpos($manualMd, 'bloque2_cotizador_sugerencia_13451.webp') !== false, 'Manual documenta búsqueda con resaltado');
+assert_true(strpos($manualMd, 'PHP 8.1') !== false, 'Manual indica runtime PHP 8.1');
 $layoutSrc3 = (string) file_get_contents($root . '/includes/layout.php');
 assert_true(strpos($layoutSrc3, 'manual.php') !== false, 'Menú incluye Manual');
 $htmlManual = \Crm\Manual::html(false);
