@@ -182,9 +182,10 @@ final class LandedCost
             $locItem = $partesLoc[$i];
             $landed = round($cifItem + $ivaItem + $locItem, 2);
             $unit = $row['cantidad'] > 0 ? round($landed / $row['cantidad'], 4) : 0.0;
-            $share = $fobTotalOrig > 0 ? round($row['fob_origen'] / $fobTotalOrig, 6) : 0.0;
+            $factor = $fobTotalOrig > 0 ? round($row['fob_origen'] / $fobTotalOrig, 6) : 0.0;
             $linea = $row + [
-                'share' => $share,
+                'share' => $factor,
+                'factor' => $factor,
                 'gastos_cif_clp' => $partesCif[$i],
                 'cif_clp' => $cifItem,
                 'iva_clp' => $ivaItem,
@@ -200,7 +201,7 @@ final class LandedCost
             $totLanded += $landed;
         }
 
-        return [
+        $out = [
             'version' => $version,
             'moneda_origen' => $monedaOrigen,
             'tipo_cambio_usd' => $tcUsd,
@@ -219,6 +220,47 @@ final class LandedCost
                 'landed_clp' => round($totLanded, 2),
             ],
         ];
+        return self::enriquecerUsd($out);
+    }
+
+    /**
+     * Costo nacionalizado también en USD (CLP / tipo_cambio_usd).
+     *
+     * @param array<string, mixed> $calculo
+     * @return array<string, mixed>
+     */
+    public static function enriquecerUsd(array $calculo): array
+    {
+        $tcUsd = self::num($calculo['tipo_cambio_usd'] ?? 0);
+        $items = is_array($calculo['items'] ?? null) ? $calculo['items'] : [];
+        foreach ($items as $i => $it) {
+            if (!is_array($it)) {
+                continue;
+            }
+            $it['factor'] = (float) ($it['factor'] ?? $it['share'] ?? 0);
+            $it['share'] = (float) ($it['share'] ?? $it['factor']);
+            $it['fob_usd'] = self::aUsd((float) ($it['fob_clp'] ?? 0), $tcUsd, 4);
+            $it['cif_usd'] = self::aUsd((float) ($it['cif_clp'] ?? 0), $tcUsd, 4);
+            $it['iva_usd'] = self::aUsd((float) ($it['iva_clp'] ?? 0), $tcUsd, 4);
+            $it['landed_total_usd'] = self::aUsd((float) ($it['landed_total_clp'] ?? 0), $tcUsd, 4);
+            $it['landed_unitario_usd'] = self::aUsd((float) ($it['landed_unitario_clp'] ?? 0), $tcUsd, 4);
+            $items[$i] = $it;
+        }
+        $calculo['items'] = $items;
+        $tot = is_array($calculo['totales'] ?? null) ? $calculo['totales'] : [];
+        foreach (['fob_clp' => 'fob_usd', 'cif_clp' => 'cif_usd', 'iva_clp' => 'iva_usd', 'gastos_locales_clp' => 'gastos_locales_usd', 'gastos_origen_clp' => 'gastos_origen_usd', 'landed_clp' => 'landed_usd'] as $clp => $usd) {
+            $tot[$usd] = self::aUsd((float) ($tot[$clp] ?? 0), $tcUsd, 2);
+        }
+        $calculo['totales'] = $tot;
+        return $calculo;
+    }
+
+    public static function aUsd(float $clp, float $tcUsd, int $decimales = 2): float
+    {
+        if ($tcUsd <= 0) {
+            return 0.0;
+        }
+        return round($clp / $tcUsd, $decimales);
     }
 
     /**
@@ -228,7 +270,13 @@ final class LandedCost
      */
     public static function comparar(?array $estimada, ?array $real): array
     {
-        $keys = ['fob_clp', 'cif_clp', 'iva_clp', 'gastos_locales_clp', 'gastos_origen_clp', 'landed_clp'];
+        if (is_array($estimada)) {
+            $estimada = self::enriquecerUsd($estimada);
+        }
+        if (is_array($real)) {
+            $real = self::enriquecerUsd($real);
+        }
+        $keys = ['fob_clp', 'cif_clp', 'iva_clp', 'gastos_locales_clp', 'gastos_origen_clp', 'landed_clp', 'landed_usd'];
         $delta = [];
         foreach ($keys as $k) {
             $e = (float) ($estimada['totales'][$k] ?? 0);
@@ -252,12 +300,22 @@ final class LandedCost
             $e = $bySkuEst[$sku] ?? null;
             $eLand = (float) ($e['landed_total_clp'] ?? 0);
             $rLand = (float) ($it['landed_total_clp'] ?? 0);
+            $eUnit = (float) ($e['landed_unitario_clp'] ?? 0);
+            $rUnit = (float) ($it['landed_unitario_clp'] ?? 0);
+            $eUsd = (float) ($e['landed_unitario_usd'] ?? 0);
+            $rUsd = (float) ($it['landed_unitario_usd'] ?? 0);
             $items[] = [
                 'sku' => $sku,
                 'descripcion' => $it['descripcion'] ?? ($e['descripcion'] ?? ''),
                 'estimada' => $eLand,
                 'real' => $rLand,
                 'delta' => round($rLand - $eLand, 2),
+                'unitario_clp_est' => $eUnit,
+                'unitario_clp_real' => $rUnit,
+                'unitario_usd_est' => $eUsd,
+                'unitario_usd_real' => $rUsd,
+                'delta_unitario_clp' => round($rUnit - $eUnit, 4),
+                'delta_unitario_usd' => round($rUsd - $eUsd, 4),
             ];
         }
         return [

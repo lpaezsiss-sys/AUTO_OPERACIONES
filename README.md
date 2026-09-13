@@ -30,7 +30,7 @@ No commitear `.env` con contraseñas. Apache responde **403** a `.env` y a `conf
 - Autoload sin Composer en el servidor (`Crm\Autoloader`).
 - Extensiones: `pdo_sqlite`, `sqlite3`, `pdo_mysql`, `mbstring`, `gd`, `zip`, `fileinfo`, `curl`, `json`.
 - Inventario: `Crm\Inventory\SqliteConnector` — Prisma `Product`/`Movement`. Fichas y operaciones COMEX se vinculan por SKU.
-- Landed cost: `landed.php` — prorrateo FOB, IVA aduanero 19% sobre CIF, Estimada vs Real, PDF.
+- Landed cost: `operacion.php?tab=financials` — matriz Estimación vs Real, prorrateo FOB, IVA 19% CIF, unitario CLP/USD, Excel y PDF.
 - Pipeline: `operaciones.php` — 13 etapas (Evaluación/Ejecución), Kanban y lista, bitácora.
 
 ## Uploads y WebDAV

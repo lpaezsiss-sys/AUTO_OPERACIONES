@@ -116,7 +116,6 @@
     document.getElementById("tituloOp").textContent = (op.folio || "Operación") + " · " + (op.tipo || "");
     document.getElementById("subOp").textContent = "Pipeline · " + ((pack.progreso && pack.progreso.hechas) || 0) +
       " de 13 etapas";
-    document.getElementById("linkLanded").href = "landed.php?operacion_id=" + opId;
     renderKpis();
     renderKanban();
     renderLista();
