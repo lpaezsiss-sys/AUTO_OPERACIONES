@@ -1,6 +1,10 @@
 (function () {
   "use strict";
 
+  if (window.COMEX_TAB && window.COMEX_TAB !== "pipeline") {
+    return;
+  }
+
   var pack = null;
   var opId = Number(window.COMEX_OPERACION_ID || 0);
   var panel = null;

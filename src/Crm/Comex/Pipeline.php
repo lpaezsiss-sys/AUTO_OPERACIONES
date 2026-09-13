@@ -312,6 +312,26 @@ final class Pipeline
         return is_array($row) ? $row : null;
     }
 
+    /**
+     * Etapas de una operación (sin bitácora) para KPIs y dashboard.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function etapas(int $operacionId): array
+    {
+        $op = Operaciones::porId($operacionId);
+        if ($op === null) {
+            throw new ApiException('Operación no encontrada', 404);
+        }
+        self::sembrar($operacionId, (string) $op['tipo'], (string) $op['fecha']);
+        $etapas = self::etapasDe($operacionId);
+        $hoy = self::hoy();
+        foreach ($etapas as $i => $et) {
+            $etapas[$i] = self::anotar($et, $hoy);
+        }
+        return $etapas;
+    }
+
     /** @return list<array<string, mixed>> */
     private static function etapasDe(int $operacionId): array
     {

@@ -32,6 +32,8 @@ No commitear `.env` con contraseñas. Apache responde **403** a `.env` y a `conf
 - Inventario: `Crm\Inventory\SqliteConnector` — Prisma `Product`/`Movement`. Fichas y operaciones COMEX se vinculan por SKU.
 - Landed cost: `operacion.php?tab=financials` — matriz Estimación vs Real, prorrateo FOB, IVA 19% CIF, unitario CLP/USD, Excel y PDF.
 - Pipeline: `operaciones.php` — 13 etapas (Evaluación/Ejecución), Kanban y lista, bitácora.
+- Documentos: `operacion.php?id=&tab=documents` — Factura Comercial, Packing List, BL/AWB, Certificados, DIN/DUS, con usuario y fecha.
+- Dashboard: `index.php` — operaciones activas, ciclo promedio, costo promedio por embarque, alertas de retraso y volumen mensual.
 
 ## Uploads y WebDAV
 

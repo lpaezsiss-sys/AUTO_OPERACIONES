@@ -126,3 +126,17 @@ CREATE TABLE IF NOT EXISTS comex_etapa_bitacora (
     KEY idx_bitacora_etapa (etapa_id),
     CONSTRAINT fk_bitacora_etapa FOREIGN KEY (etapa_id) REFERENCES comex_operacion_etapas(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS comex_documentos (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    operacion_id INT UNSIGNED NOT NULL,
+    tipo VARCHAR(32) NOT NULL,
+    nombre_original VARCHAR(255) NOT NULL,
+    mime VARCHAR(120) NOT NULL,
+    size_bytes INT UNSIGNED NOT NULL DEFAULT 0,
+    path VARCHAR(255) NOT NULL,
+    usuario VARCHAR(120) NOT NULL DEFAULT 'COMEX',
+    created_at DATETIME NOT NULL,
+    KEY idx_comex_docs_op (operacion_id, created_at),
+    CONSTRAINT fk_docs_op FOREIGN KEY (operacion_id) REFERENCES comex_operaciones(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
