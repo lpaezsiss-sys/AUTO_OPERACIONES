@@ -1,0 +1,12 @@
+.env
+.env.local
+.git
+.idea
+.vscode
+uploads
+data
+vendor
+downloads
+*.log
+*.sqlite
+*.db
