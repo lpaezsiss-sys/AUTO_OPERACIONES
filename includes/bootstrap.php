@@ -117,3 +117,36 @@ function crm_now(): string
 {
     return (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 }
+
+/**
+ * Convierte cantidades/precios a float. Acepta 24.38, 24,38 y 1.234,56.
+ */
+function crm_float(mixed $value, float $default = 0.0): float
+{
+    if (is_int($value) || is_float($value)) {
+        return (float) $value;
+    }
+    if (!is_string($value)) {
+        return $default;
+    }
+    $value = trim($value);
+    if ($value === '') {
+        return $default;
+    }
+    if (preg_match('/^-?\d+(\.\d+)?$/', $value)) {
+        return (float) $value;
+    }
+    $stripped = preg_replace('/[^\d,.\-]/', '', $value);
+    if (!is_string($stripped) || $stripped === '' || $stripped === '-' || $stripped === ',' || $stripped === '.') {
+        return $default;
+    }
+    $normalized = str_replace(['.', ','], ['', '.'], $stripped);
+    return is_numeric($normalized) ? (float) $normalized : $default;
+}
+
+function crm_iva_pct(): float
+{
+    $raw = crm_env('IVA_PCT', '19');
+    $pct = is_numeric($raw) ? (float) $raw : 19.0;
+    return $pct > 0 ? $pct : 19.0;
+}

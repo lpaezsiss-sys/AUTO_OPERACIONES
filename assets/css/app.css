@@ -1,0 +1,175 @@
+:root {
+  --navy: #05294b;
+  --navy-2: #0a3a66;
+  --yellow: #fec001;
+  --ink: #0e1a24;
+  --muted: #5b6b7a;
+  --bg: #f4f6f8;
+}
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  width: 250px;
+  background: linear-gradient(180deg, var(--navy) 0%, #03172c 100%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 0.9rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 20;
+}
+
+.app-sidebar nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 1.5rem;
+}
+
+.brand:hover { color: var(--yellow); }
+
+.app-sidebar .nav-link {
+  color: rgba(255,255,255,0.78);
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.app-sidebar .nav-link:hover,
+.app-sidebar .nav-link.active {
+  background: rgba(254, 192, 1, 0.16);
+  color: var(--yellow);
+}
+
+.sidebar-user {
+  margin-top: auto;
+  padding: 0.9rem 0.4rem 0.2rem;
+  border-top: 1px solid rgba(255,255,255,0.12);
+}
+
+.app-main {
+  flex: 1;
+  padding: 1.5rem 1.75rem 2.5rem;
+  position: relative;
+  min-width: 0;
+}
+
+.page-title {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.kpi {
+  background: #fff;
+  border: 0;
+  border-radius: 0.9rem;
+  box-shadow: 0 8px 24px rgba(5, 41, 75, 0.06);
+}
+
+.kpi .kpi-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kpi .kpi-value {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.card-soft {
+  background: #fff;
+  border: 0;
+  border-radius: 0.9rem;
+  box-shadow: 0 8px 24px rgba(5, 41, 75, 0.06);
+}
+
+.badge-folio {
+  display: inline-block;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  background: var(--yellow);
+  color: var(--navy);
+}
+
+.table-landed th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.delta-up { color: #b02a37; font-weight: 600; }
+.delta-down { color: #146c43; font-weight: 600; }
+
+.btn-navy {
+  background: var(--navy);
+  color: #fff;
+  border: 0;
+}
+
+.btn-navy:hover { background: var(--navy-2); color: #fff; }
+
+.btn-yellow {
+  background: var(--yellow);
+  color: var(--navy);
+  font-weight: 600;
+  border: 0;
+}
+
+.btn-nav-toggle {
+  position: fixed;
+  top: 0.7rem;
+  left: 0.7rem;
+  z-index: 30;
+  background: var(--navy);
+  color: var(--yellow);
+}
+
+#crmToast {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 40;
+}
+
+@media (max-width: 991.98px) {
+  .app-sidebar {
+    position: fixed;
+    transform: translateX(-105%);
+    transition: transform 0.2s ease;
+  }
+  .app-sidebar.open { transform: none; }
+  .app-main { padding: 3.4rem 1rem 2rem; }
+}
+
+.table-responsive { -webkit-overflow-scrolling: touch; }
