@@ -18,7 +18,7 @@ require __DIR__ . '/_init.php';
     return array(
         'service' => 'crm-lpaezsis',
         'php' => PHP_VERSION,
-        'compat' => '7.4',
+        'compat' => '8.1',
         'db' => $okDb ? 'ok' : 'error',
         'driver' => $driver,
         'db_error' => $okDb ? null : $dbError,

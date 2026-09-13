@@ -45,9 +45,35 @@ if (!function_exists('str_ends_with')) {
     }
 }
 
+/**
+ * Valor seguro para nativas de string (PHP 8.1 no acepta null implícito).
+ *
+ * @param mixed $value
+ * @return string
+ */
+function crm_string($value)
+{
+    if ($value === null) {
+        return '';
+    }
+    if (is_string($value)) {
+        return $value;
+    }
+    if (is_bool($value)) {
+        return $value ? '1' : '';
+    }
+    if (is_int($value) || is_float($value)) {
+        return (string) $value;
+    }
+    if (is_object($value) && method_exists($value, '__toString')) {
+        return (string) $value;
+    }
+    return '';
+}
+
 function crm_lower($value)
 {
-    $value = (string) $value;
+    $value = crm_string($value);
     if (function_exists('mb_strtolower')) {
         return mb_strtolower($value, 'UTF-8');
     }

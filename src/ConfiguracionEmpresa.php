@@ -12,7 +12,7 @@ final class ConfiguracionEmpresa
      * @param PDO|null $pdo
      * @return array
      */
-    public static function obtener($pdo = null)
+    public static function obtener(?PDO $pdo = null)
     {
         $pdo = $pdo instanceof PDO ? $pdo : crm_pdo();
         $stmt = $pdo->query('SELECT * FROM crm_configuracion_empresa WHERE id = 1 LIMIT 1');
@@ -42,7 +42,7 @@ final class ConfiguracionEmpresa
      * @param PDO|null $pdo
      * @return array
      */
-    public static function guardar(array $data, $pdo = null)
+    public static function guardar(array $data, ?PDO $pdo = null)
     {
         $pdo = $pdo instanceof PDO ? $pdo : crm_pdo();
         $rut = crm_str(isset($data['rut']) ? $data['rut'] : '', 20);
@@ -91,7 +91,7 @@ final class ConfiguracionEmpresa
      * @param PDO|null $pdo
      * @return array
      */
-    public static function actualizarLogo($logoPath, $pdo = null)
+    public static function actualizarLogo($logoPath, ?PDO $pdo = null)
     {
         $pdo = $pdo instanceof PDO ? $pdo : crm_pdo();
         $logoPath = crm_str($logoPath, 255);

@@ -22,6 +22,19 @@ $_SERVER['SERVER_PORT'] = '80';
 
 require $root . '/includes/bootstrap.php';
 
+$crmPhp81Hits = array();
+set_error_handler(static function ($severity, $message, $file, $line) use (&$crmPhp81Hits) {
+    if ($severity !== E_DEPRECATED && $severity !== E_USER_DEPRECATED && $severity !== E_WARNING) {
+        return false;
+    }
+    $file = (string) $file;
+    if (strpos($file, '/lib/pdf/deps/') !== false || strpos($file, '/vendor/') !== false) {
+        return false;
+    }
+    $crmPhp81Hits[] = $file . ':' . $line . ' ' . $message;
+    return true;
+});
+
 $failed = 0;
 $passed = 0;
 
@@ -38,6 +51,20 @@ function assert_true($cond, $msg)
 }
 
 echo "== PHP " . PHP_VERSION . " ==\n";
+
+require $root . '/tests/php81_scan.php';
+assert_true(crm_php81_scan() === 0, 'Escaneo estático PHP 8.1 sin hallazgos');
+
+assert_true(crm_string(null) === '', 'crm_string(null) es cadena vacía');
+assert_true(crm_str(null) === '', 'crm_str(null) no pasa null a trim');
+assert_true(crm_h(null) === '', 'crm_h(null) no pasa null a htmlspecialchars');
+assert_true(crm_lower(null) === '', 'crm_lower(null) no pasa null a mb_strtolower');
+assert_true(\Crm\Rut::normalize(null) === '', 'Rut::normalize(null) PHP 8.1-safe');
+assert_true(\Crm\ItemImagen::normalizarEntrada(null) === '', 'ItemImagen::normalizarEntrada(null)');
+assert_true(\Crm\InventarioStock::likeNeedle(null) === '%%', 'likeNeedle(null) no pasa null a str_replace');
+assert_true(\Crm\InventarioStock::stockPorCodigo(null) === null, 'stockPorCodigo(null) no llama strlen/trim nativo con null');
+$qNull = \Crm\Productos::buscarParaCotizador(null, 5);
+assert_true(is_array($qNull), 'Productos::buscarParaCotizador(null) no TypeError');
 
 assert_true(\Crm\Rut::isValid('76.543.210-3'), 'RUT válido 76.543.210-3');
 assert_true(!\Crm\Rut::isValid('76.543.210-K'), 'RUT inválido rechazado');
@@ -1443,6 +1470,11 @@ $prodSrc = (string) file_get_contents($root . '/src/Productos.php');
 assert_true(strpos($prodSrc, 'tablaTieneUpdatedAt()') !== false, 'Productos::index tolera productos sin updated_at');
 $uiList = (string) file_get_contents($root . '/cotizaciones.php');
 assert_true(strpos($uiList, 'data-folio') !== false, 'UI Cambiar folio en listado');
+
+assert_true($crmPhp81Hits === array(), 'Suite sin Deprecated/Warning de aplicación PHP 8.1');
+if ($crmPhp81Hits !== array()) {
+    echo '  ' . implode("\n  ", $crmPhp81Hits) . "\n";
+}
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

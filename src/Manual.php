@@ -125,9 +125,9 @@ final class Manual
                     if ($codeLang === 'mermaid') {
                         $html[] = $paraPdf
                             ? self::flujoHtmlEstatico()
-                            : '<div class="mermaid">' . htmlspecialchars($block, ENT_QUOTES, 'UTF-8') . '</div>';
+                            : '<div class="mermaid">' . htmlspecialchars(crm_string($block), ENT_QUOTES, 'UTF-8') . '</div>';
                     } else {
-                        $html[] = '<pre><code>' . htmlspecialchars($block, ENT_QUOTES, 'UTF-8') . '</code></pre>';
+                        $html[] = '<pre><code>' . htmlspecialchars(crm_string($block), ENT_QUOTES, 'UTF-8') . '</code></pre>';
                     }
                     $inCode = false;
                     $codeLang = '';
@@ -247,7 +247,7 @@ final class Manual
      */
     private static function inline($text)
     {
-        $text = (string) $text;
+        $text = crm_string($text);
         $text = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
         $text = preg_replace(
             '/!\[([^\]]*)\]\(([^)]+)\)/',
@@ -274,13 +274,13 @@ final class Manual
         return (string) preg_replace_callback(
             '/<img src="([^"]+)" alt="([^"]*)" class="manual-img">/',
             static function ($m) use ($root) {
-                $src = html_entity_decode($m[1], ENT_QUOTES, 'UTF-8');
-                $alt = $m[2];
+                $src = html_entity_decode(crm_string($m[1]), ENT_QUOTES, 'UTF-8');
+                $alt = crm_string($m[2]);
                 $embed = self::embedImagen($root . '/' . ltrim($src, '/'));
                 if ($embed === '') {
-                    return '<p class="manual-img-missing">[Imagen: ' . $alt . ']</p>';
+                    return '<p class="manual-img-missing">[Imagen: ' . htmlspecialchars($alt, ENT_QUOTES, 'UTF-8') . ']</p>';
                 }
-                return '<img src="' . htmlspecialchars($embed, ENT_QUOTES, 'UTF-8') . '" alt="' . $alt . '" class="manual-img">';
+                return '<img src="' . htmlspecialchars($embed, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($alt, ENT_QUOTES, 'UTF-8') . '" class="manual-img">';
             },
             $html
         );
@@ -348,7 +348,7 @@ final class Manual
         $out = array('<div class="flow">');
         $n = count($pasos);
         for ($i = 0; $i < $n; $i++) {
-            $out[] = '<div class="flow-step">' . htmlspecialchars($pasos[$i], ENT_QUOTES, 'UTF-8') . '</div>';
+            $out[] = '<div class="flow-step">' . htmlspecialchars(crm_string($pasos[$i]), ENT_QUOTES, 'UTF-8') . '</div>';
             if ($i < $n - 1) {
                 $out[] = '<div class="flow-arrow">&#8595;</div>';
             }

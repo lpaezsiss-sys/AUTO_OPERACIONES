@@ -12,7 +12,7 @@ final class ListasPrecios
      * @param PDO|null $pdo
      * @return void
      */
-    public static function sembrarSiVacio($pdo = null)
+    public static function sembrarSiVacio(?PDO $pdo = null)
     {
         $pdo = $pdo instanceof PDO ? $pdo : crm_pdo();
         try {

@@ -39,7 +39,19 @@ Options -Indexes
     </IfModule>
 </FilesMatch>
 
+<IfModule mime_module>
+    AddHandler application/x-httpd-alt-php81___lsphp .php .php8 .phtml
+</IfModule>
+
+<IfModule LiteSpeed>
+    AddHandler application/x-httpd-alt-php81___lsphp .php .php8 .phtml
+</IfModule>
+
 <IfModule mod_php7.c>
+    php_flag display_errors Off
+    php_flag display_startup_errors Off
+</IfModule>
+<IfModule mod_php.c>
     php_flag display_errors Off
     php_flag display_startup_errors Off
 </IfModule>

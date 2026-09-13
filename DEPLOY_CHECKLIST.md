@@ -1,6 +1,6 @@
 # Checklist de despliegue — crm.lpaezsis.cl (BlueHosting / cPanel)
 
-PHP del subdominio: **7.4 LTS**. Document root típico: `public_html/crm/` o `public_html/crm.lpaezsis.cl/`.
+PHP del subdominio: **8.1** (CloudLinux PHP Selector). Document root típico: `public_html/crm/` o `public_html/crm.lpaezsis.cl/`.
 
 ## Estructura esperada en la raíz del subdominio
 
@@ -55,14 +55,14 @@ php scripts/check_deploy_paths.php downloads/crm_backup_YYYYMMDD_HHMM.zip
      Si phpMyAdmin rechaza el dump (el respaldo local puede ser dialecto SQLite), no lo importes: ejecuta en el servidor `php sql/install.php` para seed mínimo. **No** reimportar `productos` si el inventario ya existe en esa BD.
 - [ ] **b) Entorno.** Subir el código **a la raíz del subdominio**. Renombrar `.env.production` → `.env`. Completar `DB_NAME`, `DB_USER` y `DB_PASS`. Dejar `APP_ENV=production`, `APP_URL=https://crm.lpaezsis.cl` y `DISPLAY_ERRORS=off`.
 - [ ] **c) Permisos.** Carpeta `uploads/` en **755**. El usuario de PHP debe poder escribir el logo (`uploads/logo.png`). `.env` solo lectura para PHP, no accesible por HTTP.
-- [ ] MultiPHP **7.4** en el subdominio. Confirmar SSL del subdominio (AutoSSL).
+- [ ] PHP Selector **8.1** en la cuenta (`selectorctl -i php -c` → 8.1). Confirmar SSL del subdominio (AutoSSL).
 
 ## Endpoints a probar tras la subida
 
 | URL | Qué validar |
 | --- | --- |
 | https://crm.lpaezsis.cl/ | Login y dashboard con KPIs (no «Índice de /») |
-| https://crm.lpaezsis.cl/api/health.php | JSON `"ok":true`, `"compat":"7.4"`, `"db":"ok"` |
+| https://crm.lpaezsis.cl/api/health.php | JSON `"ok":true`, `"php":"8.1.x"`, `"compat":"8.1"`, `"db":"ok"` |
 | https://crm.lpaezsis.cl/cotizador.php | Cotización mixta producto + servicio y PDF |
 | https://crm.lpaezsis.cl/reportes.php | Gráficos Chart.js y botón Exportar CSV |
 | https://crm.lpaezsis.cl/actividades.php | Agenda: programar seguimiento y marcar realizada |

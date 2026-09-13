@@ -33,7 +33,7 @@ final class Marcas
      * @param PDO|null $pdo
      * @return void
      */
-    public static function sembrarSiVacio($pdo = null)
+    public static function sembrarSiVacio(?PDO $pdo = null)
     {
         $pdo = $pdo instanceof PDO ? $pdo : crm_pdo();
         try {
@@ -188,7 +188,7 @@ final class Marcas
      * @param PDO|null $pdo
      * @return list<array>
      */
-    public static function paraPdf($cotizacionId, $pdo = null)
+    public static function paraPdf($cotizacionId, ?PDO $pdo = null)
     {
         $pdo = $pdo instanceof PDO ? $pdo : crm_pdo();
         self::sembrarSiVacio($pdo);
@@ -223,7 +223,7 @@ final class Marcas
      * @param PDO|null $pdo
      * @return list<int>
      */
-    public static function idsDeCotizacion($cotizacionId, $pdo = null)
+    public static function idsDeCotizacion($cotizacionId, ?PDO $pdo = null)
     {
         $pdo = $pdo instanceof PDO ? $pdo : crm_pdo();
         $stmt = $pdo->prepare('SELECT marca_id FROM crm_cotizacion_marcas WHERE cotizacion_id = ?');
