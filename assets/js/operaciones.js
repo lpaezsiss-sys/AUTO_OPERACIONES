@@ -54,8 +54,10 @@
         " etapas</span></h2>" +
         '<div class="kanban-board">' + (fase.columnas || []).map(function (col) {
           var alert = (col.atrasadas || col.bloqueadas)
-            ? '<span class="col-alert">' + (col.bloqueadas ? "⚠ bloqueadas " : "") +
-              (col.atrasadas ? "⏱ atrasadas" : "") + "</span>"
+            ? '<div class="col-alert">' +
+              (col.bloqueadas ? '<span class="badge-alert blocked">Bloqueadas</span>' : "") +
+              (col.atrasadas ? '<span class="badge-alert overdue">Atrasadas</span>' : "") +
+              "</div>"
             : "";
           return '<div class="kanban-col" data-codigo="' + crmEsc(col.codigo) + '">' +
             '<div class="kanban-col-h"><div>' + crmEsc(col.nombre) +

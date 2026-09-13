@@ -204,7 +204,7 @@ body {
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--navy);
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.25rem;
 }
 .kanban-col-h .count {
   background: var(--navy);
@@ -245,7 +245,15 @@ body {
 }
 .badge-alert.overdue { background: #b02a37; color: #fff; }
 .badge-alert.blocked { background: var(--yellow); color: var(--navy); }
-.col-alert { display: block; font-size: 0.72rem; color: #b02a37; margin-bottom: 0.35rem; }
+.col-alert {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  color: #b02a37;
+  margin-bottom: 0.4rem;
+  line-height: 1.2;
+}
 .empty-col { font-size: 0.78rem; color: var(--muted); padding: 0.4rem; }
 .row-overdue { background: #fff5f5; }
 .row-blocked { background: #fff8e1; }
