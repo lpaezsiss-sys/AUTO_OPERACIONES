@@ -1,0 +1,116 @@
+# LPAEZSIS / COMEX — Apache 2.4 (BlueHosting cPanel + CloudLinux CageFS)
+# Document root = raíz de este repositorio (p. ej. public_html/comex.lpaezsis.cl/)
+
+DirectoryIndex index.php
+
+Options -Indexes -MultiViews
+
+ServerSignature Off
+
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+
+# --- Secretos y archivos de configuración: HTTP 403 Forbidden ---
+<Files ".env">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>
+
+<FilesMatch "^(\.env|\.env\..*)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<FilesMatch "(?i)^(\.htaccess|\.htpasswd|\.user\.ini|\.webdavignore)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<FilesMatch "(?i)\.(env|ini|conf|config|sql|sqlite|db|log|bak|orig|dist)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<FilesMatch "(?i)^(composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml(\.dist)?)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Nunca servir .env / dotfiles / copias de configuración (403)
+    RewriteRule (?:^|/)\.env - [F,L]
+    RewriteRule (?:^|/)\.env\..+$ - [F,L]
+    RewriteRule (?:^|/)\.(git|svn|hg|htpasswd|user\.ini) - [F,L]
+
+    # Directorios de aplicación y config: 403 (no son document root público)
+    RewriteRule ^(config|src|includes|sql|tests|data|database|scripts|deploy|vendor)(/|$) - [F,L]
+
+    # HTTPS forzado (terminación local o proxy X-Forwarded-Proto)
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # www → canónico sin www (comex / crm / inventario)
+    RewriteCond %{HTTP_HOST} ^www\.(comex\.lpaezsis\.cl|crm\.lpaezsis\.cl|inventario\.lpaezsis\.cl)$ [NC]
+    RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+
+    # Archivos y directorios reales (assets, api/*.php, uploads) se sirven tal cual
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Front controller: rutas amigables → index.php
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set X-XSS-Protection "0"
+</IfModule>
+
+# CageFS / MultiPHP suele usar CGI o lsapi: php_flag puede ignorarse.
+# Preferir MultiPHP INI Editor en cPanel. Estas directivas aplican si hay mod_php.
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag display_startup_errors Off
+    php_value expose_php Off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag display_errors Off
+    php_flag display_startup_errors Off
+</IfModule>
+<IfModule lsapi_module>
+    php_flag display_errors Off
+    php_flag display_startup_errors Off
+</IfModule>
