@@ -225,6 +225,79 @@ try {
 }
 assert_true($overFail, 'Exportación sin stock = 409');
 
+$pipeImp = \Crm\Comex\Pipeline::crearOperacion([
+    'tipo' => 'IMPORTACION',
+    'folio' => 'IMP-PIPE-1',
+    'fecha' => '2026-01-01',
+    'referencia' => 'pipeline test',
+    'items' => [['sku' => '12852-48', 'cantidad' => 1, 'precio_unitario' => 10]],
+]);
+assert_true(count($pipeImp['etapas']) === 13, '13 etapas al crear importación');
+$fases = array_count_values(array_map(static fn (array $e): string => (string) $e['fase'], $pipeImp['etapas']));
+assert_true(($fases['EVALUACION'] ?? 0) === 5 && ($fases['EJECUCION'] ?? 0) === 8, '5 Evaluación + 8 Ejecución');
+assert_true((string) $pipeImp['etapas'][0]['estado'] === 'IN_PROGRESS', 'Solicitud inicia IN_PROGRESS');
+assert_true((string) $pipeImp['etapas'][1]['estado'] === 'PENDING', 'Cotización inicia PENDING');
+$aduanaImp = null;
+foreach ($pipeImp['etapas'] as $et) {
+    if (($et['codigo'] ?? '') === 'ADUANA') {
+        $aduanaImp = $et;
+    }
+}
+assert_true(is_array($aduanaImp) && str_contains((string) $aduanaImp['nombre'], 'DIN'), 'Aduana importación = DIN');
+assert_true(!empty($pipeImp['etapas'][0]['atrasada']), 'Solicitud atrasada si fecha estimada pasó');
+assert_true((int) $pipeImp['alertas']['atrasadas'] >= 1, 'KPI atrasadas');
+
+$upd = \Crm\Comex\Pipeline::actualizarEtapa((int) $pipeImp['etapas'][0]['id'], [
+    'estado' => 'BLOCKED',
+    'responsable' => 'Ana Comex',
+    'fecha_estimada' => '2026-01-01',
+    'comentario' => 'Espera cotización proveedor',
+    'autor' => 'tester',
+]);
+assert_true((string) $upd['etapas'][0]['estado'] === 'BLOCKED' && !empty($upd['etapas'][0]['bloqueada']), 'Etapa BLOCKED');
+assert_true((string) $upd['etapas'][0]['responsable'] === 'Ana Comex', 'Responsable persistido');
+assert_true(count($upd['etapas'][0]['bitacora']) === 1, 'Bitácora / comentario');
+assert_true((int) $upd['alertas']['bloqueadas'] === 1, 'KPI bloqueadas');
+
+$avanzado = \Crm\Comex\Pipeline::actualizarEtapa((int) $upd['etapas'][0]['id'], [
+    'estado' => 'COMPLETED',
+    'comentario' => 'Desbloqueo y cierre de solicitud',
+]);
+assert_true((string) $avanzado['etapas'][0]['estado'] === 'COMPLETED', 'Solicitud COMPLETED');
+assert_true((string) $avanzado['etapas'][1]['estado'] === 'IN_PROGRESS', 'Siguiente etapa IN_PROGRESS');
+assert_true((string) $avanzado['etapas'][0]['fecha_real'] === \Crm\Comex\Pipeline::hoy(), 'Fecha real al completar');
+
+$pipeExp = \Crm\Comex\Operaciones::crear([
+    'tipo' => 'EXPORTACION',
+    'folio' => 'EXP-PIPE-1',
+    'fecha' => '2026-09-13',
+]);
+$packExp = \Crm\Comex\Pipeline::paraOperacion((int) $pipeExp['id']);
+$aduanaExp = null;
+foreach ($packExp['etapas'] as $et) {
+    if (($et['codigo'] ?? '') === 'ADUANA') {
+        $aduanaExp = $et;
+    }
+}
+assert_true(is_array($aduanaExp) && str_contains((string) $aduanaExp['nombre'], 'DUS'), 'Aduana exportación = DUS');
+
+$board = \Crm\Comex\Pipeline::tablero();
+assert_true(count($board['columnas']) === 13, 'Kanban 13 columnas');
+$solCol = null;
+foreach ($board['columnas'] as $col) {
+    if (($col['codigo'] ?? '') === 'SOLICITUD') {
+        $solCol = $col;
+    }
+}
+assert_true(is_array($solCol) && $solCol['tarjetas'] !== [], 'Tablero ubica operaciones en etapa actual');
+
+$uiOps = (string) file_get_contents($root . '/operaciones.php');
+$uiDet = (string) file_get_contents($root . '/operacion.php');
+$css = (string) file_get_contents($root . '/assets/css/app.css');
+assert_true(str_contains($uiOps, 'btnKanban') && str_contains($uiOps, 'btnLista'), 'UI Kanban y Lista');
+assert_true(str_contains($uiDet, 'IN_PROGRESS') && str_contains($uiDet, 'BLOCKED'), 'Formulario de estados');
+assert_true(str_contains($uiDet, 'Bitácora') && str_contains($css, 'is-overdue') && str_contains($css, 'is-blocked'), 'Alertas visuales atrasada/bloqueada');
+
 putenv('IVA_PCT=19');
 $gastosEst = [
     ['codigo' => 'FLETE_INTL', 'moneda' => 'USD', 'monto' => 30, 'ambito' => 'ORIGEN', 'cif' => true, 'nombre' => 'Flete internacional'],

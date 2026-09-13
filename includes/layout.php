@@ -34,7 +34,7 @@ function crm_layout_start(string $title, string $page, array $user = []): void
         <nav class="nav flex-column">
             <a class="nav-link<?php echo $page === 'dashboard' ? ' active' : ''; ?>" href="index.php">Dashboard</a>
             <a class="nav-link<?php echo $page === 'landed' ? ' active' : ''; ?>" href="landed.php">Landed cost</a>
-            <a class="nav-link<?php echo $page === 'operaciones' ? ' active' : ''; ?>" href="operaciones.php">Operaciones</a>
+            <a class="nav-link<?php echo $page === 'operaciones' ? ' active' : ''; ?>" href="operaciones.php">Pipeline</a>
             <a class="nav-link<?php echo $page === 'fichas' ? ' active' : ''; ?>" href="fichas.php">Fichas</a>
             <a class="nav-link" href="https://crm.lpaezsis.cl" target="_blank" rel="noopener">CRM</a>
             <a class="nav-link" href="https://inventario.lpaezsis.cl" target="_blank" rel="noopener">Inventario</a>
