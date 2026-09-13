@@ -975,6 +975,7 @@ assert_true(strpos($appJsSrc, 'window.crmBusyButton') !== false && strpos($appJs
 assert_true(strpos($appJsSrc, '450') !== false && strpos($appJsSrc, '_crmBusySince') !== false, 'crmBusyButton mantiene el estado de carga un mínimo de 450ms');
 $layoutSrc = (string) file_get_contents($root . '/includes/layout.php');
 assert_true(strpos($layoutSrc, 'usuarios.php') !== false, 'Menú incluye Usuarios');
+assert_true(strpos($layoutSrc, 'app.js?v=') !== false, 'layout cache-bust de app.js');
 assert_true(strpos($layoutSrc, "rol'] === 'admin'") !== false, 'Menú Usuarios restringido a admin');
 
 $listaUsers = \Crm\Usuarios::index();
