@@ -23,15 +23,13 @@
         max = v;
       }
     });
-    if (max < 1) {
-      max = 1;
-    }
+    max = Math.max(1, Math.ceil(max));
     var innerW = w - padL - padR;
     var innerH = h - padT - padB;
     var n = Math.max(series.length, 1);
     var gap = 8;
     var barW = Math.max(8, (innerW / n) - gap);
-    var ticks = 4;
+    var ticks = Math.min(4, max);
     var grid = "";
     var i;
     for (i = 0; i <= ticks; i++) {
