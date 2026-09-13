@@ -227,59 +227,7 @@ El ranking muestra **top por marca**. En sugerencias de alta, el botón **Conver
 
 ---
 
-## Anexo A — Guion de video promocional para inversionistas (90 s)
-
-**Pieza:** pitch de producto, locución en español (neutro / Chile).  
-**Pantalla:** `https://crm.lpaezsis.cl` (o laboratorio local).  
-**Duración total:** 1:30.
-
-### Acto 1 — El problema `[0:00 – 0:20]`
-
-**Locución:**  
-En la venta industrial, el margen se pierde en dos sitios: cotizaciones informales de equipos especiales —WhatsApp, Excel, memoria del vendedor— y un precio distinto para cada cliente sin registro. El último descuento se vuelve el nuevo piso. El producto a pedido no deja rastro de demanda. El inventario se infla “por si acaso”.
-
-**En pantalla:** dashboard con pipeline; corte a una cotización hecha “a mano”.
-
-### Acto 2 — La solución comercial `[0:20 – 0:55]`
-
-**Locución:**  
-CRM LPAEZsis pone un cotizador inteligente frente al vendedor. Elige el cliente y la lista de precios se carga sola. Busca un SKU y ve al instante código, stock vivo y precio; el texto coincidente se marca en amarillo. En milisegundos aparece el **último precio cotizado** a esa empresa —o el recargo de su lista—. Si el ítem no está en catálogo, lo carga **a pedido**: marca, costo, foto. El PDF sale con miniatura, observaciones en gris y el sello `[A pedido]`. Folio correlativo, sin pelearse el número.
-
-**En pantalla (demo, ~35 s):**
-
-1. Abrir cotizador → badge `Cotización Nueva (Próximo Nº: COT-2026-XXXX)`.
-2. Elegir cliente → lista **Lista general** (o la asignada).
-3. Buscar SKU → filas con stock y precio; badge **Último precio cliente**.
-4. **Ítem a pedido** → marca + imagen.
-5. Abrir PDF → miniatura 28 px y `[A pedido]`.
-
-### Acto 3 — Inteligencia de negocio y retorno `[0:55 – 1:20]`
-
-**Locución:**  
-Cada línea a pedido alimenta el panel de estadísticas: monto, margen, conversión, top marcas. Cuando la demanda se confirma, **Convertir en producto** crea el SKU con stock cero. Catálogo que crece con el mercado, no con sobre-stock. Menos capital inmovilizado, más visibilidad de qué se está vendiendo fuera de lista.
-
-**En pantalla:** `estadisticas_a_pedido.php` (KPIs + botón Convertir).
-
-### Cierre pitch `[1:20 – 1:30]`
-
-**Locución:**  
-Usuarios por rol —admin y vendedor—, PHP 8.1 y MySQL en una arquitectura liviana, lista para la nube. Control comercial, sin inflar el inventario. CRM LPAEZsis. crm.lpaezsis.cl.
-
-**En pantalla:** logo LPAEZsis + URL. Fundido.
-
-### Ficha técnica de producción
-
-| Campo | Valor |
-|---|---|
-| Duración | 90 segundos |
-| Relación | 16:9 |
-| Audio | Locución + música instrumental baja (industrial / corporativo) |
-| CTA final | Agendar demo · crm.lpaezsis.cl |
-| Restricción | No mostrar `.env`, passwords ni stock editable |
-
----
-
-## Anexo B — Referencia rápida de URLs
+## Anexo A — Referencia rápida de URLs
 
 | Recurso | Ruta |
 |---|---|

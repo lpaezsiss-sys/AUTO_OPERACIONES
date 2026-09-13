@@ -1389,7 +1389,8 @@ assert_true(strpos($manualMd, '```mermaid') !== false, 'Manual incluye diagrama 
 assert_true(strpos($manualMd, 'artifacts/cotizador_ultimo_precio_cliente.webp') !== false, 'Manual referencia badge de último precio');
 assert_true(strpos($manualMd, 'artifacts/listas_precios_listado.webp') !== false, 'Manual referencia listas de precios');
 assert_true(strpos($manualMd, 'artifacts/usuarios_listado.webp') !== false, 'Manual referencia usuarios');
-assert_true(strpos($manualMd, '[0:00') !== false && strpos($manualMd, 'inversionistas') !== false, 'Manual incluye guion para inversionistas');
+assert_true(strpos($manualMd, 'inversionistas') === false && strpos($manualMd, '[0:00') === false, 'Manual ya no incluye el guion para inversionistas');
+assert_true(strpos($manualMd, 'Anexo A — Referencia rápida de URLs') !== false, 'Manual conserva el anexo de URLs');
 assert_true(strpos($manualMd, 'cotizacion.php?id=') !== false, 'Manual documenta la ficha de edición');
 assert_true(strpos($manualMd, 'Guardando') !== false, 'Manual documenta el estado de guardado');
 assert_true(strpos($manualMd, 'resalta') !== false && strpos($manualMd, 'bloque2_cotizador_sugerencia_13451.webp') !== false, 'Manual documenta búsqueda con resaltado');
