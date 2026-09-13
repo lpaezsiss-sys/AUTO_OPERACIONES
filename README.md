@@ -2,7 +2,7 @@
 
 Módulo CRM para **LPAEZsis** en `crm.lpaezsis.cl`.
 
-- PHP **7.4 LTS** (BlueHosting / cPanel Apache). Sin sintaxis de PHP 8+.
+- PHP **8.1** en producción (`crm.lpaezsis.cl`, CloudLinux PHP Selector). Código con sintaxis 7.4-safe (sin `match()`, `?->`, etc.).
 - MySQL/MariaDB con **PDO** y prepared statements.
 - UI: Bootstrap 5 + JavaScript (Fetch API).
 - Tablas CRM con prefijo `crm_`.

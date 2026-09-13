@@ -1,6 +1,6 @@
 # Despliegue en BlueHosting (cPanel) — crm.lpaezsis.cl
 
-PHP del hosting: **7.4 LTS**. No activar MultiPHP 8.x para este subdominio.
+PHP de producción: **8.1** (CloudLinux PHP Selector / LiteSpeed). MultiPHP no está disponible en esta cuenta. El código del CRM permanece con sintaxis 7.4-safe.
 
 ## 1. Subdominio
 
@@ -44,5 +44,5 @@ php sql/install.php
 
 ## 4. Comprobar
 
-- `https://crm.lpaezsis.cl/api/health.php` debe devolver JSON con `"compat":"7.4"` y `"db":"ok"`.
+- `https://crm.lpaezsis.cl/api/health.php` debe devolver JSON con `"php":"8.1.x"`, `"compat":"8.1"` y `"db":"ok"`.
 - `https://crm.lpaezsis.cl/login.php`

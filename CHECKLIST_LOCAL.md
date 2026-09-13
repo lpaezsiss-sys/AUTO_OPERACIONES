@@ -1,6 +1,6 @@
 # Checklist de verificación local (antes de BlueHosting)
 
-PHP objetivo en producción: **7.4 LTS**. En el PC de desarrollo puede usarse 7.4 u 8.x para `php -S`; el código del CRM no usa sintaxis de PHP 8.
+PHP objetivo en producción: **8.1**. En el PC de desarrollo puede usarse 7.4 u 8.x para `php -S`; el código del CRM no usa sintaxis de PHP 8.
 
 ## 0. Arranque
 
