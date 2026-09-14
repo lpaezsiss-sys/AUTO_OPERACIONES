@@ -22,12 +22,14 @@ code_cfg="$(curl -s -o /tmp/comex-cfg.out -w "%{http_code}" "http://${HOST}:${PO
 code_src="$(curl -s -o /tmp/comex-src.out -w "%{http_code}" "http://${HOST}:${PORT}/src/Crm/Http.php")"
 code_health="$(curl -s -o /tmp/comex-health.json -w "%{http_code}" "http://${HOST}:${PORT}/api/health.php")"
 code_home="$(curl -s -o /tmp/comex-home.out -w "%{http_code}" "http://${HOST}:${PORT}/")"
+code_manual="$(curl -s -o /tmp/comex-manual.out -w "%{http_code}" "http://${HOST}:${PORT}/manual.php")"
 
 echo "GET /.env            -> ${code_env}"
 echo "GET /config/         -> ${code_cfg}"
 echo "GET /src/Crm/Http.php -> ${code_src}"
 echo "GET /api/health.php  -> ${code_health}"
 echo "GET /                -> ${code_home}"
+echo "GET /manual.php      -> ${code_manual}"
 
 fail=0
 [[ "$code_env" == "403" ]] || { echo "FAIL /.env debería ser 403"; fail=1; }
@@ -35,6 +37,7 @@ fail=0
 [[ "$code_src" == "403" ]] || { echo "FAIL /src/Crm/Http.php debería ser 403"; fail=1; }
 [[ "$code_health" == "200" ]] || { echo "FAIL /api/health.php debería ser 200"; fail=1; }
 [[ "$code_home" == "200" ]] || { echo "FAIL / debería ser 200"; fail=1; }
+[[ "$code_manual" == "200" ]] || { echo "FAIL /manual.php debería ser 200"; fail=1; }
 
 if [[ "$fail" -eq 0 ]]; then
   echo "PASS http smoke"

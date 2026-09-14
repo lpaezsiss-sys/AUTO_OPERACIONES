@@ -488,10 +488,91 @@ $docsDirMode = (int) fileperms($root . '/uploads/comex/docs') & 0777;
 assert_true(\Crm\Storage\Uploads::isSafeMode($docsDirMode), 'uploads/comex/docs 755/775');
 
 $ui = (string) file_get_contents($root . '/landed.php');
-$layout = (string) file_get_contents($root . '/includes/layout.php');
+$layout = (string) file_get_contents($root . '/includes/layout_header.php');
 $css = (string) file_get_contents($root . '/assets/css/app.css');
 assert_true(str_contains($layout, 'app-sidebar') && str_contains($css, '--navy: #05294b'), 'UI alineada al panel CRM');
 assert_true(str_contains($ui, 'IVA aduanero'), 'UI menciona IVA aduanero');
+assert_true(str_contains($layout, 'bi-book') && str_contains($layout, 'Manual de Usuario'), 'Sidebar Manual de Usuario');
+
+$manualSrc = (string) file_get_contents($root . '/manual.php');
+assert_true(is_file($root . '/includes/layout_header.php') && is_file($root . '/includes/layout_footer.php'), 'layout_header.php y layout_footer.php');
+assert_true(str_contains($manualSrc, 'layout_header.php') && str_contains($manualSrc, 'layout_footer.php'), 'manual.php usa header/footer');
+foreach (['modulo-catalogo', 'modulo-pipeline', 'modulo-landed', 'modulo-documentos'] as $secId) {
+    assert_true(str_contains($manualSrc, 'id="' . $secId . '"'), 'Manual sección #' . $secId);
+}
+$uiOpsHelp = (string) file_get_contents($root . '/operaciones.php');
+$uiOpHelp = (string) file_get_contents($root . '/operacion.php');
+assert_true(str_contains($uiOpsHelp, 'manual.php#modulo-pipeline') && str_contains($uiOpsHelp, 'btn btn-outline-secondary btn-sm'), 'Ayuda contextual Pipeline');
+assert_true(str_contains($uiOpHelp, 'href="manual.php#modulo-landed" target="_blank" class="btn btn-outline-secondary btn-sm"'), 'Ayuda contextual Finanzas');
+assert_true(str_contains($uiOpHelp, 'manual.php#modulo-documentos') && str_contains($uiOpHelp, 'tab=documents'), 'Ayuda contextual Documentos');
+
+$manualPort = 18767;
+$manualLog = sys_get_temp_dir() . '/comex-manual-http.log';
+if (is_file($manualLog)) {
+    unlink($manualLog);
+}
+$manualCmd = sprintf('php -S 127.0.0.1:%d -t %s %s', $manualPort, $root, $root . '/router.php');
+$manualProc = proc_open($manualCmd, [
+    0 => ['pipe', 'r'],
+    1 => ['file', $manualLog, 'a'],
+    2 => ['file', $manualLog, 'a'],
+], $manualPipes, $root, [
+    'COMEX_DB_DRIVER' => 'sqlite',
+    'COMEX_SQLITE_PATH' => $tmpApp,
+    'INV_SQLITE_PATH' => $tmpInv,
+    'APP_ENV' => 'test',
+    'PATH' => (string) (getenv('PATH') ?: '/usr/bin'),
+]);
+$manualHttp = ['code' => 0, 'body' => ''];
+if (is_resource($manualProc)) {
+    fclose($manualPipes[0]);
+    $manualUrl = 'http://127.0.0.1:' . $manualPort . '/manual.php';
+    for ($i = 0; $i < 40; $i++) {
+        usleep(50000);
+        $ch = curl_init($manualUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 2,
+            CURLOPT_FOLLOWLOCATION => false,
+        ]);
+        $body = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($code > 0 && is_string($body)) {
+            $manualHttp = ['code' => $code, 'body' => $body];
+            break;
+        }
+    }
+    $st = proc_get_status($manualProc);
+    $manualPid = (int) ($st['pid'] ?? 0);
+    if ($manualPid > 0 && function_exists('posix_kill')) {
+        posix_kill($manualPid, defined('SIGTERM') ? SIGTERM : 15);
+    }
+    proc_terminate($manualProc);
+    proc_close($manualProc);
+}
+if ((int) $manualHttp['code'] !== 200) {
+    $cliOut = [];
+    $cliCode = 1;
+    exec(
+        'COMEX_DB_DRIVER=sqlite COMEX_SQLITE_PATH=' . escapeshellarg($tmpApp)
+        . ' INV_SQLITE_PATH=' . escapeshellarg($tmpInv)
+        . ' APP_ENV=test php ' . escapeshellarg($root . '/manual.php') . ' 2>/dev/null',
+        $cliOut,
+        $cliCode
+    );
+    if ($cliCode === 0) {
+        $manualHttp = ['code' => 200, 'body' => implode("\n", $cliOut)];
+    }
+}
+assert_true((int) $manualHttp['code'] === 200, 'manual.php HTTP 200 OK');
+$htmlManual = (string) $manualHttp['body'];
+assert_true(str_contains($htmlManual, 'id="modulo-catalogo"'), 'HTML #modulo-catalogo');
+assert_true(str_contains($htmlManual, 'id="modulo-pipeline"'), 'HTML #modulo-pipeline');
+assert_true(str_contains($htmlManual, 'id="modulo-landed"'), 'HTML #modulo-landed');
+assert_true(str_contains($htmlManual, 'id="modulo-documentos"'), 'HTML #modulo-documentos');
+assert_true(str_contains($htmlManual, 'sticky-top'), 'TOC sticky-top');
+assert_true(str_contains($css, 'scroll-behavior: smooth'), 'Scroll suave en CSS');
 
 $zeroFail = false;
 try {

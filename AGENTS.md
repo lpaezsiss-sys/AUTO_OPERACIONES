@@ -10,6 +10,7 @@
 - Finanzas en el detalle (`operacion.php?tab=financials`): matriz Estimación vs Real, prorrateo FOB, IVA 19% CIF, unitario CLP/USD, recálculo en vivo, export XLSX (`zip`) y PDF (`gd`).
 - Documentos (`operacion.php?tab=documents`): repositorio Factura Comercial, Packing List, BL/AWB, Certificados, DIN/DUS en `uploads/comex/docs/`, trazabilidad usuario/fecha.
 - Dashboard (`index.php`): KPIs de operaciones activas, ciclo (días), costo promedio por embarque y alertas de retraso; gráfico SVG de volumen mensual.
+- Manual de operación (`manual.php`): catálogo/SKU, pipeline 13 etapas, landed cost e IVA 19%, repositorio documental. Acceso en el sidebar (icono `bi-book`) y botones de ayuda contextual.
 - PDO MySQL de COMEX con prepared statements. `ATTR_EMULATE_PREPARES = false`.
 - `.env` y `config/` no son públicos: `.htaccess` responde **403**. Forzar HTTPS.
 - `uploads/` permisos **755/775**, excluido de WebDAV (puerto **2078**). Ver `.webdavignore` y `scripts/webdav-sync.sh`.
