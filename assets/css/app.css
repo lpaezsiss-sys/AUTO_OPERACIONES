@@ -59,10 +59,36 @@ body {
   padding: 0.55rem 0.75rem;
 }
 
-.app-sidebar .nav-link:hover,
-.app-sidebar .nav-link.active {
-  background: rgba(254, 192, 1, 0.16);
-  color: var(--yellow);
+.app-sidebar .nav-link i {
+  margin-right: 0.4rem;
+}
+
+html { scroll-behavior: smooth; }
+
+.manual-toc {
+  top: 1rem;
+  z-index: 8;
+}
+.manual-toc-link {
+  display: block;
+  color: var(--navy);
+  text-decoration: none;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.45rem;
+  font-size: 0.9rem;
+  border-left: 3px solid transparent;
+}
+.manual-toc-link:hover,
+.manual-toc-link:focus {
+  background: rgba(254, 192, 1, 0.18);
+  color: var(--navy);
+  border-left-color: var(--yellow);
+}
+.manual-section {
+  scroll-margin-top: 1rem;
+}
+.manual-section h2 {
+  font-weight: 700;
 }
 
 .sidebar-user {

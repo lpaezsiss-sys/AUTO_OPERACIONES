@@ -34,6 +34,7 @@ No commitear `.env` con contraseñas. Apache responde **403** a `.env` y a `conf
 - Pipeline: `operaciones.php` — 13 etapas (Evaluación/Ejecución), Kanban y lista, bitácora.
 - Documentos: `operacion.php?id=&tab=documents` — Factura Comercial, Packing List, BL/AWB, Certificados, DIN/DUS, con usuario y fecha.
 - Dashboard: `index.php` — operaciones activas, ciclo promedio, costo promedio por embarque, alertas de retraso y volumen mensual.
+- Manual: `manual.php` — catálogo, pipeline, landed cost y documentos, con ayuda contextual desde cada módulo.
 
 ## Uploads y WebDAV
 
