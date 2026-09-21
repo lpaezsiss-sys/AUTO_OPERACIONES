@@ -32,7 +32,7 @@ require __DIR__ . '/includes/layout_header.php';
             <h2 class="h4" style="color:#05294B">Catálogo y Productos</h2>
             <p class="text-secondary">Las fichas COMEX no duplican el maestro de inventario: se vinculan por <strong>SKU</strong> a <code>prod.db</code> (Prisma <code>Product.code</code> en inventario.lpaezsis.cl).</p>
             <ul>
-                <li>Ruta: <a href="fichas.php">Fichas</a>. La sincronización lee stock y costo promedio vivos del SQLite compartido (<code>INV_SQLITE_PATH</code>).</li>
+                <li>Ruta: <a href="fichas.php">Fichas</a>. El botón <strong>Sincronizar Inventario</strong> llama a <code>api/sync.php</code> y trae los SKU desde <code>prod.db</code>. La sincronización lee stock y costo promedio vivos del SQLite compartido (<code>INV_SQLITE_PATH</code>).</li>
                 <li>Al <strong>confirmar</strong> una importación se escribe un movimiento <code>ENTRADA</code>; una exportación escribe <code>SALIDA</code>. La escritura usa WAL, <code>busy_timeout</code> y <code>BEGIN IMMEDIATE</code>.</li>
                 <li>El costo unitario promedio (CUP/PMP) se actualiza solo vía <code>StockSync</code>. El landed cost no escribe <code>prod.db</code>.</li>
                 <li>Si el SKU no existe o no hay stock suficiente en una exportación, la confirmación falla (409).</li>

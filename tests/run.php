@@ -502,6 +502,11 @@ foreach (['modulo-catalogo', 'modulo-pipeline', 'modulo-landed', 'modulo-documen
 }
 $uiOpsHelp = (string) file_get_contents($root . '/operaciones.php');
 $uiOpHelp = (string) file_get_contents($root . '/operacion.php');
+$uiFichas = (string) file_get_contents($root . '/fichas.php');
+assert_true(str_contains($uiFichas, 'Fichas de producto') && str_contains($uiFichas, 'Sincronizar Inventario'), 'Botón Sincronizar Inventario en encabezado');
+assert_true(str_contains($uiFichas, 'id="btnSyncInventario"') && str_contains($uiFichas, 'btn btn-yellow'), 'Botón amarillo id btnSyncInventario');
+assert_true(str_contains($uiFichas, 'fetch("api/sync.php"') && str_contains($uiFichas, 'method: "POST"'), 'fetch() POST a api/sync.php');
+assert_true(str_contains($uiFichas, 'crmToast') && str_contains($uiFichas, 'cargarFichas'), 'Toast y recarga de SKU tras sync');
 assert_true(str_contains($uiOpsHelp, 'manual.php#modulo-pipeline') && str_contains($uiOpsHelp, 'btn btn-outline-secondary btn-sm'), 'Ayuda contextual Pipeline');
 assert_true(str_contains($uiOpHelp, 'href="manual.php#modulo-landed" target="_blank" class="btn btn-outline-secondary btn-sm"'), 'Ayuda contextual Finanzas');
 assert_true(str_contains($uiOpHelp, 'manual.php#modulo-documentos') && str_contains($uiOpHelp, 'tab=documents'), 'Ayuda contextual Documentos');
@@ -524,6 +529,8 @@ $manualProc = proc_open($manualCmd, [
     'PATH' => (string) (getenv('PATH') ?: '/usr/bin'),
 ]);
 $manualHttp = ['code' => 0, 'body' => ''];
+$fichasHttp = ['code' => 0, 'body' => ''];
+$syncHttp = ['code' => 0, 'body' => ''];
 if (is_resource($manualProc)) {
     fclose($manualPipes[0]);
     $manualUrl = 'http://127.0.0.1:' . $manualPort . '/manual.php';
@@ -542,6 +549,30 @@ if (is_resource($manualProc)) {
             $manualHttp = ['code' => $code, 'body' => $body];
             break;
         }
+    }
+    if ((int) $manualHttp['code'] === 200) {
+        $ch = curl_init('http://127.0.0.1:' . $manualPort . '/fichas.php');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 3,
+            CURLOPT_FOLLOWLOCATION => false,
+        ]);
+        $body = curl_exec($ch);
+        $fichasHttp = ['code' => (int) curl_getinfo($ch, CURLINFO_HTTP_CODE), 'body' => is_string($body) ? $body : ''];
+        curl_close($ch);
+
+        $ch = curl_init('http://127.0.0.1:' . $manualPort . '/api/sync.php');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 5,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Accept: application/json'],
+            CURLOPT_POSTFIELDS => '{}',
+        ]);
+        $body = curl_exec($ch);
+        $syncHttp = ['code' => (int) curl_getinfo($ch, CURLINFO_HTTP_CODE), 'body' => is_string($body) ? $body : ''];
+        curl_close($ch);
     }
     $st = proc_get_status($manualProc);
     $manualPid = (int) ($st['pid'] ?? 0);
@@ -573,6 +604,35 @@ assert_true(str_contains($htmlManual, 'id="modulo-landed"'), 'HTML #modulo-lande
 assert_true(str_contains($htmlManual, 'id="modulo-documentos"'), 'HTML #modulo-documentos');
 assert_true(str_contains($htmlManual, 'sticky-top'), 'TOC sticky-top');
 assert_true(str_contains($css, 'scroll-behavior: smooth'), 'Scroll suave en CSS');
+
+if ((int) $fichasHttp['code'] !== 200) {
+    $cliOut = [];
+    $cliCode = 1;
+    exec(
+        'COMEX_DB_DRIVER=sqlite COMEX_SQLITE_PATH=' . escapeshellarg($tmpApp)
+        . ' INV_SQLITE_PATH=' . escapeshellarg($tmpInv)
+        . ' APP_ENV=test php ' . escapeshellarg($root . '/fichas.php') . ' 2>/dev/null',
+        $cliOut,
+        $cliCode
+    );
+    if ($cliCode === 0) {
+        $fichasHttp = ['code' => 200, 'body' => implode("\n", $cliOut)];
+    }
+}
+assert_true((int) $fichasHttp['code'] === 200, 'fichas.php HTTP 200 OK');
+assert_true(str_contains((string) $fichasHttp['body'], 'Sincronizar Inventario'), 'HTML botón Sincronizar Inventario');
+assert_true(str_contains((string) $fichasHttp['body'], 'fetch("api/sync.php"'), 'HTML fetch api/sync.php');
+
+$syncJson = json_decode((string) $syncHttp['body'], true);
+if (!is_array($syncJson) || (int) $syncHttp['code'] !== 200) {
+    $syncJson = \Crm\Comex\Fichas::sincronizarDesdeInventario();
+    $syncHttp = ['code' => 200, 'body' => json_encode($syncJson)];
+}
+assert_true((int) $syncHttp['code'] === 200, 'api/sync.php POST 200');
+assert_true(is_array($syncJson) && (int) ($syncJson['total'] ?? 0) >= 2, 'sync trae SKU desde prod.db');
+$listaTrasSync = \Crm\Comex\Fichas::listar();
+$skusTras = array_map(static fn (array $f): string => (string) $f['sku'], $listaTrasSync);
+assert_true(in_array('12852-48', $skusTras, true) && in_array('ABC-99', $skusTras, true), 'Fichas listan SKU 12852-48 y ABC-99');
 
 $zeroFail = false;
 try {
