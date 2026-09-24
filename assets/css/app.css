@@ -271,6 +271,26 @@ html { scroll-behavior: smooth; }
 }
 .badge-alert.overdue { background: #b02a37; color: #fff; }
 .badge-alert.blocked { background: var(--yellow); color: var(--navy); }
+.badge-eval {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  background: #fff3cd;
+  color: #664d03;
+  white-space: nowrap;
+}
+.badge-cat {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  background: #d9e2ec;
+  color: var(--navy);
+  white-space: nowrap;
+}
 .col-alert {
   display: flex;
   flex-wrap: wrap;

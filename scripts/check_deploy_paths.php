@@ -41,6 +41,7 @@ $archivosRaiz = [
     'landed.php' => 'Módulo landed cost',
     'operaciones.php' => 'Pipeline Kanban / lista',
     'operacion.php' => 'Detalle de etapas y bitácora',
+    'assets/js/items.js' => 'Ítems de operación y SKU de evaluación',
     'manual.php' => 'Manual de operación',
     'fichas.php' => 'Fichas de producto (SKU inventario)',
     'api/sync.php' => 'Sincronizar catálogo desde prod.db',

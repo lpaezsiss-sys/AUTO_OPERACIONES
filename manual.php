@@ -35,7 +35,10 @@ require __DIR__ . '/includes/layout_header.php';
                 <li>Ruta: <a href="fichas.php">Fichas</a>. El botón <strong>Sincronizar Inventario</strong> llama a <code>api/sync.php</code> y trae los SKU desde <code>prod.db</code>. La sincronización lee stock y costo promedio vivos del SQLite compartido (<code>INV_SQLITE_PATH</code>).</li>
                 <li>Al <strong>confirmar</strong> una importación se escribe un movimiento <code>ENTRADA</code>; una exportación escribe <code>SALIDA</code>. La escritura usa WAL, <code>busy_timeout</code> y <code>BEGIN IMMEDIATE</code>.</li>
                 <li>El costo unitario promedio (CUP/PMP) se actualiza solo vía <code>StockSync</code>. El landed cost no escribe <code>prod.db</code>.</li>
-                <li>Si el SKU no existe o no hay stock suficiente en una exportación, la confirmación falla (409).</li>
+                <li>Si el SKU no existe en <code>prod.db</code> puede cargarlo igual como ítem de <strong>evaluación</strong> (código temporal, p. ej. TEMP-001, más Nombre/Descripción). Queda marcado <code>origen = evaluacion</code> / <code>is_custom</code>.</li>
+                <li>Esos SKU temporales entran a la matriz de landed cost con el mismo prorrateo FOB, CIF, IVA 19% y unitario nacionalizado. No generan ENTRADA/SALIDA en inventario hasta vincularlos al catálogo oficial.</li>
+                <li>Al avanzar a <strong>Entrega</strong> o <strong>Cierre</strong> el sistema exige vincular o crear los SKU en inventario. Si faltan, responde 409 y no registra el movimiento de stock.</li>
+                <li>Si el SKU no existe o no hay stock suficiente en una exportación, la confirmación falla (409) para líneas de catálogo.</li>
             </ul>
             <p class="mb-0 small text-secondary">Imágenes de ficha e ítem se guardan en <code>uploads/comex/productos/</code> e <code>uploads/comex/items/</code> (755/775, sin PHP ejecutable).</p>
         </section>
@@ -72,6 +75,7 @@ require __DIR__ . '/includes/layout_header.php';
             <ul class="mb-0">
                 <li><strong>Atraso:</strong> etapa no completada con fecha estimada anterior a hoy (tarjeta roja / badge Atrasada).</li>
                 <li><strong>Bloqueo:</strong> estado <code>BLOCKED</code> (amarillo). Use la bitácora para dejar comentario, usuario y fecha.</li>
+                <li><strong>Ítems:</strong> en <code>operacion.php?id=&amp;tab=items</code> se agregan SKU de catálogo o temporales. Entrega/Cierre exige vincular los temporales al catálogo oficial.</li>
             </ul>
         </section>
 
@@ -79,7 +83,7 @@ require __DIR__ . '/includes/layout_header.php';
             <h2 class="h4" style="color:#05294B">Calculadora Landed Cost</h2>
             <p class="text-secondary">Hoja en el detalle de la operación: <code>operacion.php?id=&amp;tab=financials</code>. Recálculo en vivo, sin Composer.</p>
             <ul>
-                <li><strong>Prorrateo por FOB:</strong> cada SKU recibe un factor igual a su FOB sobre el FOB total. Gastos de origen (flete internacional, seguro) entran al CIF; gastos locales en CLP (Aduana, Agencia, Flete interno, Bancarios) se prorratean y no van en el IVA.</li>
+                <li><strong>Prorrateo por FOB:</strong> cada SKU (catálogo o evaluación) recibe un factor igual a su FOB sobre el FOB total. Gastos de origen (flete internacional, seguro) entran al CIF; gastos locales en CLP (Aduana, Agencia, Flete interno, Bancarios) se prorratean y no van en el IVA.</li>
                 <li><strong>IVA 19% CIF Chile:</strong> IVA aduanero = 19% sobre CIF (FOB + flete intl + seguro), configurable con <code>IVA_PCT</code>.</li>
                 <li><strong>Estimada vs Real:</strong> dos versiones por operación. La matriz muestra delta en CLP y USD (unitario = CLP / tipo de cambio USD).</li>
                 <li><strong>Exportación:</strong> Excel (.xlsx, ZipArchive OOXML) y PDF de la matriz Estimación vs Real.</li>

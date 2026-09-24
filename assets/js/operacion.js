@@ -120,6 +120,18 @@
     document.getElementById("tituloOp").textContent = (op.folio || "Operación") + " · " + (op.tipo || "");
     document.getElementById("subOp").textContent = "Pipeline · " + ((pack.progreso && pack.progreso.hechas) || 0) +
       " de 13 etapas";
+    var alerta = document.getElementById("alertaEval");
+    var pend = pack.items_evaluacion || (op.items || []).filter(function (it) { return it.is_custom; });
+    if (alerta) {
+      if (pend.length) {
+        alerta.classList.remove("d-none");
+        alerta.innerHTML = "Hay <strong>" + pend.length + "</strong> SKU de evaluación. " +
+          '<a href="operacion.php?id=' + opId + '&tab=items">Vincúlelos al catálogo</a> antes de Entrega/Cierre.';
+      } else {
+        alerta.classList.add("d-none");
+        alerta.innerHTML = "";
+      }
+    }
     renderKpis();
     renderKanban();
     renderLista();

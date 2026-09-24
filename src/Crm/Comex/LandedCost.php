@@ -159,6 +159,8 @@ final class LandedCost
                 'fob_unitario' => $fobU,
                 'fob_origen' => $fobOrig,
                 'fob_clp' => $fobItemClp,
+                'origen' => (string) ($it['origen'] ?? ''),
+                'is_custom' => !empty($it['is_custom']),
             ];
             $pesosFob[] = $fobOrig;
         }

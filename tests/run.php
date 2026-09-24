@@ -392,6 +392,158 @@ $jsCalc = (string) file_get_contents($root . '/assets/js/landed-calc.js');
 assert_true(str_contains($uiFin, 'tab=financials') && str_contains($uiFin, 'sheetGastos'), 'Finanzas en detalle de operación');
 assert_true(str_contains($jsFin, 'crmLandedCalcular') && str_contains($jsCalc, 'prorratear'), 'Recálculo en vivo JS');
 assert_true(str_contains($uiFin, 'Excel (xlsx)') && str_contains($uiFin, 'PDF matriz'), 'Exportación xlsx y PDF');
+assert_true(str_contains($uiFin, 'tab=items') && str_contains($uiFin, 'id="formItem"'), 'Pestaña Ítems en detalle de operación');
+
+$jsItems = (string) file_get_contents($root . '/assets/js/items.js');
+$jsOps = (string) file_get_contents($root . '/assets/js/operaciones.js');
+$jsLanded = (string) file_get_contents($root . '/assets/js/landed.js');
+assert_true(str_contains($jsItems, 'agregar_items') && str_contains($jsItems, 'vincular'), 'JS agrega y vincula SKU temporales');
+assert_true(str_contains($jsOps, 'itemNombre') && str_contains((string) file_get_contents($root . '/operaciones.php'), 'id="itemNombre"'), 'Alta con Nombre/Descripción de evaluación');
+assert_true(str_contains($jsLanded, 'badge-eval') && str_contains($jsFin, 'badge-eval'), 'Landed y finanzas marcan ítems de evaluación');
+assert_true(str_contains($css, '.badge-eval'), 'CSS badge evaluación');
+
+$colsItems = \Crm\Database\Connection::app()->query('PRAGMA table_info(comex_operacion_items)')->fetchAll(PDO::FETCH_ASSOC);
+$colNames = array_map(static fn (array $c): string => (string) ($c['name'] ?? ''), is_array($colsItems) ? $colsItems : []);
+assert_true(in_array('origen', $colNames, true) && in_array('is_custom', $colNames, true), 'Columnas origen e is_custom en ítems');
+\Crm\Comex\Schema::install();
+assert_true(true, 'Schema::install idempotente con ensureUpgrades');
+
+$sinNombre = false;
+try {
+    \Crm\Comex\Operaciones::crear([
+        'tipo' => 'IMPORTACION',
+        'folio' => 'IMP-TEMP-NONAME',
+        'items' => [['sku' => 'TEMP-NO', 'cantidad' => 1, 'precio_unitario' => 10]],
+    ]);
+} catch (\Crm\ApiException $e) {
+    $sinNombre = $e->status === 400;
+}
+assert_true($sinNombre, 'SKU inexistente sin nombre = 400');
+
+$opTemp = \Crm\Comex\Operaciones::crear([
+    'tipo' => 'IMPORTACION',
+    'folio' => 'IMP-TEMP-1',
+    'fecha' => '2026-09-13',
+    'items' => [
+        ['sku' => '12852-48', 'cantidad' => 2, 'precio_unitario' => 100, 'descripcion' => 'Banda'],
+        ['sku' => 'TEMP-001', 'cantidad' => 1, 'precio_unitario' => 100, 'nombre' => 'Muestra nueva'],
+    ],
+]);
+$itCat = $opTemp['items'][0];
+$itEval = $opTemp['items'][1];
+assert_true((string) $itCat['origen'] === 'inventario' && empty($itCat['is_custom']), 'SKU catálogo origen inventario');
+assert_true((string) $itEval['sku'] === 'TEMP-001' && !empty($itEval['is_custom']), 'TEMP-001 is_custom');
+assert_true((string) $itEval['origen'] === 'evaluacion' && (string) $itEval['descripcion'] === 'Muestra nueva', 'origen evaluacion y nombre persistidos');
+assert_true((int) $opTemp['items_evaluacion_pendientes'] === 1, 'Cuenta ítems de evaluación pendientes');
+
+$calcTemp = \Crm\Comex\LandedCostStore::calcularDesde([
+    'operacion_id' => $opTemp['id'],
+    'version' => 'ESTIMADA',
+    'moneda_origen' => 'USD',
+    'tipo_cambio_usd' => 900,
+    'tipo_cambio_eur' => 1050,
+    'iva_pct' => 19,
+    'gastos' => $gastosEst,
+]);
+assert_true((float) $calcTemp['totales']['fob_clp'] === 270000.0, 'FOB CLP mezcla catálogo + TEMP');
+assert_true((float) $calcTemp['totales']['cif_clp'] === 302400.0, 'CIF incluye ítem temporal');
+assert_true((float) $calcTemp['totales']['iva_clp'] === 57456.0, 'IVA 19% sobre CIF con TEMP');
+assert_true((float) $calcTemp['totales']['landed_clp'] === 392856.0, 'Landed prorratea TEMP igual que catálogo');
+assert_true((string) $calcTemp['items'][1]['sku'] === 'TEMP-001', 'Matriz FOB lista TEMP-001');
+assert_true(!empty($calcTemp['items'][1]['is_custom']), 'Cálculo conserva is_custom');
+assert_true(abs((float) $calcTemp['items'][0]['landed_unitario_usd'] - 145.5022) < 0.0002, 'Unitario USD TEMP mix');
+
+$opAgregar = \Crm\Comex\Operaciones::agregarItems((int) $opTemp['id'], [
+    ['sku' => 'TEMP-002', 'cantidad' => 3, 'precio_unitario' => 20, 'descripcion' => 'Otra muestra'],
+]);
+assert_true(count($opAgregar['items']) === 3, 'agregarItems suma línea de evaluación');
+
+$stockBandaAntes = (float) \Crm\Inventory\InventarioStock::stockPorCodigo('12852-48');
+$confTemp = \Crm\Comex\Operaciones::confirmar((int) $opTemp['id']);
+assert_true($confTemp['estado'] === 'confirmada', 'Confirma operación con SKU temporal');
+assert_true(
+    abs(((float) \Crm\Inventory\InventarioStock::stockPorCodigo('12852-48')) - ($stockBandaAntes + 2)) < 0.0001,
+    'ENTRADA al confirmar solo SKU de catálogo'
+);
+$movTemp = '';
+$movCat = '';
+foreach ($confTemp['items'] as $it) {
+    if (($it['sku'] ?? '') === 'TEMP-001') {
+        $movTemp = (string) ($it['movimiento_id'] ?? '');
+    }
+    if (($it['sku'] ?? '') === '12852-48') {
+        $movCat = (string) ($it['movimiento_id'] ?? '');
+    }
+}
+assert_true($movCat !== '', 'Movimiento en ítem de catálogo al confirmar');
+assert_true($movTemp === '', 'SKU evaluación no escribe stock al confirmar');
+
+$pipeEval = \Crm\Comex\Pipeline::crearOperacion([
+    'tipo' => 'IMPORTACION',
+    'folio' => 'IMP-EVAL-PIPE',
+    'fecha' => '2026-09-13',
+    'items' => [
+        ['sku' => 'TEMP-PIPE', 'cantidad' => 4, 'precio_unitario' => 50, 'nombre' => 'Cotización nueva'],
+    ],
+]);
+$opEvalId = (int) $pipeEval['operacion']['id'];
+assert_true(($pipeEval['items_evaluacion'] ?? []) !== [], 'Pipeline expone ítems de evaluación');
+for ($i = 0; $i < 11; $i++) {
+    \Crm\Comex\Pipeline::avanzar($opEvalId);
+}
+$antesEntrega = \Crm\Comex\Pipeline::paraOperacion($opEvalId);
+assert_true(is_array($antesEntrega['actual']) && ($antesEntrega['actual']['codigo'] ?? '') === 'ENTREGA', 'Etapa actual Entrega');
+$bloqueoEntrega = false;
+$extraSkus = [];
+try {
+    \Crm\Comex\Pipeline::avanzar($opEvalId);
+} catch (\Crm\ApiException $e) {
+    $bloqueoEntrega = $e->status === 409;
+    $extraSkus = $e->extra['skus'] ?? [];
+}
+assert_true($bloqueoEntrega, 'Entrega/Cierre 409 si hay SKU temporales');
+assert_true(in_array('TEMP-PIPE', $extraSkus, true), '409 lista SKU TEMP-PIPE');
+
+$vincFail = false;
+try {
+    $tempItemId = 0;
+    foreach ($antesEntrega['operacion']['items'] as $it) {
+        if (($it['sku'] ?? '') === 'TEMP-PIPE') {
+            $tempItemId = (int) $it['id'];
+        }
+    }
+    \Crm\Comex\Operaciones::vincularItem($tempItemId, 'NO-EXISTE');
+} catch (\Crm\ApiException $e) {
+    $vincFail = $e->status === 404;
+}
+assert_true($vincFail, 'Vincular a SKU inexistente = 404');
+
+$invWrite = \Crm\Inventory\SqliteConnector::write();
+$invWrite->prepare(
+    'INSERT INTO Product (id, code, name, description, stock, averageUnitCost) VALUES (?,?,?,?,?,?)'
+)->execute(['p-eval-off', 'TEMP-OFF', 'Producto oficial evaluación', '', 0, 0]);
+$invWrite = null;
+\Crm\Inventory\SqliteConnector::reset();
+
+$itemPipeId = 0;
+$opEvalNow = \Crm\Comex\Operaciones::porId($opEvalId);
+foreach ($opEvalNow['items'] as $it) {
+    if (($it['sku'] ?? '') === 'TEMP-PIPE') {
+        $itemPipeId = (int) $it['id'];
+    }
+}
+$vinculada = \Crm\Comex\Operaciones::vincularItem($itemPipeId, 'TEMP-OFF');
+$itVinc = $vinculada['items'][0];
+assert_true((string) $itVinc['sku'] === 'TEMP-OFF' && empty($itVinc['is_custom']), 'Vínculo a SKU oficial limpia is_custom');
+assert_true((string) $itVinc['sku_temporal'] === 'TEMP-PIPE', 'Conserva SKU temporal original');
+assert_true((int) $vinculada['items_evaluacion_pendientes'] === 0, 'Sin pendientes tras vincular');
+
+$trasEntrega = \Crm\Comex\Pipeline::avanzar($opEvalId);
+assert_true(is_array($trasEntrega['actual']) && ($trasEntrega['actual']['codigo'] ?? '') === 'CIERRE', 'Entrega completa tras vincular');
+assert_true(\Crm\Inventory\InventarioStock::stockPorCodigo('TEMP-OFF') === 4.0, 'ENTRADA en Entrega para SKU vinculado');
+$cierreOk = \Crm\Comex\Pipeline::avanzar($opEvalId);
+assert_true((int) ($cierreOk['progreso']['pct'] ?? 0) === 100, 'Cierre operativo al 100%');
+
 
 $opDoc = \Crm\Comex\Operaciones::crear([
     'tipo' => 'IMPORTACION',

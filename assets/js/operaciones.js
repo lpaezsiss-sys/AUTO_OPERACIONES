@@ -116,6 +116,8 @@
     if (sku) {
       body.items = [{
         sku: sku,
+        descripcion: document.getElementById("itemNombre").value.trim(),
+        nombre: document.getElementById("itemNombre").value.trim(),
         cantidad: crmParseNum(document.getElementById("cantidad").value),
         precio_unitario: crmParseNum(document.getElementById("precio").value),
       }];

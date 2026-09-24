@@ -7,18 +7,20 @@ require __DIR__ . '/includes/layout.php';
 
 $id = (int) ($_GET['id'] ?? 0);
 $tab = strtolower((string) ($_GET['tab'] ?? 'pipeline'));
-if (!in_array($tab, ['pipeline', 'financials', 'documents'], true)) {
+if (!in_array($tab, ['pipeline', 'financials', 'documents', 'items'], true)) {
     $tab = 'pipeline';
 }
 $titles = [
     'pipeline' => 'Operación',
     'financials' => 'Finanzas',
     'documents' => 'Documentos',
+    'items' => 'Ítems',
 ];
 crm_layout_start($titles[$tab], 'operaciones');
 $pipe = $tab === 'pipeline';
 $fin = $tab === 'financials';
 $docs = $tab === 'documents';
+$itemsTab = $tab === 'items';
 ?>
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
     <div>
@@ -29,6 +31,7 @@ $docs = $tab === 'documents';
     <div class="d-flex flex-wrap gap-2">
         <div class="btn-group" role="group" aria-label="Módulo">
             <a class="btn <?php echo $pipe ? 'btn-navy' : 'btn-outline-secondary'; ?>" href="operacion.php?id=<?php echo $id; ?>">Pipeline</a>
+            <a class="btn <?php echo $itemsTab ? 'btn-navy' : 'btn-outline-secondary'; ?>" href="operacion.php?id=<?php echo $id; ?>&amp;tab=items">Ítems</a>
             <a class="btn <?php echo $docs ? 'btn-navy' : 'btn-outline-secondary'; ?>" href="operacion.php?id=<?php echo $id; ?>&amp;tab=documents">Documentos</a>
             <a class="btn <?php echo $fin ? 'btn-navy' : 'btn-outline-secondary'; ?>" href="operacion.php?id=<?php echo $id; ?>&amp;tab=financials">Finanzas</a>
         </div>
@@ -36,6 +39,8 @@ $docs = $tab === 'documents';
         <a href="manual.php#modulo-landed" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-book" aria-hidden="true"></i> Ayuda</a>
         <?php elseif ($docs) : ?>
         <a href="manual.php#modulo-documentos" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-book" aria-hidden="true"></i> Ayuda</a>
+        <?php elseif ($itemsTab) : ?>
+        <a href="manual.php#modulo-catalogo" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-book" aria-hidden="true"></i> Ayuda</a>
         <?php endif; ?>
         <div class="btn-group <?php echo $pipe ? '' : 'd-none'; ?>" id="btnsPipelineVista" role="group">
             <button class="btn btn-navy" type="button" id="btnKanban">Kanban</button>
@@ -46,6 +51,7 @@ $docs = $tab === 'documents';
 </div>
 
 <div id="tabPipeline" class="<?php echo $pipe ? '' : 'd-none'; ?>">
+<div id="alertaEval" class="alert alert-warning d-none" role="alert"></div>
 <div class="row g-3 mb-3" id="kpis"></div>
 <div id="vistaKanban" class="pipeline-wrap"></div>
 <div id="vistaLista" class="d-none card card-soft p-3">
@@ -61,6 +67,78 @@ $docs = $tab === 'documents';
         </table>
     </div>
 </div>
+</div>
+
+<div id="tabItems" class="<?php echo $itemsTab ? '' : 'd-none'; ?>">
+    <div id="alertaEvalItems" class="alert alert-warning d-none" role="alert"></div>
+    <div class="card card-soft p-3 mb-3">
+        <h2 class="h6 mb-2" style="color:#05294B">Agregar ítem</h2>
+        <p class="small text-secondary">SKU del catálogo sincronizado o código temporal (ej. TEMP-001) con Nombre/Descripción si aún no existe en <code>prod.db</code>.</p>
+        <form id="formItem">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label" for="itemSku">SKU</label>
+                    <input id="itemSku" class="form-control" list="listaSkuCatalogo" placeholder="12852-48 o TEMP-001" required>
+                    <datalist id="listaSkuCatalogo"></datalist>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label" for="itemNombre">Nombre / Descripción</label>
+                    <input id="itemNombre" class="form-control" placeholder="Obligatorio si el SKU no está en inventario">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label" for="itemCant">Cantidad</label>
+                    <input id="itemCant" class="form-control" value="1" required>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label" for="itemFob">FOB unit.</label>
+                    <input id="itemFob" class="form-control" value="0">
+                </div>
+                <div class="col-12 col-md-1">
+                    <button class="btn btn-yellow w-100" type="submit">Agregar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="card card-soft p-3">
+        <h2 class="h6 mb-2" style="color:#05294B">Ítems de la operación</h2>
+        <div class="table-responsive">
+            <table class="table table-sm table-landed align-middle mb-0" id="tablaItemsOp">
+                <thead>
+                    <tr>
+                        <th>SKU</th><th>Origen</th><th>Descripción</th><th>Cant.</th><th>FOB</th><th>Stock</th><th></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalVincular" tabindex="-1" aria-labelledby="modalVincularTitulo">
+    <div class="modal-dialog">
+        <form class="modal-content" id="formVincular">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="modalVincularTitulo">Vincular al catálogo oficial</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-secondary mb-2">El SKU temporal debe existir en inventario (<code>prod.db</code>) o vincularse a un código oficial antes de Entrega/Cierre y la ENTRADA a stock.</p>
+                <input type="hidden" id="vincularItemId">
+                <div class="mb-2">
+                    <label class="form-label">SKU temporal</label>
+                    <div><code id="vincularSkuTemp"></code></div>
+                </div>
+                <div>
+                    <label class="form-label" for="vincularSkuOficial">SKU oficial</label>
+                    <input id="vincularSkuOficial" class="form-control" list="listaSkuCatalogo" placeholder="código en prod.db" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-yellow" type="submit">Vincular</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <div id="tabDocumentos" class="<?php echo $docs ? '' : 'd-none'; ?>">
@@ -247,6 +325,7 @@ window.COMEX_IVA_PCT = <?php echo json_encode(crm_iva_pct()); ?>;
 </script>
 <script src="assets/js/landed-calc.js"></script>
 <script src="assets/js/operacion.js"></script>
+<script src="assets/js/items.js"></script>
 <script src="assets/js/financials.js"></script>
 <script src="assets/js/documentos.js"></script>
 <?php crm_layout_end(); ?>

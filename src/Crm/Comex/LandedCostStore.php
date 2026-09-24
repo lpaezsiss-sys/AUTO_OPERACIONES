@@ -314,6 +314,8 @@ final class LandedCostStore
                 'descripcion' => (string) ($ov['descripcion'] ?? $it['descripcion'] ?? ''),
                 'cantidad' => $ov['cantidad'] ?? $it['cantidad'] ?? 0,
                 'fob_unitario' => $ov['fob_unitario'] ?? $ov['precio_unitario'] ?? $it['precio_unitario'] ?? 0,
+                'origen' => (string) ($ov['origen'] ?? $it['origen'] ?? ''),
+                'is_custom' => !empty($ov['is_custom']) || !empty($it['is_custom']),
             ];
         }
         return $out;
