@@ -481,7 +481,7 @@ assert_true($movTemp === '', 'SKU evaluación no escribe stock al confirmar');
 $pipeEval = \Crm\Comex\Pipeline::crearOperacion([
     'tipo' => 'IMPORTACION',
     'folio' => 'IMP-EVAL-PIPE',
-    'fecha' => '2026-09-13',
+    'fecha' => '2026-01-01',
     'items' => [
         ['sku' => 'TEMP-PIPE', 'cantidad' => 4, 'precio_unitario' => 50, 'nombre' => 'Cotización nueva'],
     ],
