@@ -7,6 +7,8 @@ namespace Crm\Comex;
 use Crm\Database\Connection;
 use PDO;
 
+require_once dirname(__DIR__, 2) . '/Schema.php';
+
 final class Schema
 {
     public static function install(?PDO $pdo = null): void
@@ -17,6 +19,7 @@ final class Schema
             $pdo->exec($sql);
         }
         self::ensureUpgrades($pdo, $driver);
+        Usuarios::sembrar($pdo);
     }
 
     /**
@@ -32,6 +35,9 @@ final class Schema
         }
         $haveOps = self::columnMap($pdo, 'comex_operaciones', $driver);
         foreach (self::operacionUpgradeStatements($driver, $haveOps) as $sql) {
+            $pdo->exec($sql);
+        }
+        foreach (\Schema::usuariosStatements($driver) as $sql) {
             $pdo->exec($sql);
         }
     }
@@ -130,7 +136,7 @@ final class Schema
     public static function statements(string $driver): array
     {
         if ($driver === 'sqlite') {
-            return [
+            return array_merge(\Schema::usuariosStatements('sqlite'), [
                 'CREATE TABLE IF NOT EXISTS comex_fichas (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     sku TEXT NOT NULL UNIQUE,
@@ -265,10 +271,10 @@ final class Schema
                     FOREIGN KEY (operacion_id) REFERENCES comex_operaciones(id) ON DELETE CASCADE
                 )',
                 'CREATE INDEX IF NOT EXISTS idx_comex_docs_op ON comex_documentos(operacion_id, created_at)',
-            ];
+            ]);
         }
 
-        return [
+        return array_merge(\Schema::usuariosStatements('mysql'), [
             'CREATE TABLE IF NOT EXISTS comex_fichas (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 sku VARCHAR(64) NOT NULL,
@@ -407,6 +413,6 @@ final class Schema
                 KEY idx_comex_docs_op (operacion_id, created_at),
                 CONSTRAINT fk_docs_op FOREIGN KEY (operacion_id) REFERENCES comex_operaciones(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
-        ];
+        ]);
     }
 }

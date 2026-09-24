@@ -45,6 +45,15 @@
     var stock = !!op.tiene_movimientos;
     document.getElementById("delOpStockBox").classList.toggle("d-none", !stock);
     document.getElementById("btnDelRevertir").classList.toggle("d-none", !stock);
+    var isAdmin = (window.COMEX_ROL || "comex") === "admin";
+    var wrap = document.getElementById("delOpAdminWrap");
+    var note = document.getElementById("delOpNoAdmin");
+    if (wrap) {
+      wrap.classList.toggle("d-none", !isAdmin);
+    }
+    if (note) {
+      note.classList.toggle("d-none", isAdmin || !stock);
+    }
     var chk = document.getElementById("delOpAdmin");
     if (chk) {
       chk.checked = false;
@@ -122,7 +131,7 @@
   function enviarDelete(opts) {
     var id = Number(document.getElementById("delOpId").value || 0);
     var body = { id: id, action: "delete" };
-    if (opts && opts.admin) {
+    if (opts && opts.admin && (window.COMEX_ROL || "comex") === "admin") {
       body.confirmar_admin = true;
     }
     if (opts && opts.revertir) {

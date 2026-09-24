@@ -160,16 +160,23 @@ final class Operaciones
             throw new ApiException('Operación no encontrada', 404);
         }
         $ids = self::movimientosDe($op);
-        $admin = self::flag($opts, ['confirmar_admin', 'admin', 'es_admin']);
+        $actor = Usuarios::actorDesde($opts);
+        $quiereForzar = self::flag($opts, ['confirmar_admin', 'es_admin']);
+        $admin = Usuarios::esAdmin($actor) && $quiereForzar;
         $revertir = self::flag($opts, ['revertir_stock', 'revertir']);
         if ($ids !== [] && !$admin && !$revertir) {
+            $msg = 'La operación ya generó movimientos de stock en prod.db. Revierta los movimientos o confirme el borrado con perfil administrador.';
+            if ($quiereForzar && !Usuarios::esAdmin($actor)) {
+                $msg = 'Solo el rol admin puede forzar el borrado de una operación con movimientos de stock.';
+            }
             throw new ApiException(
-                'La operación ya generó movimientos de stock en prod.db. Revierta los movimientos o confirme el borrado con perfil administrador.',
+                $msg,
                 409,
                 [
                     'codigo' => 'STOCK_MOVIMIENTOS',
                     'movimiento_ids' => $ids,
                     'requiere_admin' => true,
+                    'rol_actual' => $actor['rol'],
                 ]
             );
         }
@@ -194,6 +201,7 @@ final class Operaciones
             'folio' => (string) ($op['folio'] ?? ''),
             'stock_revertido' => $stockRevertido,
             'admin' => $admin,
+            'rol' => $actor['rol'],
         ];
     }
 

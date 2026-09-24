@@ -45,6 +45,9 @@ require __DIR__ . '/_init.php';
     }
 
     if ($method === 'POST' && ($action === 'delete' || $action === 'eliminar')) {
+        $actor = \Crm\Comex\Usuarios::actorDesde($body);
+        $body['rol'] = $actor['rol'];
+        $body['email'] = $actor['email'];
         return \Crm\Comex\Operaciones::eliminar($id, $body);
     }
 

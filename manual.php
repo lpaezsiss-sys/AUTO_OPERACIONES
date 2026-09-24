@@ -25,6 +25,7 @@ require __DIR__ . '/includes/layout_header.php';
             <a class="manual-toc-link" href="#modulo-pipeline">Pipeline de Operaciones</a>
             <a class="manual-toc-link" href="#modulo-landed">Calculadora Landed Cost</a>
             <a class="manual-toc-link" href="#modulo-documentos">Repositorio Documental</a>
+            <a class="manual-toc-link" href="#modulo-perfiles">Perfiles de usuario</a>
         </nav>
     </div>
     <div class="col-lg-9">
@@ -76,7 +77,7 @@ require __DIR__ . '/includes/layout_header.php';
                 <li><strong>Atraso:</strong> etapa no completada con fecha estimada anterior a hoy (tarjeta roja / badge Atrasada).</li>
                 <li><strong>Bloqueo:</strong> estado <code>BLOCKED</code> (amarillo). Use la bitácora para dejar comentario, usuario y fecha.</li>
                 <li><strong>Ítems:</strong> en <code>operacion.php?id=&amp;tab=items</code> se agregan SKU de catálogo o temporales. Entrega/Cierre exige vincular los temporales al catálogo oficial.</li>
-                <li><strong>Editar / Eliminar:</strong> menú <code>⋯</code> en tarjetas Kanban y filas de lista, o botones en el detalle. Editar actualiza nombre, proveedor, referencia/DIN/DUS y moneda base. Eliminar borra ítems, finanzas y documentos; si ya hay movimientos en <code>prod.db</code> la API responde HTTP 409 salvo revertir stock o confirmar como administrador.</li>
+                <li><strong>Editar / Eliminar:</strong> menú <code>⋯</code> en tarjetas Kanban y filas de lista, o botones en el detalle. Editar actualiza nombre, proveedor, referencia/DIN/DUS y moneda base. Eliminar borra ítems, finanzas y documentos; si ya hay movimientos en <code>prod.db</code> la API responde HTTP 409. Solo el rol <code>admin</code> puede forzar ese borrado; el rol <code>comex</code> debe revertir stock.</li>
             </ul>
         </section>
 
@@ -102,6 +103,16 @@ require __DIR__ . '/includes/layout_header.php';
                 <li>La previsualización usa iframe para PDF e <code>img</code> para imágenes, con enlace de descarga.</li>
             </ul>
             <p class="mb-0">Desde cualquier módulo, el botón <span class="btn btn-outline-secondary btn-sm disabled">Ayuda</span> abre la sección correspondiente de este manual.</p>
+        </section>
+
+        <section id="modulo-perfiles" class="manual-section card card-soft p-4 mb-4">
+            <h2 class="h4" style="color:#05294B">Perfiles de usuario</h2>
+            <p class="text-secondary">En <code>crm.php</code> se listan los perfiles de referencia del panel. Solo hay dos roles: <code>admin</code> (Administrador) y <code>comex</code> (Operativo COMEX).</p>
+            <ul class="mb-0">
+                <li>Tabla <code>usuarios</code> en SQLite/MySQL: nombre, email, password_hash, rol, activo, creado_en.</li>
+                <li>El operativo COMEX crea, edita y consulta operaciones.</li>
+                <li>El borrado con movimientos de stock en <code>prod.db</code> (HTTP 409) solo se fuerza con sesión <code>admin</code>.</li>
+            </ul>
         </section>
     </div>
 </div>

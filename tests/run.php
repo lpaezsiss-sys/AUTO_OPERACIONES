@@ -405,6 +405,12 @@ assert_true(str_contains($jsLanded, 'badge-eval') && str_contains($jsFin, 'badge
 assert_true(str_contains($css, '.badge-eval'), 'CSS badge evaluación');
 $jsCrud = (string) file_get_contents($root . '/assets/js/operacion-crud.js');
 assert_true(str_contains($jsCrud, 'api/operaciones.php?action=update') && str_contains($jsCrud, 'api/operaciones.php?action=delete'), 'fetch() POST update/delete');
+assert_true(str_contains($jsCrud, 'COMEX_ROL') && str_contains($jsCrud, 'confirmar_admin'), 'Delete envía confirmar_admin solo si rol admin');
+$uiCrm = (string) file_get_contents($root . '/crm.php');
+$jsCrm = (string) file_get_contents($root . '/assets/js/crm-perfiles.js');
+assert_true(str_contains($uiCrm, 'tab=perfiles') && str_contains($uiCrm, 'id="tablaPerfiles"'), 'CRM pestaña Perfiles de usuario');
+assert_true(str_contains($uiCrm, 'Administrador') && str_contains($uiCrm, 'COMEX'), 'CRM muestra etiquetas de rol');
+assert_true(str_contains($jsCrm, 'api/usuarios.php?action=login') && str_contains($jsCrm, 'crmToast'), 'Login CRM con toast');
 assert_true(str_contains($jsOps, 'comexOpMenuHtml') && str_contains($css, 'kanban-card-menu'), 'Menú acciones en Kanban y lista');
 
 $colsItems = \Crm\Database\Connection::app()->query('PRAGMA table_info(comex_operacion_items)')->fetchAll(PDO::FETCH_ASSOC);
@@ -413,6 +419,24 @@ assert_true(in_array('origen', $colNames, true) && in_array('is_custom', $colNam
 $colsOps = \Crm\Database\Connection::app()->query('PRAGMA table_info(comex_operaciones)')->fetchAll(PDO::FETCH_ASSOC);
 $colOpNames = array_map(static fn (array $c): string => (string) ($c['name'] ?? ''), is_array($colsOps) ? $colsOps : []);
 assert_true(in_array('nombre', $colOpNames, true) && in_array('proveedor', $colOpNames, true) && in_array('moneda_base', $colOpNames, true), 'Columnas nombre, proveedor y moneda_base en operaciones');
+assert_true(is_file($root . '/src/Schema.php'), 'src/Schema.php migración usuarios');
+$colsUsu = \Crm\Database\Connection::app()->query('PRAGMA table_info(usuarios)')->fetchAll(PDO::FETCH_ASSOC);
+$colUsuNames = array_map(static fn (array $c): string => (string) ($c['name'] ?? ''), is_array($colsUsu) ? $colsUsu : []);
+foreach (['id', 'nombre', 'email', 'password_hash', 'rol', 'activo', 'creado_en'] as $colU) {
+    assert_true(in_array($colU, $colUsuNames, true), 'Columna usuarios.' . $colU);
+}
+assert_true(\Crm\Comex\Usuarios::rolValido('admin') && \Crm\Comex\Usuarios::rolValido('comex'), 'Roles válidos admin y comex');
+assert_true(!\Crm\Comex\Usuarios::rolValido('supervisor') && !\Crm\Comex\Usuarios::rolValido('root'), 'Otros roles no son válidos');
+$perfiles = \Crm\Comex\Usuarios::listar();
+$rolesSeed = array_values(array_unique(array_map(static fn (array $u): string => (string) $u['rol'], $perfiles)));
+sort($rolesSeed);
+assert_true($rolesSeed === ['admin', 'comex'], 'Seed Administrador y Operativo COMEX');
+$adminSeed = \Crm\Comex\Usuarios::porEmail(\Crm\Comex\Usuarios::SEED_ADMIN_EMAIL);
+$comexSeed = \Crm\Comex\Usuarios::porEmail(\Crm\Comex\Usuarios::SEED_COMEX_EMAIL);
+assert_true(is_array($adminSeed) && password_verify(\Crm\Comex\Usuarios::SEED_PASSWORD, (string) $adminSeed['password_hash']), 'Password hash del admin de prueba');
+assert_true(is_array($comexSeed) && (string) $comexSeed['rol'] === 'comex', 'Usuario operativo COMEX de prueba');
+$loginAdmin = \Crm\Comex\Usuarios::autenticar(\Crm\Comex\Usuarios::SEED_ADMIN_EMAIL, \Crm\Comex\Usuarios::SEED_PASSWORD);
+assert_true(($loginAdmin['rol'] ?? '') === 'admin', 'Login admin de referencia');
 \Crm\Comex\Schema::install();
 assert_true(true, 'Schema::install idempotente con ensureUpgrades');
 
@@ -600,7 +624,23 @@ try {
 }
 assert_true($blocked && ($extra409['codigo'] ?? '') === 'STOCK_MOVIMIENTOS', 'Eliminar operación cerrada retorna 409');
 assert_true(\Crm\Comex\Operaciones::porId((int) $opClose['id']) !== null, 'Operación cerrada permanece tras 409');
-$adminDel = \Crm\Comex\Operaciones::eliminar((int) $opClose['id'], ['confirmar_admin' => true]);
+$comexForce = false;
+$extraComex = [];
+try {
+    \Crm\Comex\Operaciones::eliminar((int) $opClose['id'], ['rol' => 'comex', 'confirmar_admin' => true]);
+} catch (\Crm\ApiException $e) {
+    $comexForce = $e->status === 409;
+    $extraComex = $e->extra;
+}
+assert_true($comexForce && ($extraComex['rol_actual'] ?? '') === 'comex', 'Rol comex no fuerza borrado con stock');
+$badRol = false;
+try {
+    \Crm\Comex\Operaciones::eliminar((int) $opClose['id'], ['rol' => 'supervisor']);
+} catch (\Crm\ApiException $e) {
+    $badRol = $e->status === 400;
+}
+assert_true($badRol, 'Rol distinto de admin/comex = 400');
+$adminDel = \Crm\Comex\Operaciones::eliminar((int) $opClose['id'], ['rol' => 'admin', 'confirmar_admin' => true]);
 assert_true((int) ($adminDel['eliminado'] ?? 0) === (int) $opClose['id'], 'Admin elimina operación con movimientos');
 assert_true(\Crm\Inventory\InventarioStock::stockPorCodigo('DEL-SKU') === 2.0, 'Admin no revierte stock en prod.db');
 
@@ -725,7 +765,7 @@ assert_true(str_contains($layout, 'bi-book') && str_contains($layout, 'Manual de
 $manualSrc = (string) file_get_contents($root . '/manual.php');
 assert_true(is_file($root . '/includes/layout_header.php') && is_file($root . '/includes/layout_footer.php'), 'layout_header.php y layout_footer.php');
 assert_true(str_contains($manualSrc, 'layout_header.php') && str_contains($manualSrc, 'layout_footer.php'), 'manual.php usa header/footer');
-foreach (['modulo-catalogo', 'modulo-pipeline', 'modulo-landed', 'modulo-documentos'] as $secId) {
+foreach (['modulo-catalogo', 'modulo-pipeline', 'modulo-landed', 'modulo-documentos', 'modulo-perfiles'] as $secId) {
     assert_true(str_contains($manualSrc, 'id="' . $secId . '"'), 'Manual sección #' . $secId);
 }
 $uiOpsHelp = (string) file_get_contents($root . '/operaciones.php');
@@ -830,6 +870,7 @@ assert_true(str_contains($htmlManual, 'id="modulo-catalogo"'), 'HTML #modulo-cat
 assert_true(str_contains($htmlManual, 'id="modulo-pipeline"'), 'HTML #modulo-pipeline');
 assert_true(str_contains($htmlManual, 'id="modulo-landed"'), 'HTML #modulo-landed');
 assert_true(str_contains($htmlManual, 'id="modulo-documentos"'), 'HTML #modulo-documentos');
+assert_true(str_contains($htmlManual, 'id="modulo-perfiles"'), 'HTML #modulo-perfiles');
 assert_true(str_contains($htmlManual, 'sticky-top'), 'TOC sticky-top');
 assert_true(str_contains($css, 'scroll-behavior: smooth'), 'Scroll suave en CSS');
 

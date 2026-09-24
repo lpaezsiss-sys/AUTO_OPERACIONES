@@ -15,6 +15,10 @@ $title = isset($title) && is_string($title) ? $title : 'COMEX';
 $page = isset($page) && is_string($page) ? $page : '';
 $user = isset($user) && is_array($user) ? $user : [];
 $appName = (string) crm_env('APP_NAME', 'COMEX LPAEZsis');
+$rolActual = (string) ($user['rol'] ?? 'comex');
+if ($rolActual !== 'admin' && $rolActual !== 'comex') {
+    $rolActual = 'comex';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -28,6 +32,7 @@ $appName = (string) crm_env('APP_NAME', 'COMEX LPAEZsis');
     <link href="assets/css/app.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/app.js"></script>
+    <script>window.COMEX_ROL = <?php echo json_encode($rolActual); ?>;</script>
 </head>
 <body class="<?php echo $page === 'manual' ? 'page-manual' : ''; ?>">
 <button class="btn btn-nav-toggle d-lg-none" type="button" id="btnNav" aria-label="Menú">☰</button>
@@ -43,13 +48,14 @@ $appName = (string) crm_env('APP_NAME', 'COMEX LPAEZsis');
             <a class="nav-link<?php echo $page === 'operaciones' ? ' active' : ''; ?>" href="operaciones.php">Pipeline</a>
             <a class="nav-link<?php echo $page === 'fichas' ? ' active' : ''; ?>" href="fichas.php">Fichas</a>
             <a class="nav-link<?php echo $page === 'manual' ? ' active' : ''; ?>" href="manual.php"><i class="bi bi-book" aria-hidden="true"></i> Manual de Usuario</a>
-            <a class="nav-link" href="https://crm.lpaezsis.cl" target="_blank" rel="noopener">CRM</a>
+            <a class="nav-link<?php echo $page === 'crm' ? ' active' : ''; ?>" href="crm.php">CRM</a>
+            <a class="nav-link" href="https://crm.lpaezsis.cl" target="_blank" rel="noopener">CRM LPAEZsis</a>
             <a class="nav-link" href="https://inventario.lpaezsis.cl" target="_blank" rel="noopener">Inventario</a>
         </nav>
         <div class="sidebar-user">
-            <div class="small text-uppercase opacity-75">Ecosistema</div>
-            <div><?php echo crm_h($user['nombre'] ?? 'COMEX Chile'); ?></div>
-            <div class="small opacity-75">IVA aduanero <?php echo crm_h((string) crm_iva_pct()); ?>%</div>
+            <div class="small text-uppercase opacity-75"><?php echo crm_h((string) ($user['rol_etiqueta'] ?? 'Ecosistema')); ?></div>
+            <div><?php echo crm_h((string) ($user['nombre'] ?? 'COMEX Chile')); ?></div>
+            <div class="small opacity-75"><?php echo isset($user['email']) && $user['email'] !== '' ? crm_h((string) $user['email']) : ('IVA aduanero ' . crm_h((string) crm_iva_pct()) . '%'); ?></div>
         </div>
     </aside>
     <main class="app-main">

@@ -15,6 +15,7 @@ require_once $crmRoot . '/includes/cors.php';
 require_once $crmRoot . '/src/Crm/Autoloader.php';
 
 Autoloader::register($crmRoot);
+require_once $crmRoot . '/src/Schema.php';
 Env::boot($crmRoot);
 
 date_default_timezone_set(Env::getInstance()->string('APP_TZ', 'America/Santiago'));

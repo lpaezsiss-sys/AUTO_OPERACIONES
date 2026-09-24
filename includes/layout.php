@@ -10,6 +10,12 @@ declare(strict_types=1);
  */
 function crm_layout_start(string $title, string $page, array $user = []): void
 {
+    if ($user === []) {
+        $ses = \Crm\Comex\Usuarios::sesion();
+        if (is_array($ses)) {
+            $user = $ses;
+        }
+    }
     require __DIR__ . '/layout_header.php';
 }
 

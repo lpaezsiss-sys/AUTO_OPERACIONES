@@ -56,10 +56,11 @@
                     <div class="alert alert-danger py-2 small" role="alert">
                         Esta operación ya generó movimientos de stock en <code>prod.db</code> (Entrega/Cierre). El borrado directo está bloqueado (HTTP 409) salvo revertir los movimientos o confirmar con perfil administrador.
                     </div>
-                    <div class="form-check mb-2">
+                    <div class="form-check mb-2" id="delOpAdminWrap">
                         <input class="form-check-input" type="checkbox" id="delOpAdmin">
                         <label class="form-check-label" for="delOpAdmin">Soy administrador y confirmo el borrado sin revertir stock</label>
                     </div>
+                    <p class="small text-secondary mb-0 d-none" id="delOpNoAdmin">El rol COMEX no puede forzar este borrado. Use revertir stock o un perfil Administrador.</p>
                 </div>
             </div>
             <div class="modal-footer">
