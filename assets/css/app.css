@@ -262,7 +262,10 @@ html { scroll-behavior: smooth; }
   position: absolute;
   top: 0.35rem;
   right: 0.3rem;
-  z-index: 2;
+  z-index: 6;
+}
+.op-row-actions .btn {
+  font-size: 0.75rem;
 }
 .btn-card-more {
   border: 0;

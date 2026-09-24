@@ -86,7 +86,7 @@
         '<td>' + vs + '</td><td>' + crmEsc((t.progreso && t.progreso.hechas) || 0) + "/" +
         crmEsc((t.progreso && t.progreso.total) || 13) + "</td><td>" + badgeAlerta(t) + "</td>" +
         '<td class="text-nowrap text-end">' +
-        (typeof comexOpMenuHtml === "function" ? comexOpMenuHtml(t) : "") + "</td></tr>";
+        (typeof comexOpMenuHtml === "function" ? comexOpMenuHtml(t, "row") : "") + "</td></tr>";
     }).join("") || '<tr><td colspan="9" class="text-secondary">Sin operaciones en el pipeline.</td></tr>';
   }
 

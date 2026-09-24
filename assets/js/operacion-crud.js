@@ -61,14 +61,21 @@
     });
   }
 
-  w.comexOpMenuHtml = function (t) {
+  w.comexOpMenuHtml = function (t, variant) {
     t = t || {};
+    var id = crmEsc(t.id);
+    if (variant === "row") {
+      return '<div class="btn-group btn-group-sm op-row-actions" role="group" aria-label="Acciones">' +
+        '<button class="btn btn-outline-secondary" type="button" data-op-edit="' + id + '">Editar</button>' +
+        '<button class="btn btn-outline-danger" type="button" data-op-del="' + id + '">Eliminar</button>' +
+        "</div>";
+    }
     return '<div class="dropdown kanban-card-menu">' +
-      '<button class="btn btn-sm btn-card-more" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false" aria-label="Acciones" onclick="event.preventDefault(); event.stopPropagation();">' +
+      '<button class="btn btn-sm btn-card-more" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" data-bs-popper-config=\'{"strategy":"fixed"}\' aria-expanded="false" aria-label="Acciones" onclick="event.preventDefault(); event.stopPropagation();">' +
       '<i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>' +
       '<ul class="dropdown-menu dropdown-menu-end">' +
-      '<li><button class="dropdown-item" type="button" data-op-edit="' + crmEsc(t.id) + '">Editar</button></li>' +
-      '<li><button class="dropdown-item text-danger" type="button" data-op-del="' + crmEsc(t.id) + '">Eliminar</button></li>' +
+      '<li><button class="dropdown-item" type="button" data-op-edit="' + id + '">Editar</button></li>' +
+      '<li><button class="dropdown-item text-danger" type="button" data-op-del="' + id + '">Eliminar</button></li>' +
       "</ul></div>";
   };
 
