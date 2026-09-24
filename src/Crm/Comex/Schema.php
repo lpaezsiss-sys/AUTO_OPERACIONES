@@ -40,6 +40,7 @@ final class Schema
         foreach (\Schema::usuariosStatements($driver) as $sql) {
             $pdo->exec($sql);
         }
+        Usuarios::sembrar($pdo);
     }
 
     /**

@@ -31,11 +31,9 @@ crm_layout_start('CRM · Perfiles de usuario', 'crm', $sesion ?? []);
     </div>
 </div>
 
-<ul class="nav nav-pills gap-2 mb-3" role="tablist">
-    <li class="nav-item" role="presentation">
-        <a class="nav-link active" href="crm.php?tab=perfiles">Perfiles de usuario</a>
-    </li>
-</ul>
+<div class="btn-group mb-3" role="group" aria-label="CRM">
+    <a class="btn btn-navy" href="crm.php?tab=perfiles">Perfiles de usuario</a>
+</div>
 
 <div class="row g-3">
     <div class="col-lg-8">
