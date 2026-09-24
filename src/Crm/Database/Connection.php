@@ -44,7 +44,7 @@ final class Connection
         $driver = strtolower($env->string('COMEX_DB_DRIVER', 'mysql'));
 
         if ($driver === 'sqlite') {
-            $path = $env->string('COMEX_SQLITE_PATH', $env->root() . '/data/comex.sqlite');
+            $path = $env->string('COMEX_SQLITE_PATH', $env->root() . '/data/comex.db');
             self::$app = self::sqlite($path, true);
             return self::$app;
         }

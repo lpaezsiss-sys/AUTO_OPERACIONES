@@ -420,6 +420,8 @@ $colsOps = \Crm\Database\Connection::app()->query('PRAGMA table_info(comex_opera
 $colOpNames = array_map(static fn (array $c): string => (string) ($c['name'] ?? ''), is_array($colsOps) ? $colsOps : []);
 assert_true(in_array('nombre', $colOpNames, true) && in_array('proveedor', $colOpNames, true) && in_array('moneda_base', $colOpNames, true), 'Columnas nombre, proveedor y moneda_base en operaciones');
 assert_true(is_file($root . '/src/Schema.php'), 'src/Schema.php migración usuarios');
+assert_true(str_contains((string) file_get_contents($root . '/src/Crm/Database/Connection.php'), 'data/comex.db'), 'SQLite por defecto en data/comex.db');
+assert_true(str_contains($example, 'comex.db'), '.env.example documenta comex.db');
 $colsUsu = \Crm\Database\Connection::app()->query('PRAGMA table_info(usuarios)')->fetchAll(PDO::FETCH_ASSOC);
 $colUsuNames = array_map(static fn (array $c): string => (string) ($c['name'] ?? ''), is_array($colsUsu) ? $colsUsu : []);
 foreach (['id', 'nombre', 'email', 'password_hash', 'rol', 'activo', 'creado_en'] as $colU) {
