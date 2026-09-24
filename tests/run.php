@@ -297,7 +297,7 @@ $uiOps = (string) file_get_contents($root . '/operaciones.php');
 $uiDet = (string) file_get_contents($root . '/operacion.php');
 $css = (string) file_get_contents($root . '/assets/css/app.css');
 assert_true(str_contains($uiOps, 'btnKanban') && str_contains($uiOps, 'btnLista'), 'UI Kanban y Lista');
-assert_true(str_contains($uiOps, 'modalEditarOp') && str_contains($uiOps, 'modalEliminarOp'), 'Modales editar y eliminar en pipeline');
+assert_true(str_contains($uiOps, 'modals_operacion.php') && str_contains((string) file_get_contents($root . '/includes/modals_operacion.php'), 'id="modalEditarOp"'), 'Modales editar y eliminar en pipeline');
 assert_true(str_contains($uiDet, 'IN_PROGRESS') && str_contains($uiDet, 'BLOCKED'), 'Formulario de estados');
 assert_true(str_contains($uiDet, 'id="btnEditarOp"') && str_contains($uiDet, 'id="btnEliminarOp"'), 'Botones Editar/Eliminar en detalle');
 assert_true(str_contains($uiDet, 'Bitácora') && str_contains($css, 'is-overdue') && str_contains($css, 'is-blocked'), 'Alertas visuales atrasada/bloqueada');
@@ -578,7 +578,8 @@ $delEval = \Crm\Comex\Operaciones::eliminar((int) $opEdit['id']);
 assert_true((int) ($delEval['eliminado'] ?? 0) === (int) $opEdit['id'], 'Elimina operación en evaluación');
 assert_true(\Crm\Comex\Operaciones::porId((int) $opEdit['id']) === null, 'Operación de evaluación ya no existe');
 
-$invWrite->prepare(
+$invDel = \Crm\Inventory\SqliteConnector::write();
+$invDel->prepare(
     'INSERT INTO Product (id, code, name, description, stock, averageUnitCost) VALUES (?,?,?,?,?,?)'
 )->execute(['p-del-stock', 'DEL-SKU', 'SKU borrado', '', 0, 0]);
 $opClose = \Crm\Comex\Operaciones::crear([
@@ -603,7 +604,7 @@ $adminDel = \Crm\Comex\Operaciones::eliminar((int) $opClose['id'], ['confirmar_a
 assert_true((int) ($adminDel['eliminado'] ?? 0) === (int) $opClose['id'], 'Admin elimina operación con movimientos');
 assert_true(\Crm\Inventory\InventarioStock::stockPorCodigo('DEL-SKU') === 2.0, 'Admin no revierte stock en prod.db');
 
-$invWrite->prepare(
+$invDel->prepare(
     'INSERT INTO Product (id, code, name, description, stock, averageUnitCost) VALUES (?,?,?,?,?,?)'
 )->execute(['p-del-rev', 'DEL-REV', 'SKU revertir', '', 1, 4]);
 $opRev = \Crm\Comex\Operaciones::crear([
