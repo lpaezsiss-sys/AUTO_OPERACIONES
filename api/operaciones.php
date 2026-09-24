@@ -40,6 +40,14 @@ require __DIR__ . '/_init.php';
         return ['operacion' => \Crm\Comex\Operaciones::vincularItem($itemId, $skuOficial)];
     }
 
+    if ($method === 'POST' && ($action === 'update' || $action === 'actualizar')) {
+        return ['operacion' => \Crm\Comex\Operaciones::actualizar($id, $body)];
+    }
+
+    if ($method === 'POST' && ($action === 'delete' || $action === 'eliminar')) {
+        return \Crm\Comex\Operaciones::eliminar($id, $body);
+    }
+
     if ($method === 'POST') {
         return ['operacion' => \Crm\Comex\Operaciones::crear($body)];
     }

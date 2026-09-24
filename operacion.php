@@ -42,6 +42,8 @@ $itemsTab = $tab === 'items';
         <?php elseif ($itemsTab) : ?>
         <a href="manual.php#modulo-catalogo" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-book" aria-hidden="true"></i> Ayuda</a>
         <?php endif; ?>
+        <button class="btn btn-outline-secondary" type="button" id="btnEditarOp">Editar operación</button>
+        <button class="btn btn-outline-danger" type="button" id="btnEliminarOp">Eliminar operación</button>
         <div class="btn-group <?php echo $pipe ? '' : 'd-none'; ?>" id="btnsPipelineVista" role="group">
             <button class="btn btn-navy" type="button" id="btnKanban">Kanban</button>
             <button class="btn btn-outline-secondary" type="button" id="btnLista">Lista</button>
@@ -318,11 +320,15 @@ $itemsTab = $tab === 'items';
         <ul class="bitacora list-unstyled small mb-0" id="listaBitacora"></ul>
     </div>
 </div>
+<?php require __DIR__ . '/includes/modals_operacion.php'; ?>
 <script>
 window.COMEX_OPERACION_ID = <?php echo $id > 0 ? $id : '0'; ?>;
 window.COMEX_TAB = <?php echo json_encode($tab); ?>;
 window.COMEX_IVA_PCT = <?php echo json_encode(crm_iva_pct()); ?>;
+window.comexOpOnDeleted = function () { location.href = "operaciones.php"; };
+window.comexOpOnChanged = function () { location.reload(); };
 </script>
+<script src="assets/js/operacion-crud.js"></script>
 <script src="assets/js/landed-calc.js"></script>
 <script src="assets/js/operacion.js"></script>
 <script src="assets/js/items.js"></script>

@@ -26,8 +26,12 @@ final class Schema
     {
         $pdo = $pdo ?? Connection::app();
         $driver = $driver ?? ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? 'sqlite' : 'mysql');
-        $have = self::columnMap($pdo, 'comex_operacion_items', $driver);
-        foreach (self::itemUpgradeStatements($driver, $have) as $sql) {
+        $haveItems = self::columnMap($pdo, 'comex_operacion_items', $driver);
+        foreach (self::itemUpgradeStatements($driver, $haveItems) as $sql) {
+            $pdo->exec($sql);
+        }
+        $haveOps = self::columnMap($pdo, 'comex_operaciones', $driver);
+        foreach (self::operacionUpgradeStatements($driver, $haveOps) as $sql) {
             $pdo->exec($sql);
         }
     }
@@ -65,6 +69,37 @@ final class Schema
         }
         if (!isset($have['movimiento_id'])) {
             $out[] = "ALTER TABLE comex_operacion_items ADD COLUMN movimiento_id VARCHAR(64) DEFAULT ''";
+        }
+        return $out;
+    }
+
+    /**
+     * @param array<string, true> $have
+     * @return list<string>
+     */
+    private static function operacionUpgradeStatements(string $driver, array $have): array
+    {
+        $out = [];
+        if ($driver === 'sqlite') {
+            if (!isset($have['nombre'])) {
+                $out[] = "ALTER TABLE comex_operaciones ADD COLUMN nombre TEXT DEFAULT ''";
+            }
+            if (!isset($have['proveedor'])) {
+                $out[] = "ALTER TABLE comex_operaciones ADD COLUMN proveedor TEXT DEFAULT ''";
+            }
+            if (!isset($have['moneda_base'])) {
+                $out[] = "ALTER TABLE comex_operaciones ADD COLUMN moneda_base TEXT DEFAULT 'USD'";
+            }
+            return $out;
+        }
+        if (!isset($have['nombre'])) {
+            $out[] = "ALTER TABLE comex_operaciones ADD COLUMN nombre VARCHAR(255) NOT NULL DEFAULT ''";
+        }
+        if (!isset($have['proveedor'])) {
+            $out[] = "ALTER TABLE comex_operaciones ADD COLUMN proveedor VARCHAR(160) NOT NULL DEFAULT ''";
+        }
+        if (!isset($have['moneda_base'])) {
+            $out[] = "ALTER TABLE comex_operaciones ADD COLUMN moneda_base VARCHAR(8) NOT NULL DEFAULT 'USD'";
         }
         return $out;
     }
@@ -116,7 +151,10 @@ final class Schema
                     folio TEXT NOT NULL UNIQUE,
                     estado TEXT NOT NULL DEFAULT \'borrador\',
                     fecha TEXT NOT NULL,
+                    nombre TEXT DEFAULT \'\',
+                    proveedor TEXT DEFAULT \'\',
                     referencia TEXT DEFAULT \'\',
+                    moneda_base TEXT NOT NULL DEFAULT \'USD\',
                     pdf_path TEXT DEFAULT \'\',
                     synced_at TEXT,
                     movimiento_ids TEXT DEFAULT \'\',
@@ -252,7 +290,10 @@ final class Schema
                 folio VARCHAR(32) NOT NULL,
                 estado VARCHAR(16) NOT NULL DEFAULT \'borrador\',
                 fecha DATE NOT NULL,
+                nombre VARCHAR(255) DEFAULT \'\',
+                proveedor VARCHAR(160) DEFAULT \'\',
                 referencia VARCHAR(255) DEFAULT \'\',
+                moneda_base VARCHAR(8) NOT NULL DEFAULT \'USD\',
                 pdf_path VARCHAR(255) DEFAULT \'\',
                 synced_at DATETIME NULL,
                 movimiento_ids TEXT,

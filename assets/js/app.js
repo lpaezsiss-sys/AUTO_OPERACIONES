@@ -27,6 +27,7 @@
     if (!res.ok || data.ok === false || data.success === false) {
       var err = new Error(data.error || "Error de API");
       err.status = res.status;
+      err.codigo = data.codigo || "";
       throw err;
     }
     return data;
