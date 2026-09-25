@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 UPLOADS="$ROOT/uploads"
 
-mkdir -p "$UPLOADS/comex/productos" "$UPLOADS/comex/items" "$UPLOADS/comex/pdf"
-chmod 775 "$UPLOADS" "$UPLOADS/comex" "$UPLOADS/comex/productos" "$UPLOADS/comex/items" "$UPLOADS/comex/pdf"
+mkdir -p "$UPLOADS/comex/productos" "$UPLOADS/comex/items" "$UPLOADS/comex/pdf" "$UPLOADS/comex/xlsx" "$UPLOADS/comex/docs"
+chmod 775 "$UPLOADS" "$UPLOADS/comex" "$UPLOADS/comex/productos" "$UPLOADS/comex/items" "$UPLOADS/comex/pdf" "$UPLOADS/comex/xlsx" "$UPLOADS/comex/docs"
 
 find "$UPLOADS" -type d -exec chmod 775 {} \;
 find "$UPLOADS" -type f \( -name '.htaccess' -o -name '.gitkeep' -o -name '.webdav-exclude' \) -exec chmod 644 {} \;

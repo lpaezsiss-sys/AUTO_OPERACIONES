@@ -250,6 +250,8 @@
     if (!lastReal) {
       lastReal = Object.assign({}, lastEst, { version: "REAL" });
     }
+    document.getElementById("tituloOp").textContent = (op.folio || "Operación") + " · Finanzas";
+    document.getElementById("subOp").textContent = "Hoja de cálculo landed cost · Estimación vs Real";
     document.getElementById("finMoneda").value = lastEst.moneda_origen || "USD";
     document.getElementById("finTcUsd").value = lastEst.tipo_cambio_usd || 900;
     document.getElementById("finTcEur").value = lastEst.tipo_cambio_eur || 1050;

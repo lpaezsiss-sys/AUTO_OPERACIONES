@@ -67,6 +67,8 @@ assert_true(class_exists(\Crm\Http::class), 'Crm\\Http autoload');
 assert_true(class_exists(\Crm\Inventory\SqliteConnector::class), 'Crm\\Inventory\\SqliteConnector autoload');
 assert_true(class_exists(\Crm\Inventory\InventarioStock::class), 'Crm\\Inventory\\InventarioStock autoload');
 assert_true(class_exists(\Crm\Comex\Health::class), 'Crm\\Comex\\Health autoload');
+assert_true(class_exists(\Crm\Comex\Documentos::class), 'Crm\\Comex\\Documentos autoload');
+assert_true(class_exists(\Crm\Comex\Dashboard::class), 'Crm\\Comex\\Dashboard autoload');
 
 $example = (string) file_get_contents($root . '/.env.example');
 $prodEnv = (string) file_get_contents($root . '/.env.production');
@@ -390,6 +392,100 @@ $jsCalc = (string) file_get_contents($root . '/assets/js/landed-calc.js');
 assert_true(str_contains($uiFin, 'tab=financials') && str_contains($uiFin, 'sheetGastos'), 'Finanzas en detalle de operación');
 assert_true(str_contains($jsFin, 'crmLandedCalcular') && str_contains($jsCalc, 'prorratear'), 'Recálculo en vivo JS');
 assert_true(str_contains($uiFin, 'Excel (xlsx)') && str_contains($uiFin, 'PDF matriz'), 'Exportación xlsx y PDF');
+
+$opDoc = \Crm\Comex\Operaciones::crear([
+    'tipo' => 'IMPORTACION',
+    'folio' => 'IMP-DOCS-1',
+    'fecha' => '2026-09-01',
+    'items' => [['sku' => '12852-48', 'cantidad' => 1, 'precio_unitario' => 10]],
+]);
+$tmpPdf = tempnam(sys_get_temp_dir(), 'comexpdf');
+file_put_contents($tmpPdf, "%PDF-1.1\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
+$docPdf = \Crm\Comex\Documentos::subir((int) $opDoc['id'], [
+    'error' => UPLOAD_ERR_OK,
+    'tmp_name' => $tmpPdf,
+    'size' => (int) filesize($tmpPdf),
+    'name' => 'Factura Comercial.pdf',
+    'type' => 'application/pdf',
+], 'FACTURA_COMERCIAL', 'Ana Comex');
+assert_true((string) $docPdf['tipo'] === 'FACTURA_COMERCIAL', 'Tipo Factura Comercial');
+assert_true((string) $docPdf['usuario'] === 'Ana Comex', 'Trazabilidad usuario');
+assert_true(is_string($docPdf['created_at']) && $docPdf['created_at'] !== '', 'Trazabilidad fecha');
+assert_true(str_starts_with((string) $docPdf['path'], 'uploads/comex/docs/'), 'PDF documental en uploads/comex/docs');
+assert_true(is_file($root . '/' . $docPdf['path']), 'Archivo documental existe');
+assert_true(!empty($docPdf['es_pdf']) && str_contains((string) $docPdf['preview_url'], 'file=1'), 'URL de previsualización PDF');
+
+$pngBin = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
+$tmpPng = tempnam(sys_get_temp_dir(), 'comexpng');
+file_put_contents($tmpPng, is_string($pngBin) ? $pngBin : '');
+$docPng = \Crm\Comex\Documentos::subir((int) $opDoc['id'], [
+    'error' => UPLOAD_ERR_OK,
+    'tmp_name' => $tmpPng,
+    'size' => (int) filesize($tmpPng),
+    'name' => 'packing.png',
+    'type' => 'image/png',
+], 'PACKING_LIST', 'COMEX');
+assert_true(!empty($docPng['es_imagen']), 'Packing List imagen previsualizable');
+
+$repo = \Crm\Comex\Documentos::paraOperacion((int) $opDoc['id']);
+assert_true(count($repo['documentos']) === 2, 'Repositorio lista 2 documentos');
+assert_true((string) $repo['tipos']['DIN_DUS'] === 'DIN', 'DIN en importación');
+
+$phpFail = false;
+$tmpPhp = tempnam(sys_get_temp_dir(), 'comexphp');
+file_put_contents($tmpPhp, "<?php echo 1;");
+try {
+    \Crm\Comex\Documentos::subir((int) $opDoc['id'], [
+        'error' => UPLOAD_ERR_OK,
+        'tmp_name' => $tmpPhp,
+        'size' => (int) filesize($tmpPhp),
+        'name' => 'evil.php',
+        'type' => 'application/x-php',
+    ], 'CERTIFICADO', 'COMEX');
+} catch (\Crm\ApiException $e) {
+    $phpFail = $e->status === 400;
+}
+assert_true($phpFail, 'Rechaza PHP en repositorio documental');
+
+$opCiclo = \Crm\Comex\Operaciones::crear([
+    'tipo' => 'IMPORTACION',
+    'folio' => 'IMP-CICLO-1',
+    'fecha' => '2026-01-01',
+    'items' => [['sku' => '12852-48', 'cantidad' => 1, 'precio_unitario' => 10]],
+]);
+for ($i = 0; $i < 13; $i++) {
+    \Crm\Comex\Pipeline::avanzar((int) $opCiclo['id']);
+}
+$iniCiclo = new DateTimeImmutable('2026-01-01');
+$finCiclo = new DateTimeImmutable(\Crm\Comex\Pipeline::hoy());
+$diasCiclo = (int) $iniCiclo->diff($finCiclo)->days;
+$dash = \Crm\Comex\Dashboard::kpis();
+assert_true((int) $dash['operaciones_activas'] >= 1, 'KPI operaciones activas');
+assert_true((int) $dash['operaciones_cerradas'] >= 1, 'KPI operaciones cerradas');
+assert_true((int) $dash['alertas_retraso'] >= 1, 'KPI alertas de retraso');
+assert_true((float) $dash['costo_promedio_embarque_clp'] === 404856.0, 'Costo promedio usa landed REAL');
+assert_true($dash['ciclo_fuente'] === 'cierre' && (float) $dash['ciclo_promedio_dias'] === (float) $diasCiclo, 'Ciclo promedio desde fecha operación a CIERRE');
+assert_true(count($dash['volumen_mensual']) === 12, 'Volumen 12 meses');
+$sep = null;
+foreach ($dash['volumen_mensual'] as $bucket) {
+    if (($bucket['mes'] ?? '') === '2026-09') {
+        $sep = $bucket;
+    }
+}
+assert_true(is_array($sep) && (int) $sep['cantidad'] >= 1, 'Volumen septiembre incluye operaciones');
+
+$uiDoc = (string) file_get_contents($root . '/operacion.php');
+$jsDoc = (string) file_get_contents($root . '/assets/js/documentos.js');
+$uiDash = (string) file_get_contents($root . '/index.php');
+$jsChart = (string) file_get_contents($root . '/assets/js/dashboard-chart.js');
+assert_true(str_contains($uiDoc, 'tab=documents') && str_contains($uiDoc, 'Factura Comercial') && str_contains($uiDoc, 'Packing List'), 'UI documentos en detalle');
+assert_true(str_contains($uiDoc, 'BL / AWB') && str_contains($uiDoc, 'DIN / DUS'), 'Tipos BL/AWB y DIN/DUS');
+assert_true(str_contains($jsDoc, 'preview_url') && str_contains($jsDoc, 'usuario'), 'JS previsualiza y muestra usuario');
+assert_true(str_contains($uiDash, 'Operaciones activas') && str_contains($uiDash, 'Alertas de retraso'), 'Dashboard KPIs');
+assert_true(str_contains($uiDash, 'Volumen de operaciones por mes') && str_contains($jsChart, 'crmBarChart'), 'Gráfico volumen mensual');
+
+$docsDirMode = (int) fileperms($root . '/uploads/comex/docs') & 0777;
+assert_true(\Crm\Storage\Uploads::isSafeMode($docsDirMode), 'uploads/comex/docs 755/775');
 
 $ui = (string) file_get_contents($root . '/landed.php');
 $layout = (string) file_get_contents($root . '/includes/layout.php');

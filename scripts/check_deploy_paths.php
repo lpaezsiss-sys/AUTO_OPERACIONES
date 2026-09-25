@@ -42,6 +42,10 @@ $archivosRaiz = [
     'operaciones.php' => 'Pipeline Kanban / lista',
     'operacion.php' => 'Detalle de etapas y bitácora',
     'assets/js/financials.js' => 'Hoja landed cost en detalle',
+    'assets/js/documentos.js' => 'Repositorio documental',
+    'assets/js/dashboard-chart.js' => 'Gráfico volumen mensual',
+    'api/documentos.php' => 'API documentos',
+    'api/dashboard.php' => 'API dashboard KPIs',
     'assets/css/app.css' => 'Estilos panel CRM',
     'composer.json' => 'PSR-4 Crm\\ → src/Crm/',
 ];
@@ -50,7 +54,7 @@ foreach ($archivosRaiz as $rel => $label) {
     deploy_check(is_file($path), 'Raíz: ' . $rel, is_file($path) ? $label : 'ausente');
 }
 
-        $dirs = ['api', 'src/Crm', 'src/Crm/Inventory', 'src/Crm/Comex', 'src/Crm/Storage', 'includes', 'uploads', 'uploads/comex', 'uploads/comex/productos', 'uploads/comex/items', 'uploads/comex/pdf', 'uploads/comex/xlsx', 'assets/css', 'assets/js', 'config', 'sql', 'data', 'scripts', 'deploy', 'tests'];
+        $dirs = ['api', 'src/Crm', 'src/Crm/Inventory', 'src/Crm/Comex', 'src/Crm/Storage', 'includes', 'uploads', 'uploads/comex', 'uploads/comex/productos', 'uploads/comex/items', 'uploads/comex/pdf', 'uploads/comex/xlsx', 'uploads/comex/docs', 'assets/css', 'assets/js', 'config', 'sql', 'data', 'scripts', 'deploy', 'tests'];
 foreach ($dirs as $dir) {
     deploy_check(is_dir($root . '/' . $dir), 'Carpeta: ' . $dir . '/', is_dir($root . '/' . $dir) ? 'OK' : 'ausente');
 }

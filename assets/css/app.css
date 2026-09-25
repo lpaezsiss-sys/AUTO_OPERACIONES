@@ -277,3 +277,45 @@ body {
 }
 .sheet-table td { white-space: nowrap; }
 .delta-cell { font-variant-numeric: tabular-nums; }
+
+.doc-list { display: flex; flex-direction: column; gap: 0.45rem; }
+.doc-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: #f4f6f8;
+  border: 0;
+  border-radius: 0.65rem;
+  padding: 0.7rem 0.8rem;
+  color: inherit;
+}
+.doc-item:hover { outline: 2px solid var(--yellow); }
+.doc-item.is-active {
+  background: #fff;
+  outline: 2px solid var(--navy);
+}
+.doc-preview {
+  width: 100%;
+  min-height: 480px;
+  border: 0;
+  background: #e8eef4;
+  border-radius: 0.5rem;
+}
+.doc-preview-img {
+  max-width: 100%;
+  max-height: 520px;
+  display: block;
+  margin: 0 auto;
+  border-radius: 0.5rem;
+}
+.dash-chart { position: relative; min-height: 280px; }
+.dash-tooltip {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.4rem;
+}
