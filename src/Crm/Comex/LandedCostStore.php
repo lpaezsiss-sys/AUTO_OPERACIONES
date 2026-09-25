@@ -7,6 +7,7 @@ namespace Crm\Comex;
 use Crm\ApiException;
 use Crm\Database\Connection;
 use Crm\Storage\PlanillaPdf;
+use Crm\Storage\PlanillaXlsx;
 use PDO;
 
 /**
@@ -216,6 +217,70 @@ final class LandedCostStore
     }
 
     /**
+     * Planilla XLSX (matriz Estimación vs Real). Body opcional para recálculo en vivo.
+     *
+     * @param array<string, mixed> $live
+     * @return array<string, mixed>
+     */
+    public static function exportarXlsx(int $operacionId, array $live = []): array
+    {
+        $pack = self::packExportable($operacionId, $live);
+        $op = is_array($pack['operacion'] ?? null) ? $pack['operacion'] : [];
+        $path = PlanillaXlsx::matriz($pack, $op);
+        return ['xlsx_path' => $path, 'pack' => $pack];
+    }
+
+    /**
+     * PDF de la matriz Estimación vs Real (ambas versiones).
+     *
+     * @param array<string, mixed> $live
+     * @return array<string, mixed>
+     */
+    public static function exportarPdfMatriz(int $operacionId, array $live = []): array
+    {
+        $pack = self::packExportable($operacionId, $live);
+        $op = is_array($pack['operacion'] ?? null) ? $pack['operacion'] : [];
+        $path = PlanillaPdf::matriz($pack, $op);
+        return ['pdf_path' => $path, 'pack' => $pack];
+    }
+
+    /**
+     * @param array<string, mixed> $live
+     * @return array<string, mixed>
+     */
+    private static function packExportable(int $operacionId, array $live): array
+    {
+        $pack = self::paraOperacion($operacionId);
+        $gEst = $live['gastos_estimada'] ?? null;
+        $gReal = $live['gastos_real'] ?? null;
+        if (is_array($gEst) || is_array($gReal)) {
+            $base = [
+                'operacion_id' => $operacionId,
+                'moneda_origen' => $live['moneda_origen'] ?? 'USD',
+                'tipo_cambio_usd' => $live['tipo_cambio_usd'] ?? 0,
+                'tipo_cambio_eur' => $live['tipo_cambio_eur'] ?? 0,
+                'iva_pct' => $live['iva_pct'] ?? null,
+                'items' => $live['items'] ?? [],
+            ];
+            if (is_array($gEst)) {
+                $pack['estimada'] = [
+                    'calculo' => self::calcularDesde($base + ['version' => LandedCost::VERSION_ESTIMADA, 'gastos' => $gEst]),
+                ];
+            }
+            if (is_array($gReal)) {
+                $pack['real'] = [
+                    'calculo' => self::calcularDesde($base + ['version' => LandedCost::VERSION_REAL, 'gastos' => $gReal]),
+                ];
+            }
+            $pack['comparacion'] = LandedCost::comparar(
+                is_array($pack['estimada']) ? ($pack['estimada']['calculo'] ?? null) : null,
+                is_array($pack['real']) ? ($pack['real']['calculo'] ?? null) : null
+            );
+        }
+        return $pack;
+    }
+
+    /**
      * @param list<mixed> $opItems
      * @param list<mixed> $overrides
      * @return list<array<string, mixed>>
@@ -302,9 +367,7 @@ final class LandedCostStore
         foreach ($totales as $k => $v) {
             $totales[$k] = round((float) $v, 4);
         }
-        $row['gastos'] = $gastos;
-        $row['items'] = $items;
-        $row['calculo'] = [
+        $calculo = LandedCost::enriquecerUsd([
             'version' => $row['version'],
             'moneda_origen' => $row['moneda_origen'],
             'tipo_cambio_usd' => (float) $row['tipo_cambio_usd'],
@@ -315,7 +378,10 @@ final class LandedCostStore
             'totales' => $totales,
             'notas' => $row['notas'] ?? '',
             'pdf_path' => $row['pdf_path'] ?? '',
-        ];
+        ]);
+        $row['gastos'] = $gastos;
+        $row['items'] = $calculo['items'];
+        $row['calculo'] = $calculo;
         return $row;
     }
 }

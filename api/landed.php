@@ -25,6 +25,18 @@ require dirname(__DIR__) . '/includes/bootstrap.php';
         }
         return ['evaluacion' => \Crm\Comex\LandedCostStore::exportarPdf($id)];
     }
+    if ($method === 'POST' && ($action === 'xlsx' || $action === 'excel')) {
+        if ($operacionId <= 0) {
+            \Crm\Http::fail('operacion_id requerido', 400);
+        }
+        return \Crm\Comex\LandedCostStore::exportarXlsx($operacionId, $body);
+    }
+    if ($method === 'POST' && ($action === 'pdf_matriz' || $action === 'pdf_comparacion')) {
+        if ($operacionId <= 0) {
+            \Crm\Http::fail('operacion_id requerido', 400);
+        }
+        return \Crm\Comex\LandedCostStore::exportarPdfMatriz($operacionId, $body);
+    }
 
     if ($id > 0) {
         $row = \Crm\Comex\LandedCostStore::porId($id);
