@@ -31,7 +31,7 @@ crm_layout_start('Pipeline de operaciones', 'operaciones');
                 <thead>
                     <tr>
                         <th>Folio</th><th>Tipo</th><th>Etapa actual</th><th>Fase</th>
-                        <th>Responsable</th><th>Est. vs real</th><th>Avance</th><th>Alerta</th>
+                        <th>Responsable</th><th>Est. vs real</th><th>Avance</th><th>Alerta</th><th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -94,5 +94,7 @@ crm_layout_start('Pipeline de operaciones', 'operaciones');
         </form>
     </div>
 </div>
+<?php require __DIR__ . '/includes/modals_operacion.php'; ?>
+<script src="assets/js/operacion-crud.js"></script>
 <script src="assets/js/operaciones.js"></script>
 <?php crm_layout_end(); ?>

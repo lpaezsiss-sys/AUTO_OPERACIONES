@@ -42,6 +42,7 @@ $archivosRaiz = [
     'operaciones.php' => 'Pipeline Kanban / lista',
     'operacion.php' => 'Detalle de etapas y bitácora',
     'assets/js/items.js' => 'Ítems de operación y SKU de evaluación',
+    'assets/js/operacion-crud.js' => 'Editar y eliminar operaciones',
     'manual.php' => 'Manual de operación',
     'fichas.php' => 'Fichas de producto (SKU inventario)',
     'api/sync.php' => 'Sincronizar catálogo desde prod.db',

@@ -117,9 +117,9 @@
     }
     pack = await crmApi("api/pipeline.php?operacion_id=" + opId);
     var op = pack.operacion || {};
-    document.getElementById("tituloOp").textContent = (op.folio || "Operación") + " · " + (op.tipo || "");
-    document.getElementById("subOp").textContent = "Pipeline · " + ((pack.progreso && pack.progreso.hechas) || 0) +
-      " de 13 etapas";
+    document.getElementById("tituloOp").textContent = (op.nombre ? op.nombre + " · " : "") + (op.folio || "Operación") + " · " + (op.tipo || "");
+    document.getElementById("subOp").textContent = (op.proveedor ? op.proveedor + " · " : "") + (op.moneda_base || "USD") +
+      " · Pipeline · " + ((pack.progreso && pack.progreso.hechas) || 0) + " de 13 etapas";
     var alerta = document.getElementById("alertaEval");
     var pend = pack.items_evaluacion || (op.items || []).filter(function (it) { return it.is_custom; });
     if (alerta) {

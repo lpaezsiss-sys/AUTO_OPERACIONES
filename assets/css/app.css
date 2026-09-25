@@ -242,6 +242,7 @@ html { scroll-behavior: smooth; }
 .kanban-col-b { display: flex; flex-direction: column; gap: 0.45rem; }
 .kanban-card {
   display: block;
+  position: relative;
   width: 100%;
   text-align: left;
   background: #fff;
@@ -251,6 +252,31 @@ html { scroll-behavior: smooth; }
   box-shadow: 0 4px 12px rgba(5, 41, 75, 0.06);
   color: inherit;
   text-decoration: none;
+}
+.kanban-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.kanban-card-menu {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.3rem;
+  z-index: 6;
+}
+.op-row-actions .btn {
+  font-size: 0.75rem;
+}
+.btn-card-more {
+  border: 0;
+  background: transparent;
+  color: var(--navy);
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
+}
+.btn-card-more:hover, .btn-card-more:focus {
+  background: #e8eef4;
+  color: var(--navy);
 }
 .kanban-card:hover { outline: 2px solid var(--yellow); }
 .kanban-card.is-overdue {

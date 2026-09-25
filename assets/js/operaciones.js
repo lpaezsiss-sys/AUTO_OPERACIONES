@@ -22,15 +22,20 @@
     } else if (t.atrasada) {
       cls += " is-overdue";
     }
-    return '<a class="' + cls + '" href="operacion.php?id=' + encodeURIComponent(t.id) + '">' +
-      '<div class="d-flex justify-content-between gap-1"><code>' + crmEsc(t.folio) + "</code>" +
+    var menu = typeof comexOpMenuHtml === "function" ? comexOpMenuHtml(t) : "";
+    var nombre = t.nombre ? '<div class="small fw-semibold">' + crmEsc(t.nombre) + "</div>" : "";
+    return '<div class="' + cls + '">' + menu +
+      '<a class="kanban-card-link" href="operacion.php?id=' + encodeURIComponent(t.id) + '">' +
+      '<div class="d-flex justify-content-between gap-1 pe-4"><code>' + crmEsc(t.folio) + "</code>" +
       badgeAlerta(t) + "</div>" +
-      '<div class="small text-secondary">' + crmEsc(t.tipo) + "</div>" +
+      nombre +
+      '<div class="small text-secondary">' + crmEsc(t.tipo) +
+      (t.proveedor ? " · " + crmEsc(t.proveedor) : "") + "</div>" +
       '<div class="small fw-semibold">' + crmEsc(et.nombre || "") + "</div>" +
       '<div class="small text-secondary">' + crmEsc((et.responsable || "Sin responsable")) +
       " · " + crmEsc(et.fecha_estimada || "s/est") + "</div>" +
       '<div class="progress mt-2" role="progressbar"><div class="progress-bar" style="width:' +
-      crmEsc((t.progreso && t.progreso.pct) || 0) + '%"></div></div></a>';
+      crmEsc((t.progreso && t.progreso.pct) || 0) + '%"></div></div></a></div>';
   }
 
   function renderKpis(k) {
@@ -78,9 +83,11 @@
         '<td><a href="operacion.php?id=' + t.id + '"><code>' + crmEsc(t.folio) + "</code></a></td>" +
         "<td>" + crmEsc(t.tipo) + "</td><td>" + crmEsc(et.nombre || "") + "</td>" +
         "<td>" + crmEsc(et.fase || "") + "</td><td>" + crmEsc(et.responsable || "—") + "</td>" +
-        "<td>" + vs + "</td><td>" + crmEsc((t.progreso && t.progreso.hechas) || 0) + "/" +
-        crmEsc((t.progreso && t.progreso.total) || 13) + "</td><td>" + badgeAlerta(t) + "</td></tr>";
-    }).join("") || '<tr><td colspan="8" class="text-secondary">Sin operaciones en el pipeline.</td></tr>';
+        '<td>' + vs + '</td><td>' + crmEsc((t.progreso && t.progreso.hechas) || 0) + "/" +
+        crmEsc((t.progreso && t.progreso.total) || 13) + "</td><td>" + badgeAlerta(t) + "</td>" +
+        '<td class="text-nowrap text-end">' +
+        (typeof comexOpMenuHtml === "function" ? comexOpMenuHtml(t, "row") : "") + "</td></tr>";
+    }).join("") || '<tr><td colspan="9" class="text-secondary">Sin operaciones en el pipeline.</td></tr>';
   }
 
   function showVista(name) {
@@ -137,4 +144,7 @@
   });
 
   load().catch(function (e) { crmToast(e.message, true); });
+
+  window.comexOpOnChanged = load;
+  window.comexOpOnDeleted = load;
 })();

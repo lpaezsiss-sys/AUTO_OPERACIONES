@@ -10,6 +10,7 @@ use Crm\Inventory\Catalogo;
 use Crm\Inventory\StockSync;
 use Crm\Storage\DocumentoPdf;
 use Crm\Storage\ItemImagen;
+use Crm\Storage\Uploads;
 use PDO;
 
 /**
@@ -74,16 +75,19 @@ final class Operaciones
             $folio = self::nuevoFolio($tipo);
         }
         $fecha = trim((string) ($data['fecha'] ?? date('Y-m-d')));
-        $referencia = trim((string) ($data['referencia'] ?? ''));
+        $referencia = self::texto((string) ($data['referencia'] ?? ''), 255);
+        $nombre = self::texto((string) ($data['nombre'] ?? ''), 255);
+        $proveedor = self::texto((string) ($data['proveedor'] ?? ''), 160);
+        $moneda = self::monedaBase((string) ($data['moneda_base'] ?? 'USD'));
         $now = crm_now();
         $pdo = Connection::app();
         $pdo->beginTransaction();
         try {
             $ins = $pdo->prepare(
-                'INSERT INTO comex_operaciones (tipo, folio, estado, fecha, referencia, pdf_path, synced_at, movimiento_ids, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO comex_operaciones (tipo, folio, estado, fecha, nombre, proveedor, referencia, moneda_base, pdf_path, synced_at, movimiento_ids, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
-            $ins->execute([$tipo, $folio, 'borrador', $fecha, $referencia, '', null, '', $now, $now]);
+            $ins->execute([$tipo, $folio, 'borrador', $fecha, $nombre, $proveedor, $referencia, $moneda, '', null, '', $now, $now]);
             $id = (int) $pdo->lastInsertId();
             if ($items !== []) {
                 self::insertarItems($pdo, $id, $items);
@@ -101,6 +105,96 @@ final class Operaciones
             throw new ApiException('No se pudo crear la operación', 500);
         }
         return $op;
+    }
+
+    /**
+     * Actualiza datos maestros de la operación (nombre, proveedor, DIN/DUS, moneda).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public static function actualizar(int $id, array $data): array
+    {
+        Schema::ensureUpgrades();
+        $op = self::porId($id);
+        if ($op === null) {
+            throw new ApiException('Operación no encontrada', 404);
+        }
+        $nombre = array_key_exists('nombre', $data)
+            ? self::texto((string) $data['nombre'], 255)
+            : self::texto((string) ($op['nombre'] ?? ''), 255);
+        $proveedor = array_key_exists('proveedor', $data)
+            ? self::texto((string) $data['proveedor'], 160)
+            : self::texto((string) ($op['proveedor'] ?? ''), 160);
+        $referencia = array_key_exists('referencia', $data)
+            ? self::texto((string) $data['referencia'], 255)
+            : self::texto((string) ($op['referencia'] ?? ''), 255);
+        $moneda = array_key_exists('moneda_base', $data)
+            ? self::monedaBase((string) $data['moneda_base'])
+            : self::monedaBase((string) ($op['moneda_base'] ?? 'USD'));
+        $stmt = Connection::app()->prepare(
+            'UPDATE comex_operaciones
+             SET nombre = ?, proveedor = ?, referencia = ?, moneda_base = ?, updated_at = ?
+             WHERE id = ?'
+        );
+        $stmt->execute([$nombre, $proveedor, $referencia, $moneda, crm_now(), $id]);
+        $fresh = self::porId($id);
+        if ($fresh === null) {
+            throw new ApiException('No se pudo actualizar la operación', 500);
+        }
+        return $fresh;
+    }
+
+    /**
+     * Elimina la operación y sus financieros, documentos e ítems.
+     * Si hay movimientos en prod.db retorna 409 salvo revertir_stock o confirmar_admin.
+     *
+     * @param array<string, mixed> $opts
+     * @return array<string, mixed>
+     */
+    public static function eliminar(int $id, array $opts = []): array
+    {
+        Schema::ensureUpgrades();
+        $op = self::porId($id);
+        if ($op === null) {
+            throw new ApiException('Operación no encontrada', 404);
+        }
+        $ids = self::movimientosDe($op);
+        $admin = self::flag($opts, ['confirmar_admin', 'admin', 'es_admin']);
+        $revertir = self::flag($opts, ['revertir_stock', 'revertir']);
+        if ($ids !== [] && !$admin && !$revertir) {
+            throw new ApiException(
+                'La operación ya generó movimientos de stock en prod.db. Revierta los movimientos o confirme el borrado con perfil administrador.',
+                409,
+                [
+                    'codigo' => 'STOCK_MOVIMIENTOS',
+                    'movimiento_ids' => $ids,
+                    'requiere_admin' => true,
+                ]
+            );
+        }
+        $stockRevertido = false;
+        if ($ids !== [] && $revertir && !$admin) {
+            self::revertirStock($op);
+            $stockRevertido = true;
+        }
+        $pdo = Connection::app();
+        $pdo->beginTransaction();
+        try {
+            self::borrarDependencias($pdo, $id, $op);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+        return [
+            'eliminado' => $id,
+            'folio' => (string) ($op['folio'] ?? ''),
+            'stock_revertido' => $stockRevertido,
+            'admin' => $admin,
+        ];
     }
 
     /**
@@ -530,6 +624,153 @@ final class Operaciones
             }
         }
         $row['items_evaluacion_pendientes'] = $pendientes;
+        $row['nombre'] = trim((string) ($row['nombre'] ?? ''));
+        $row['proveedor'] = trim((string) ($row['proveedor'] ?? ''));
+        $row['referencia'] = trim((string) ($row['referencia'] ?? ''));
+        $row['moneda_base'] = self::monedaBase((string) ($row['moneda_base'] ?? 'USD'));
+        $row['tiene_movimientos'] = self::movimientosDe($row) !== [];
         return $row;
+    }
+
+    public static function monedaBase(string $codigo): string
+    {
+        $codigo = strtoupper(trim($codigo));
+        if ($codigo === '' || $codigo === 'USD') {
+            return 'USD';
+        }
+        if ($codigo === 'EUR' || $codigo === 'CLP') {
+            return $codigo;
+        }
+        throw new ApiException('moneda_base debe ser USD, EUR o CLP', 400);
+    }
+
+    private static function texto(string $v, int $max): string
+    {
+        $v = trim($v);
+        if (function_exists('mb_substr')) {
+            return (string) mb_substr($v, 0, $max);
+        }
+        return substr($v, 0, $max);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @param list<string> $keys
+     */
+    private static function flag(array $data, array $keys): bool
+    {
+        foreach ($keys as $k) {
+            if (!array_key_exists($k, $data)) {
+                continue;
+            }
+            $v = $data[$k];
+            if ($v === true || $v === 1 || $v === '1' || $v === 'true' || $v === 'on' || $v === 'si' || $v === 'sí') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param array<string, mixed> $op
+     * @return list<string>
+     */
+    private static function movimientosDe(array $op): array
+    {
+        $out = self::idsMovimiento((string) ($op['movimiento_ids'] ?? ''));
+        foreach ($op['items'] ?? [] as $it) {
+            if (!is_array($it)) {
+                continue;
+            }
+            $m = trim((string) ($it['movimiento_id'] ?? ''));
+            if ($m !== '') {
+                $out[] = $m;
+            }
+        }
+        $uniq = [];
+        foreach ($out as $id) {
+            $uniq[$id] = true;
+        }
+        return array_keys($uniq);
+    }
+
+    /**
+     * @param array<string, mixed> $op
+     */
+    private static function revertirStock(array $op): void
+    {
+        $lineas = [];
+        foreach ($op['items'] ?? [] as $it) {
+            if (!is_array($it)) {
+                continue;
+            }
+            if (trim((string) ($it['movimiento_id'] ?? '')) === '') {
+                continue;
+            }
+            $lineas[] = [
+                'sku' => (string) ($it['sku'] ?? ''),
+                'cantidad' => (float) ($it['cantidad'] ?? 0),
+                'precio_unitario' => (float) ($it['precio_unitario'] ?? 0),
+            ];
+        }
+        if ($lineas === []) {
+            return;
+        }
+        $orig = (string) ($op['tipo'] ?? '') === self::IMPORTACION ? StockSync::ENTRADA : StockSync::SALIDA;
+        $rev = $orig === StockSync::ENTRADA ? StockSync::SALIDA : StockSync::ENTRADA;
+        StockSync::aplicarDocumento($rev, (string) ($op['folio'] ?? '') . '-REV', $lineas, (string) ($op['fecha'] ?? null));
+    }
+
+    /**
+     * @param array<string, mixed> $op
+     */
+    private static function borrarDependencias(PDO $pdo, int $id, array $op): void
+    {
+        Documentos::eliminarPorOperacion($id);
+        $landed = $pdo->prepare('SELECT id, pdf_path FROM comex_landed_cost WHERE operacion_id = ?');
+        $landed->execute([$id]);
+        $rows = $landed->fetchAll(PDO::FETCH_ASSOC);
+        $delGastos = $pdo->prepare('DELETE FROM comex_landed_gastos WHERE landed_id = ?');
+        $delLitems = $pdo->prepare('DELETE FROM comex_landed_items WHERE landed_id = ?');
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $lid = (int) ($row['id'] ?? 0);
+            self::borrarArchivoRelativo((string) ($row['pdf_path'] ?? ''));
+            if ($lid > 0) {
+                $delGastos->execute([$lid]);
+                $delLitems->execute([$lid]);
+            }
+        }
+        $pdo->prepare('DELETE FROM comex_landed_cost WHERE operacion_id = ?')->execute([$id]);
+
+        $etapas = $pdo->prepare('SELECT id FROM comex_operacion_etapas WHERE operacion_id = ?');
+        $etapas->execute([$id]);
+        $ets = $etapas->fetchAll(PDO::FETCH_ASSOC);
+        $delBit = $pdo->prepare('DELETE FROM comex_etapa_bitacora WHERE etapa_id = ?');
+        foreach (is_array($ets) ? $ets : [] as $et) {
+            if (is_array($et)) {
+                $delBit->execute([(int) $et['id']]);
+            }
+        }
+        $pdo->prepare('DELETE FROM comex_operacion_etapas WHERE operacion_id = ?')->execute([$id]);
+        $pdo->prepare('DELETE FROM comex_operacion_items WHERE operacion_id = ?')->execute([$id]);
+        self::borrarArchivoRelativo((string) ($op['pdf_path'] ?? ''));
+        $pdo->prepare('DELETE FROM comex_operaciones WHERE id = ?')->execute([$id]);
+    }
+
+    private static function borrarArchivoRelativo(string $rel): void
+    {
+        $rel = trim($rel);
+        if ($rel === '') {
+            return;
+        }
+        $rel = preg_replace('#^uploads/#', '', $rel) ?? $rel;
+        $rel = str_replace(['..', '\\'], '', $rel);
+        $abs = Uploads::path($rel);
+        if (is_file($abs)) {
+            @unlink($abs);
+        }
     }
 }

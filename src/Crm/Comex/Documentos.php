@@ -196,6 +196,21 @@ final class Documentos
         return ['eliminado' => $id, 'operacion_id' => (int) $row['operacion_id']];
     }
 
+    public static function eliminarPorOperacion(int $operacionId): int
+    {
+        $docs = self::listar($operacionId);
+        $n = 0;
+        foreach ($docs as $doc) {
+            self::eliminar((int) $doc['id']);
+            $n++;
+        }
+        $dir = Uploads::path(self::DIR . '/' . $operacionId);
+        if (is_dir($dir)) {
+            @rmdir($dir);
+        }
+        return $n;
+    }
+
     public static function stream(int $id, bool $download = false): never
     {
         $row = self::porId($id);

@@ -297,7 +297,9 @@ $uiOps = (string) file_get_contents($root . '/operaciones.php');
 $uiDet = (string) file_get_contents($root . '/operacion.php');
 $css = (string) file_get_contents($root . '/assets/css/app.css');
 assert_true(str_contains($uiOps, 'btnKanban') && str_contains($uiOps, 'btnLista'), 'UI Kanban y Lista');
+assert_true(str_contains($uiOps, 'modals_operacion.php') && str_contains((string) file_get_contents($root . '/includes/modals_operacion.php'), 'id="modalEditarOp"'), 'Modales editar y eliminar en pipeline');
 assert_true(str_contains($uiDet, 'IN_PROGRESS') && str_contains($uiDet, 'BLOCKED'), 'Formulario de estados');
+assert_true(str_contains($uiDet, 'id="btnEditarOp"') && str_contains($uiDet, 'id="btnEliminarOp"'), 'Botones Editar/Eliminar en detalle');
 assert_true(str_contains($uiDet, 'Bitácora') && str_contains($css, 'is-overdue') && str_contains($css, 'is-blocked'), 'Alertas visuales atrasada/bloqueada');
 
 putenv('IVA_PCT=19');
@@ -401,10 +403,16 @@ assert_true(str_contains($jsItems, 'agregar_items') && str_contains($jsItems, 'v
 assert_true(str_contains($jsOps, 'itemNombre') && str_contains((string) file_get_contents($root . '/operaciones.php'), 'id="itemNombre"'), 'Alta con Nombre/Descripción de evaluación');
 assert_true(str_contains($jsLanded, 'badge-eval') && str_contains($jsFin, 'badge-eval'), 'Landed y finanzas marcan ítems de evaluación');
 assert_true(str_contains($css, '.badge-eval'), 'CSS badge evaluación');
+$jsCrud = (string) file_get_contents($root . '/assets/js/operacion-crud.js');
+assert_true(str_contains($jsCrud, 'api/operaciones.php?action=update') && str_contains($jsCrud, 'api/operaciones.php?action=delete'), 'fetch() POST update/delete');
+assert_true(str_contains($jsOps, 'comexOpMenuHtml') && str_contains($css, 'kanban-card-menu'), 'Menú acciones en Kanban y lista');
 
 $colsItems = \Crm\Database\Connection::app()->query('PRAGMA table_info(comex_operacion_items)')->fetchAll(PDO::FETCH_ASSOC);
 $colNames = array_map(static fn (array $c): string => (string) ($c['name'] ?? ''), is_array($colsItems) ? $colsItems : []);
 assert_true(in_array('origen', $colNames, true) && in_array('is_custom', $colNames, true), 'Columnas origen e is_custom en ítems');
+$colsOps = \Crm\Database\Connection::app()->query('PRAGMA table_info(comex_operaciones)')->fetchAll(PDO::FETCH_ASSOC);
+$colOpNames = array_map(static fn (array $c): string => (string) ($c['name'] ?? ''), is_array($colsOps) ? $colsOps : []);
+assert_true(in_array('nombre', $colOpNames, true) && in_array('proveedor', $colOpNames, true) && in_array('moneda_base', $colOpNames, true), 'Columnas nombre, proveedor y moneda_base en operaciones');
 \Crm\Comex\Schema::install();
 assert_true(true, 'Schema::install idempotente con ensureUpgrades');
 
@@ -543,6 +551,74 @@ assert_true(is_array($trasEntrega['actual']) && ($trasEntrega['actual']['codigo'
 assert_true(\Crm\Inventory\InventarioStock::stockPorCodigo('TEMP-OFF') === 4.0, 'ENTRADA en Entrega para SKU vinculado');
 $cierreOk = \Crm\Comex\Pipeline::avanzar($opEvalId);
 assert_true((int) ($cierreOk['progreso']['pct'] ?? 0) === 100, 'Cierre operativo al 100%');
+
+$opEdit = \Crm\Comex\Operaciones::crear([
+    'tipo' => 'IMPORTACION',
+    'folio' => 'IMP-EDIT-1',
+    'fecha' => '2026-01-01',
+    'items' => [['sku' => 'TEMP-EDIT', 'cantidad' => 1, 'precio_unitario' => 5, 'descripcion' => 'Muestra edición']],
+]);
+assert_true((string) ($opEdit['moneda_base'] ?? '') === 'USD', 'Moneda base por defecto USD');
+$upd = \Crm\Comex\Operaciones::actualizar((int) $opEdit['id'], [
+    'nombre' => 'Importación de prueba',
+    'proveedor' => 'ACME Ltd',
+    'referencia' => 'DIN-999',
+    'moneda_base' => 'EUR',
+]);
+assert_true((string) $upd['nombre'] === 'Importación de prueba' && (string) $upd['proveedor'] === 'ACME Ltd', 'Actualiza nombre y proveedor');
+assert_true((string) $upd['referencia'] === 'DIN-999' && (string) $upd['moneda_base'] === 'EUR', 'Actualiza referencia y moneda base');
+$badMoneda = false;
+try {
+    \Crm\Comex\Operaciones::actualizar((int) $opEdit['id'], ['moneda_base' => 'JPY']);
+} catch (\Crm\ApiException $e) {
+    $badMoneda = $e->status === 400;
+}
+assert_true($badMoneda, 'Moneda base inválida retorna 400');
+$delEval = \Crm\Comex\Operaciones::eliminar((int) $opEdit['id']);
+assert_true((int) ($delEval['eliminado'] ?? 0) === (int) $opEdit['id'], 'Elimina operación en evaluación');
+assert_true(\Crm\Comex\Operaciones::porId((int) $opEdit['id']) === null, 'Operación de evaluación ya no existe');
+
+$invDel = \Crm\Inventory\SqliteConnector::write();
+$invDel->prepare(
+    'INSERT INTO Product (id, code, name, description, stock, averageUnitCost) VALUES (?,?,?,?,?,?)'
+)->execute(['p-del-stock', 'DEL-SKU', 'SKU borrado', '', 0, 0]);
+$opClose = \Crm\Comex\Operaciones::crear([
+    'tipo' => 'IMPORTACION',
+    'folio' => 'IMP-DEL-CLOSE',
+    'fecha' => '2026-01-01',
+    'items' => [['sku' => 'DEL-SKU', 'cantidad' => 2, 'precio_unitario' => 10]],
+]);
+\Crm\Comex\Operaciones::confirmar((int) $opClose['id']);
+assert_true(\Crm\Inventory\InventarioStock::stockPorCodigo('DEL-SKU') === 2.0, 'Stock ENTRADA antes de intentar borrar');
+$blocked = false;
+$extra409 = [];
+try {
+    \Crm\Comex\Operaciones::eliminar((int) $opClose['id']);
+} catch (\Crm\ApiException $e) {
+    $blocked = $e->status === 409;
+    $extra409 = $e->extra;
+}
+assert_true($blocked && ($extra409['codigo'] ?? '') === 'STOCK_MOVIMIENTOS', 'Eliminar operación cerrada retorna 409');
+assert_true(\Crm\Comex\Operaciones::porId((int) $opClose['id']) !== null, 'Operación cerrada permanece tras 409');
+$adminDel = \Crm\Comex\Operaciones::eliminar((int) $opClose['id'], ['confirmar_admin' => true]);
+assert_true((int) ($adminDel['eliminado'] ?? 0) === (int) $opClose['id'], 'Admin elimina operación con movimientos');
+assert_true(\Crm\Inventory\InventarioStock::stockPorCodigo('DEL-SKU') === 2.0, 'Admin no revierte stock en prod.db');
+
+$invDel->prepare(
+    'INSERT INTO Product (id, code, name, description, stock, averageUnitCost) VALUES (?,?,?,?,?,?)'
+)->execute(['p-del-rev', 'DEL-REV', 'SKU revertir', '', 1, 4]);
+$opRev = \Crm\Comex\Operaciones::crear([
+    'tipo' => 'IMPORTACION',
+    'folio' => 'IMP-DEL-REV',
+    'fecha' => '2026-01-01',
+    'items' => [['sku' => 'DEL-REV', 'cantidad' => 3, 'precio_unitario' => 8]],
+]);
+\Crm\Comex\Operaciones::confirmar((int) $opRev['id']);
+assert_true(\Crm\Inventory\InventarioStock::stockPorCodigo('DEL-REV') === 4.0, 'Stock tras confirmar para revertir');
+$revDel = \Crm\Comex\Operaciones::eliminar((int) $opRev['id'], ['revertir_stock' => true]);
+assert_true(!empty($revDel['stock_revertido']), 'Eliminar con revertir_stock');
+assert_true(\Crm\Inventory\InventarioStock::stockPorCodigo('DEL-REV') === 1.0, 'Stock restaurado al revertir');
+assert_true(\Crm\Comex\Operaciones::porId((int) $opRev['id']) === null, 'Operación revertida ya no existe');
 
 
 $opDoc = \Crm\Comex\Operaciones::crear([
