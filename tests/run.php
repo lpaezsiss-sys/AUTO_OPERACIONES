@@ -225,6 +225,94 @@ try {
 }
 assert_true($overFail, 'Exportación sin stock = 409');
 
+putenv('IVA_PCT=19');
+$gastosEst = [
+    ['codigo' => 'FLETE_INTL', 'moneda' => 'USD', 'monto' => 30, 'ambito' => 'ORIGEN', 'cif' => true, 'nombre' => 'Flete internacional'],
+    ['codigo' => 'SEGURO', 'moneda' => 'USD', 'monto' => 6, 'ambito' => 'ORIGEN', 'cif' => true, 'nombre' => 'Seguro'],
+    ['codigo' => 'ADUANA', 'moneda' => 'CLP', 'monto' => 15000, 'ambito' => 'LOCAL', 'cif' => false, 'nombre' => 'Aduana'],
+    ['codigo' => 'AGENCIA', 'moneda' => 'CLP', 'monto' => 9000, 'ambito' => 'LOCAL', 'cif' => false, 'nombre' => 'Agencia'],
+    ['codigo' => 'FLETE_INTERNO', 'moneda' => 'CLP', 'monto' => 6000, 'ambito' => 'LOCAL', 'cif' => false, 'nombre' => 'Flete interno'],
+    ['codigo' => 'BANCARIOS', 'moneda' => 'CLP', 'monto' => 3000, 'ambito' => 'LOCAL', 'cif' => false, 'nombre' => 'Gastos bancarios'],
+];
+$parts = \Crm\Comex\LandedCost::prorratear(33000, [200.0, 100.0]);
+assert_true($parts[0] === 22000.0 && $parts[1] === 11000.0, 'Prorrateo FOB 2/3 y 1/3');
+assert_true(\Crm\Comex\LandedCost::aClp(10, 'EUR', 900, 1050) === 10500.0, 'EUR × TC');
+assert_true(abs(crm_iva_pct() - 19.0) < 0.001, 'IVA_PCT 19 Chile');
+
+$opLc = \Crm\Comex\Operaciones::crear([
+    'tipo' => 'IMPORTACION',
+    'folio' => 'IMP-LANDED-1',
+    'items' => [
+        ['sku' => '12852-48', 'cantidad' => 2, 'precio_unitario' => 100, 'descripcion' => 'Banda'],
+        ['sku' => 'ABC-99', 'cantidad' => 1, 'precio_unitario' => 100, 'descripcion' => 'Rodamiento'],
+    ],
+]);
+$calc = \Crm\Comex\LandedCostStore::calcularDesde([
+    'operacion_id' => $opLc['id'],
+    'version' => 'ESTIMADA',
+    'moneda_origen' => 'USD',
+    'tipo_cambio_usd' => 900,
+    'tipo_cambio_eur' => 1050,
+    'iva_pct' => 19,
+    'gastos' => $gastosEst,
+]);
+assert_true((float) $calc['totales']['fob_clp'] === 270000.0, 'FOB CLP 300 USD × 900');
+assert_true((float) $calc['totales']['gastos_cif_clp'] === 32400.0, 'Flete+seguro CIF 36 USD × 900');
+assert_true((float) $calc['totales']['cif_clp'] === 302400.0, 'CIF = FOB + flete + seguro');
+assert_true((float) $calc['totales']['iva_clp'] === 57456.0, 'IVA 19% sobre CIF');
+assert_true((float) $calc['totales']['gastos_locales_clp'] === 33000.0, 'Gastos locales CLP');
+assert_true((float) $calc['totales']['landed_clp'] === 392856.0, 'Landed = CIF + IVA + locales');
+assert_true((float) $calc['items'][0]['share'] === 0.666667, 'Share ítem A 200/300');
+
+$est = \Crm\Comex\LandedCostStore::guardar([
+    'operacion_id' => $opLc['id'],
+    'version' => 'ESTIMADA',
+    'moneda_origen' => 'USD',
+    'tipo_cambio_usd' => 900,
+    'tipo_cambio_eur' => 1050,
+    'gastos' => $gastosEst,
+    'notas' => 'estimacion',
+]);
+$gastosReal = $gastosEst;
+$gastosReal[2]['monto'] = 27000;
+$real = \Crm\Comex\LandedCostStore::guardar([
+    'operacion_id' => $opLc['id'],
+    'version' => 'REAL',
+    'moneda_origen' => 'USD',
+    'tipo_cambio_usd' => 900,
+    'tipo_cambio_eur' => 1050,
+    'gastos' => $gastosReal,
+    'notas' => 'real',
+]);
+assert_true($est['version'] === 'ESTIMADA' && $real['version'] === 'REAL', 'Versiones Estimada y Real');
+$pack = \Crm\Comex\LandedCostStore::paraOperacion((int) $opLc['id']);
+assert_true(!empty($pack['comparacion']['disponible']), 'Comparación Estimada vs Real');
+$dLand = $pack['comparacion']['totales']['landed_clp']['delta'] ?? null;
+assert_true((float) $dLand === 12000.0, 'Delta landed = extra aduana 12000');
+
+$pdfRow = \Crm\Comex\LandedCostStore::exportarPdf((int) $est['id']);
+$pdfLc = $root . '/' . $pdfRow['pdf_path'];
+assert_true(is_file($pdfLc) && str_starts_with((string) file_get_contents($pdfLc), '%PDF'), 'PDF landed cost');
+assert_true(str_contains((string) $pdfRow['pdf_path'], 'uploads/comex/pdf/'), 'PDF landed en uploads/');
+
+$ui = (string) file_get_contents($root . '/landed.php');
+$layout = (string) file_get_contents($root . '/includes/layout.php');
+$css = (string) file_get_contents($root . '/assets/css/app.css');
+assert_true(str_contains($layout, 'app-sidebar') && str_contains($css, '--navy: #05294b'), 'UI alineada al panel CRM');
+assert_true(str_contains($ui, 'IVA aduanero'), 'UI menciona IVA aduanero');
+
+$zeroFail = false;
+try {
+    \Crm\Comex\LandedCost::calcular([
+        'tipo_cambio_usd' => 900,
+        'items' => [['sku' => 'X', 'cantidad' => 1, 'fob_unitario' => 0]],
+        'gastos' => [['codigo' => 'ADUANA', 'moneda' => 'CLP', 'monto' => 1000]],
+    ]);
+} catch (\Crm\ApiException $e) {
+    $zeroFail = $e->status === 400;
+}
+assert_true($zeroFail, 'FOB 0 no prorratea');
+
 putenv('INV_SQLITE_BUSY_TIMEOUT_MS=120');
 putenv('INV_SQLITE_RETRIES=1');
 \Crm\Inventory\SqliteConnector::reset();
