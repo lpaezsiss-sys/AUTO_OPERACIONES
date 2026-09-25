@@ -56,6 +56,9 @@ if ($rolActual !== 'admin' && $rolActual !== 'comex') {
             <div class="small text-uppercase opacity-75"><?php echo crm_h((string) ($user['rol_etiqueta'] ?? 'Ecosistema')); ?></div>
             <div><?php echo crm_h((string) ($user['nombre'] ?? 'COMEX Chile')); ?></div>
             <div class="small opacity-75"><?php echo isset($user['email']) && $user['email'] !== '' ? crm_h((string) $user['email']) : ('IVA aduanero ' . crm_h((string) crm_iva_pct()) . '%'); ?></div>
+            <?php if (\Auth::isLoggedIn()) : ?>
+            <a class="small text-decoration-none d-inline-block mt-2" href="login.php?logout=1" style="color:#FEC001">Cerrar sesión</a>
+            <?php endif; ?>
         </div>
     </aside>
     <main class="app-main">

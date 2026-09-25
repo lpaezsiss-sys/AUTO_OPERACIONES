@@ -136,7 +136,13 @@ final class Usuarios
     public static function cerrarSesion(): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
-            unset($_SESSION['usuario_id'], $_SESSION['usuario_rol'], $_SESSION['usuario_nombre'], $_SESSION['usuario_email']);
+            unset(
+                $_SESSION['user_id'],
+                $_SESSION['usuario_id'],
+                $_SESSION['usuario_rol'],
+                $_SESSION['usuario_nombre'],
+                $_SESSION['usuario_email']
+            );
         }
     }
 
@@ -148,7 +154,9 @@ final class Usuarios
         if (session_status() !== PHP_SESSION_ACTIVE) {
             return;
         }
-        $_SESSION['usuario_id'] = (int) ($user['id'] ?? 0);
+        $id = (int) ($user['id'] ?? 0);
+        $_SESSION['user_id'] = $id;
+        $_SESSION['usuario_id'] = $id;
         $_SESSION['usuario_rol'] = (string) ($user['rol'] ?? self::ROL_COMEX);
         $_SESSION['usuario_nombre'] = (string) ($user['nombre'] ?? '');
         $_SESSION['usuario_email'] = (string) ($user['email'] ?? '');
@@ -160,10 +168,11 @@ final class Usuarios
         if (session_status() !== PHP_SESSION_ACTIVE) {
             return null;
         }
-        $id = (int) ($_SESSION['usuario_id'] ?? 0);
+        $id = (int) ($_SESSION['user_id'] ?? $_SESSION['usuario_id'] ?? 0);
         if ($id <= 0) {
             return null;
         }
+        $_SESSION['user_id'] = $id;
         $rol = (string) ($_SESSION['usuario_rol'] ?? self::ROL_COMEX);
         if (!self::rolValido($rol)) {
             $rol = self::ROL_COMEX;

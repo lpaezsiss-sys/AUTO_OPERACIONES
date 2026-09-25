@@ -408,9 +408,29 @@ assert_true(str_contains($jsCrud, 'api/operaciones.php?action=update') && str_co
 assert_true(str_contains($jsCrud, 'COMEX_ROL') && str_contains($jsCrud, 'confirmar_admin'), 'Delete envía confirmar_admin solo si rol admin');
 $uiCrm = (string) file_get_contents($root . '/crm.php');
 $jsCrm = (string) file_get_contents($root . '/assets/js/crm-perfiles.js');
+$uiLogin = (string) file_get_contents($root . '/login.php');
+$jsLogin = (string) file_get_contents($root . '/assets/js/login.js');
 assert_true(str_contains($uiCrm, 'tab=perfiles') && str_contains($uiCrm, 'id="tablaPerfiles"'), 'CRM pestaña Perfiles de usuario');
 assert_true(str_contains($uiCrm, 'Administrador') && str_contains($uiCrm, 'COMEX'), 'CRM muestra etiquetas de rol');
-assert_true(str_contains($jsCrm, 'api/usuarios.php?action=login') && str_contains($jsCrm, 'crmToast'), 'Login CRM con toast');
+assert_true(str_contains($jsLogin, 'api/usuarios.php?action=login') && str_contains($jsLogin, 'crmToast'), 'Login panel llama api/usuarios.php con toast');
+assert_true(str_contains($uiLogin, 'id="formLogin"') && str_contains($uiLogin, 'Iniciar sesión'), 'login.php formulario navy');
+assert_true(is_file($root . '/src/Auth.php') && class_exists('Auth'), 'src/Auth.php clase Auth');
+assert_true(\Auth::isLoggedIn() === false, 'Sin sesión Auth::isLoggedIn es false');
+$authCli = [];
+exec(
+    'php -r ' . escapeshellarg(
+        'session_start(); $_SESSION["user_id"]=9; require ' . var_export($root . '/src/Auth.php', true) . ';'
+        . 'echo (\Auth::isLoggedIn() && \Auth::userId()===9) ? "yes" : "no";'
+    ),
+    $authCli
+);
+assert_true(trim(implode('', $authCli)) === 'yes', 'Auth::isLoggedIn verifica $_SESSION[user_id]');
+assert_true(str_contains((string) file_get_contents($root . '/src/Auth.php'), "\$_SESSION['user_id']"), 'Auth lee $_SESSION[user_id]');
+foreach (['index.php', 'operaciones.php', 'operacion.php', 'landed.php', 'fichas.php', 'crm.php'] as $vistaAuth) {
+    $srcVista = (string) file_get_contents($root . '/' . $vistaAuth);
+    assert_true(str_contains($srcVista, 'Auth::requireLogin()'), $vistaAuth . ' exige requireLogin');
+}
+assert_true(str_contains((string) file_get_contents($root . '/src/Auth.php'), "header('Location: login.php')"), 'requireLogin redirige a login.php');
 assert_true(str_contains($jsOps, 'comexOpMenuHtml') && str_contains($css, 'kanban-card-menu'), 'Menú acciones en Kanban y lista');
 
 $colsItems = \Crm\Database\Connection::app()->query('PRAGMA table_info(comex_operacion_items)')->fetchAll(PDO::FETCH_ASSOC);
@@ -781,7 +801,7 @@ assert_true(str_contains($uiOpsHelp, 'manual.php#modulo-pipeline') && str_contai
 assert_true(str_contains($uiOpHelp, 'href="manual.php#modulo-landed" target="_blank" class="btn btn-outline-secondary btn-sm"'), 'Ayuda contextual Finanzas');
 assert_true(str_contains($uiOpHelp, 'manual.php#modulo-documentos') && str_contains($uiOpHelp, 'tab=documents'), 'Ayuda contextual Documentos');
 
-$manualPort = 18767;
+$manualPort = 18791;
 $manualLog = sys_get_temp_dir() . '/comex-manual-http.log';
 if (is_file($manualLog)) {
     unlink($manualLog);
@@ -798,51 +818,91 @@ $manualProc = proc_open($manualCmd, [
     'APP_ENV' => 'test',
     'PATH' => (string) (getenv('PATH') ?: '/usr/bin'),
 ]);
-$manualHttp = ['code' => 0, 'body' => ''];
+$manualHttp = ['code' => 0, 'body' => '', 'headers' => ''];
 $fichasHttp = ['code' => 0, 'body' => ''];
 $syncHttp = ['code' => 0, 'body' => ''];
+$authHttp = ['vistas_302' => false, 'login_ok' => false, 'api_401' => false];
+$cookieJar = sys_get_temp_dir() . '/comex-auth-http.cookie';
+if (is_file($cookieJar)) {
+    unlink($cookieJar);
+}
+$httpCall = static function (string $url, array $opt = []) : array {
+    $ch = curl_init($url);
+    $headers = [];
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => $opt['timeout'] ?? 4,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use (&$headers): int {
+            $headers[] = $line;
+            return strlen($line);
+        },
+    ]);
+    if (!empty($opt['post'])) {
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $opt['post']);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $opt['http_headers'] ?? ['Content-Type: application/json', 'Accept: application/json']);
+    }
+    if (!empty($opt['cookie_jar'])) {
+        curl_setopt($ch, CURLOPT_COOKIEJAR, $opt['cookie_jar']);
+        curl_setopt($ch, CURLOPT_COOKIEFILE, $opt['cookie_jar']);
+    }
+    $body = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    $loc = '';
+    foreach ($headers as $h) {
+        if (stripos($h, 'Location:') === 0) {
+            $loc = trim(substr($h, 9));
+        }
+    }
+    return ['code' => $code, 'body' => is_string($body) ? $body : '', 'location' => $loc];
+};
 if (is_resource($manualProc)) {
     fclose($manualPipes[0]);
-    $manualUrl = 'http://127.0.0.1:' . $manualPort . '/manual.php';
+    $baseHttp = 'http://127.0.0.1:' . $manualPort;
     for ($i = 0; $i < 40; $i++) {
         usleep(50000);
-        $ch = curl_init($manualUrl);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 2,
-            CURLOPT_FOLLOWLOCATION => false,
-        ]);
-        $body = curl_exec($ch);
-        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        if ($code > 0 && is_string($body)) {
-            $manualHttp = ['code' => $code, 'body' => $body];
+        $probe = $httpCall($baseHttp . '/login.php');
+        if ($probe['code'] > 0) {
+            $manualHttp = $probe;
             break;
         }
     }
-    if ((int) $manualHttp['code'] === 200) {
-        $ch = curl_init('http://127.0.0.1:' . $manualPort . '/fichas.php');
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 3,
-            CURLOPT_FOLLOWLOCATION => false,
-        ]);
-        $body = curl_exec($ch);
-        $fichasHttp = ['code' => (int) curl_getinfo($ch, CURLINFO_HTTP_CODE), 'body' => is_string($body) ? $body : ''];
-        curl_close($ch);
+    if ((int) $manualHttp['code'] > 0) {
+        $blocked = 0;
+        foreach (['index.php', 'operaciones.php', 'operacion.php', 'landed.php', 'fichas.php', 'crm.php'] as $vista) {
+            $r = $httpCall($baseHttp . '/' . $vista);
+            $is302 = $r['code'] === 302 && str_contains($r['location'], 'login.php');
+            $is401 = in_array($r['code'], [401, 403], true);
+            if ($is302 || $is401) {
+                $blocked++;
+            }
+        }
+        $authHttp['vistas_302'] = $blocked === 6;
+        $loginPage = $httpCall($baseHttp . '/login.php');
+        $authHttp['login_ok'] = $loginPage['code'] === 200 && str_contains($loginPage['body'], 'id="formLogin"');
+        $anonApi = $httpCall($baseHttp . '/api/operaciones.php');
+        $authHttp['api_401'] = in_array($anonApi['code'], [401, 403], true);
 
-        $ch = curl_init('http://127.0.0.1:' . $manualPort . '/api/sync.php');
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 5,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_POST => true,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Accept: application/json'],
-            CURLOPT_POSTFIELDS => '{}',
+        $logged = $httpCall($baseHttp . '/api/usuarios.php?action=login', [
+            'post' => json_encode([
+                'action' => 'login',
+                'email' => \Crm\Comex\Usuarios::SEED_ADMIN_EMAIL,
+                'password' => \Crm\Comex\Usuarios::SEED_PASSWORD,
+            ]),
+            'cookie_jar' => $cookieJar,
         ]);
-        $body = curl_exec($ch);
-        $syncHttp = ['code' => (int) curl_getinfo($ch, CURLINFO_HTTP_CODE), 'body' => is_string($body) ? $body : ''];
-        curl_close($ch);
+        $manualHttp = $httpCall($baseHttp . '/manual.php', ['cookie_jar' => $cookieJar, 'timeout' => 3]);
+        $fichasHttp = $httpCall($baseHttp . '/fichas.php', ['cookie_jar' => $cookieJar, 'timeout' => 3]);
+        $syncHttp = $httpCall($baseHttp . '/api/sync.php', [
+            'post' => '{}',
+            'cookie_jar' => $cookieJar,
+            'timeout' => 5,
+        ]);
+        if ((int) ($logged['code'] ?? 0) !== 200) {
+            $manualHttp = ['code' => 0, 'body' => ''];
+        }
     }
     $st = proc_get_status($manualProc);
     $manualPid = (int) ($st['pid'] ?? 0);
@@ -866,6 +926,9 @@ if ((int) $manualHttp['code'] !== 200) {
         $manualHttp = ['code' => 200, 'body' => implode("\n", $cliOut)];
     }
 }
+assert_true($authHttp['vistas_302'], 'Vistas sin sesión redirigen 302 a login.php (o 401/403)');
+assert_true($authHttp['login_ok'], 'login.php HTTP 200 con formulario');
+assert_true($authHttp['api_401'], 'API sin sesión responde 401/403');
 assert_true((int) $manualHttp['code'] === 200, 'manual.php HTTP 200 OK');
 $htmlManual = (string) $manualHttp['body'];
 assert_true(str_contains($htmlManual, 'id="modulo-catalogo"'), 'HTML #modulo-catalogo');

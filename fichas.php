@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/includes/bootstrap.php';
+\Auth::requireLogin();
 require __DIR__ . '/includes/layout.php';
 
 crm_layout_start('Fichas', 'fichas');
