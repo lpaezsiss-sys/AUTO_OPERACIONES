@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/includes/bootstrap.php';
+\Auth::requireLogin();
 require __DIR__ . '/includes/layout.php';
 
 $tab = strtolower((string) ($_GET['tab'] ?? 'perfiles'));
@@ -74,29 +75,14 @@ crm_layout_start('CRM · Perfiles de usuario', 'crm', $sesion ?? []);
     </div>
     <div class="col-lg-4">
         <div class="card card-soft p-3">
-            <h2 class="h5 mb-2" style="color:#05294B">Acceso</h2>
+            <h2 class="h5 mb-2" style="color:#05294B">Sesión</h2>
             <p class="small text-secondary">El rol <strong>admin</strong> puede forzar el borrado de operaciones con stock. El rol <strong>comex</strong> crea, edita y consulta; no fuerza el 409.</p>
-            <?php if ($sesion) : ?>
             <div class="alert alert-light border small mb-3">
-                Sesión: <strong><?php echo crm_h((string) $sesion['nombre']); ?></strong><br>
-                <span class="badge-cat"><?php echo crm_h((string) $sesion['rol_etiqueta']); ?></span>
-                <code><?php echo crm_h((string) $sesion['email']); ?></code>
+                Sesión: <strong><?php echo crm_h((string) ($sesion['nombre'] ?? '')); ?></strong><br>
+                <span class="badge-cat"><?php echo crm_h((string) ($sesion['rol_etiqueta'] ?? '')); ?></span>
+                <code><?php echo crm_h((string) ($sesion['email'] ?? '')); ?></code>
             </div>
-            <button class="btn btn-outline-secondary w-100" type="button" id="btnSalir">Cerrar sesión</button>
-            <?php else : ?>
-            <form id="formLoginCrm">
-                <div class="mb-2">
-                    <label class="form-label" for="loginEmail">Email</label>
-                    <input id="loginEmail" type="email" class="form-control" required placeholder="admin@comex.lpaezsis.cl">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" for="loginPassword">Contraseña</label>
-                    <input id="loginPassword" type="password" class="form-control" required>
-                </div>
-                <button class="btn btn-yellow w-100" type="submit">Entrar</button>
-                <p class="small text-secondary mt-2 mb-0">Pruebas: <code>admin@comex.lpaezsis.cl</code> o <code>comex@comex.lpaezsis.cl</code> · <code>Comex2026!</code></p>
-            </form>
-            <?php endif; ?>
+            <a class="btn btn-outline-secondary w-100" href="login.php?logout=1" id="btnSalir">Cerrar sesión</a>
         </div>
     </div>
 </div>
