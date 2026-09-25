@@ -64,6 +64,7 @@ assert_true(in_array('Crm', $parentEntries, true), 'Directorio src/Crm (case Lin
 assert_true(!in_array('crm', $parentEntries, true) || in_array('Crm', $parentEntries, true), 'No hay colisión src/crm');
 assert_true(\Crm\Autoloader::pathMatchesCase($crmDir . '/Http.php'), 'Autoload case-sensitive Http.php');
 assert_true(class_exists(\Crm\Http::class), 'Crm\\Http autoload');
+assert_true(class_exists(\Crm\Inventory\SqliteConnector::class), 'Crm\\Inventory\\SqliteConnector autoload');
 assert_true(class_exists(\Crm\Inventory\InventarioStock::class), 'Crm\\Inventory\\InventarioStock autoload');
 assert_true(class_exists(\Crm\Comex\Health::class), 'Crm\\Comex\\Health autoload');
 
@@ -81,12 +82,26 @@ assert_true(crm_env('INV_SQLITE_PATH') === $tmpInv, 'INV_SQLITE_PATH de test ví
 
 $pdoInv = new PDO('sqlite:' . $tmpInv, null, null, \Crm\Database\Connection::options());
 $pdoInv->exec('CREATE TABLE Product (
-    id TEXT PRIMARY KEY,
-    code TEXT UNIQUE NOT NULL,
+    id TEXT NOT NULL PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
-    description TEXT DEFAULT \'\',
-    stock REAL DEFAULT 0,
-    averageUnitCost REAL DEFAULT 0
+    description TEXT NOT NULL DEFAULT \'\',
+    stock REAL NOT NULL DEFAULT 0,
+    averageUnitCost REAL NOT NULL DEFAULT 0,
+    lowStockThreshold REAL NOT NULL DEFAULT 2,
+    createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+)');
+$pdoInv->exec('CREATE TABLE Movement (
+    id TEXT NOT NULL PRIMARY KEY,
+    type TEXT NOT NULL,
+    documentNumber TEXT NOT NULL,
+    productId TEXT NOT NULL,
+    quantity REAL NOT NULL,
+    unitPrice REAL NOT NULL DEFAULT 0,
+    date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (productId) REFERENCES Product(id)
 )');
 $ins = $pdoInv->prepare(
     'INSERT INTO Product (id, code, name, description, stock, averageUnitCost) VALUES (?,?,?,?,?,?)'
@@ -130,6 +145,106 @@ $health = \Crm\Comex\Health::payload();
 assert_true($health['service'] === 'comex-lpaezsis', 'Health service comex-lpaezsis');
 assert_true($health['inventory']['connected'] === true, 'Health inventario connected');
 assert_true($health['db'] === 'ok', 'Health COMEX sqlite ok');
+
+$write = \Crm\Inventory\SqliteConnector::write();
+$journal = strtolower((string) $write->query('PRAGMA journal_mode')->fetchColumn());
+assert_true($journal === 'wal', 'prod.db en WAL mode (' . $journal . ')');
+$busy = (int) $write->query('PRAGMA busy_timeout')->fetchColumn();
+assert_true($busy === \Crm\Inventory\SqliteConnector::busyTimeoutMs(), 'busy_timeout ' . $busy . ' ms');
+
+$read = \Crm\Inventory\SqliteConnector::read();
+assert_true($read instanceof PDO, 'Conexión de lectura query_only');
+$readBlocked = false;
+try {
+    $read->exec("UPDATE Product SET stock = 0 WHERE code = 'ABC-99'");
+} catch (PDOException) {
+    $readBlocked = true;
+}
+assert_true($readBlocked, 'La conexión de lectura no escribe (query_only)');
+
+$cat = \Crm\Inventory\Catalogo::porCodigo('12852-48');
+assert_true(is_array($cat) && $cat['id'] === 'p1', 'Catalogo::porCodigo vincula Product.id');
+
+$sync = \Crm\Comex\Fichas::sincronizarDesdeInventario();
+assert_true($sync['total'] === 2 && $sync['created'] >= 2, 'Sync fichas desde prod.db');
+$ficha = \Crm\Comex\Fichas::porSku('12852-48');
+assert_true(is_array($ficha) && $ficha['vinculado'] === true, 'Ficha vinculada a inventario');
+assert_true((float) $ficha['stock'] === 12.5, 'Ficha muestra stock vivo');
+assert_true(is_string($ficha['imagen_path']) && str_starts_with((string) $ficha['imagen_path'], 'uploads/'), 'Ficha guarda imagen en uploads/');
+$imgAbs = $root . '/' . $ficha['imagen_path'];
+assert_true(is_file($imgAbs), 'PNG de ficha existe');
+$imgInfo = @getimagesize($imgAbs);
+assert_true(is_array($imgInfo) && (int) $imgInfo[2] === IMAGETYPE_PNG, 'Imagen GD PNG válida');
+$imgMode = (int) fileperms($imgAbs) & 0777;
+assert_true($imgMode === 0644, 'Imagen modo 644 (actual ' . decoct($imgMode) . ')');
+$prodDirMode = (int) fileperms($root . '/uploads/comex/productos') & 0777;
+assert_true(\Crm\Storage\Uploads::isSafeMode($prodDirMode), 'uploads/comex/productos 755/775');
+
+$imp = \Crm\Comex\Operaciones::crear([
+    'tipo' => 'IMPORTACION',
+    'folio' => 'IMP-TEST-1',
+    'fecha' => '2026-09-13',
+    'items' => [
+        ['sku' => '12852-48', 'cantidad' => 2, 'precio_unitario' => 1600],
+    ],
+]);
+assert_true((int) $imp['id'] > 0 && $imp['estado'] === 'borrador', 'Alta importación borrador');
+$conf = \Crm\Comex\Operaciones::confirmar((int) $imp['id']);
+assert_true($conf['estado'] === 'confirmada', 'Importación confirmada');
+assert_true(\Crm\Inventory\InventarioStock::stockPorCodigo('12852-48') === 14.5, 'ENTRADA suma stock 12.5+2');
+$cup = \Crm\Inventory\Catalogo::porCodigo('12852-48');
+$expectedCup = \Crm\Inventory\StockSync::nuevoCostoPromedio(12.5, 1500.0, 2, 1600);
+assert_true(is_array($cup) && abs((float) $cup['averageUnitCost'] - $expectedCup) < 0.0001, 'CUP/PMP actualizado');
+assert_true(str_starts_with((string) $conf['pdf_path'], 'uploads/comex/pdf/'), 'PDF en uploads/comex/pdf');
+$pdfAbs = $root . '/' . $conf['pdf_path'];
+assert_true(is_file($pdfAbs) && str_starts_with((string) file_get_contents($pdfAbs), '%PDF'), 'PDF válido');
+$pdfDirMode = (int) fileperms($root . '/uploads/comex/pdf') & 0777;
+assert_true(\Crm\Storage\Uploads::isSafeMode($pdfDirMode), 'uploads/comex/pdf 755/775');
+$movs = \Crm\Inventory\Catalogo::movimientosPorProducto('p1');
+assert_true($movs !== [] && $movs[0]['type'] === 'ENTRADA', 'Movement ENTRADA en prod.db');
+
+$exp = \Crm\Comex\Operaciones::crear([
+    'tipo' => 'EXPORTACION',
+    'folio' => 'EXP-TEST-1',
+    'items' => [['sku' => 'ABC-99', 'cantidad' => 1, 'precio_unitario' => 0]],
+]);
+$expOk = \Crm\Comex\Operaciones::confirmar((int) $exp['id']);
+assert_true($expOk['estado'] === 'confirmada', 'Exportación confirmada');
+assert_true(\Crm\Inventory\InventarioStock::stockPorCodigo('ABC-99') === 2.0, 'SALIDA resta stock 3-1');
+
+$over = \Crm\Comex\Operaciones::crear([
+    'tipo' => 'EXPORTACION',
+    'folio' => 'EXP-TEST-OVER',
+    'items' => [['sku' => 'ABC-99', 'cantidad' => 99]],
+]);
+$overFail = false;
+try {
+    \Crm\Comex\Operaciones::confirmar((int) $over['id']);
+} catch (\Crm\ApiException $e) {
+    $overFail = $e->status === 409;
+}
+assert_true($overFail, 'Exportación sin stock = 409');
+
+putenv('INV_SQLITE_BUSY_TIMEOUT_MS=120');
+putenv('INV_SQLITE_RETRIES=1');
+\Crm\Inventory\SqliteConnector::reset();
+$holder = \Crm\Inventory\SqliteConnector::open(true);
+$holder->exec('BEGIN IMMEDIATE');
+$busyHit = false;
+try {
+    \Crm\Inventory\SqliteConnector::transaction(static function (PDO $pdo): void {
+        $pdo->exec("UPDATE Product SET stock = stock WHERE code = 'ABC-99'");
+    });
+} catch (PDOException $e) {
+    $busyHit = \Crm\Inventory\SqliteConnector::isBusy($e);
+}
+$holder->exec('COMMIT');
+$holder = null;
+assert_true($busyHit, 'BEGIN IMMEDIATE concurrente → SQLITE_BUSY');
+putenv('INV_SQLITE_BUSY_TIMEOUT_MS');
+putenv('INV_SQLITE_RETRIES');
+\Crm\Inventory\SqliteConnector::reset();
+\Crm\Database\Connection::reset();
 
 $router = $root . '/router.php';
 $denyPaths = ['/.env', '/.env.production', '/config/app.php', '/src/Crm/Http.php', '/includes/bootstrap.php'];

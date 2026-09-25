@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Crm\Autoloader;
+use Crm\Comex\Schema;
 use Crm\Database\Connection;
 use Crm\Env;
 use Crm\Platform;
@@ -68,6 +69,15 @@ try {
     Uploads::ensure();
 } catch (\Throwable) {
     // El health reportará uploads no escribible; no bloquear el arranque.
+}
+
+try {
+    $driverName = strtolower((string) Env::getInstance()->get('COMEX_DB_DRIVER', 'mysql'));
+    if ($driverName === 'sqlite' || (string) Env::getInstance()->get('DB_NAME', '') !== '') {
+        Schema::install();
+    }
+} catch (\Throwable) {
+    // Health reportará db error; no bloquear el arranque HTTP.
 }
 
 function crm_env(string $key, ?string $default = null): ?string

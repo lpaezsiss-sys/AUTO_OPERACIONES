@@ -55,8 +55,12 @@ $invBadge = !empty($inv['connected']) ? 'Inventario conectado' : 'Inventario pen
     <div class="card" style="margin-top:1rem">
         <strong>API base</strong>
         <ul>
-            <li><a href="api/health.php"><code>api/health.php</code></a> — PHP, extensiones, inventario, uploads</li>
-            <li><a href="api/inventory.php"><code>api/inventory.php</code></a> — stock de solo lectura (<code>?code=SKU</code> o <code>?q=</code>)</li>
+            <li><a href="api/health.php"><code>api/health.php</code></a> — PHP, extensiones, conector SQLite, uploads</li>
+            <li><a href="api/inventory.php"><code>api/inventory.php</code></a> — catálogo / stock (<code>?code=SKU</code> o <code>?q=</code>)</li>
+            <li><a href="api/fichas.php"><code>api/fichas.php</code></a> — fichas COMEX vinculadas a SKU</li>
+            <li><a href="api/operaciones.php"><code>api/operaciones.php</code></a> — importaciones / exportaciones</li>
+            <li><code>POST api/sync.php</code> — sincronizar fichas desde <code>prod.db</code></li>
+            <li><a href="api/adjuntos.php?tipo=imagen&amp;sku=DEMO"><code>api/adjuntos.php</code></a> — imagen GD / PDF en <code>uploads/</code></li>
         </ul>
     </div>
 </main>

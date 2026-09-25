@@ -9,20 +9,23 @@ require __DIR__ . '/_init.php';
     $sku = trim((string) ($_GET['code'] ?? ''));
 
     if ($sku !== '') {
-        $stock = \Crm\Inventory\InventarioStock::stockPorCodigo($sku);
-        if ($stock === null && !\Crm\Inventory\InventarioStock::disponible()) {
+        $prod = \Crm\Inventory\Catalogo::porCodigo($sku);
+        if ($prod === null && !\Crm\Inventory\InventarioStock::disponible()) {
             \Crm\Http::fail('Inventario SQLite no disponible', 503);
         }
+        $ficha = \Crm\Comex\Fichas::porSku($sku);
         return [
             'code' => $sku,
-            'stock' => $stock,
-            'found' => $stock !== null,
+            'stock' => $prod['stock'] ?? null,
+            'found' => $prod !== null,
+            'product' => $prod,
+            'ficha' => $ficha,
         ];
     }
 
     if ($q === '') {
         return [
-            'inventory' => \Crm\Inventory\InventarioStock::status(crm_debug()),
+            'inventory' => \Crm\Inventory\SqliteConnector::status(crm_debug()),
             'items' => [],
         ];
     }
