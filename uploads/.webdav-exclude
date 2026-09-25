@@ -1,0 +1,2 @@
+# Marker: este directorio NO se sincroniza por WebDAV (cPanel puerto 2078).
+# Ver .webdavignore, deploy/webdav.exclude y scripts/webdav-sync.sh

@@ -1,0 +1,15 @@
+# Exclusiones para sincronización WebDAV cPanel (puerto 2078).
+# Usar con scripts/webdav-sync.sh — no pisar uploads ni secretos en el servidor.
+
+.env
+.env.local
+uploads/
+uploads/**
+data/*.sqlite
+data/*.db
+*.log
+.git/
+.idea/
+.vscode/
+vendor/
+downloads/*.zip
