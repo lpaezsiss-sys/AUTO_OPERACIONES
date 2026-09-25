@@ -123,6 +123,12 @@ final class Pipeline
             $etapas[$i] = self::anotar($et, $hoy);
             $etapas[$i]['bitacora'] = self::bitacora((int) $et['id']);
         }
+        $pendEval = [];
+        foreach ($op['items'] ?? [] as $it) {
+            if (is_array($it) && Operaciones::esPendienteCatalogo($it)) {
+                $pendEval[] = $it;
+            }
+        }
         return [
             'operacion' => $op,
             'catalogo' => self::catalogo((string) $op['tipo']),
@@ -132,6 +138,7 @@ final class Pipeline
             'alertas' => self::alertasDe($etapas),
             'estados' => [self::PENDING, self::IN_PROGRESS, self::COMPLETED, self::BLOCKED],
             'kanban_estado' => self::kanbanPorEstado($etapas),
+            'items_evaluacion' => $pendEval,
         ];
     }
 
@@ -241,6 +248,13 @@ final class Pipeline
                 $fechaReal = null;
             }
         }
+        $codigo = strtoupper((string) ($row['codigo'] ?? ''));
+        $cierraStock = $estado === self::COMPLETED && in_array($codigo, ['ENTREGA', 'CIERRE'], true);
+        $opId = (int) $row['operacion_id'];
+        if ($cierraStock) {
+            Operaciones::exigirCatalogoOficial($opId);
+            Operaciones::aplicarStockPendiente($opId);
+        }
         $now = crm_now();
         $upd = Connection::app()->prepare(
             'UPDATE comex_operacion_etapas
@@ -258,7 +272,6 @@ final class Pipeline
             $ins->execute([$etapaId, $comentario, $autor === '' ? 'COMEX' : $autor, $now]);
         }
 
-        $opId = (int) $row['operacion_id'];
         if ($estado === self::COMPLETED) {
             self::abrirSiguiente($opId, (int) $row['orden']);
         }

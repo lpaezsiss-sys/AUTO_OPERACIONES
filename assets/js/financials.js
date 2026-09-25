@@ -32,6 +32,8 @@
         descripcion: it.descripcion,
         cantidad: it.cantidad,
         fob_unitario: it.precio_unitario || it.fob_unitario || 0,
+        is_custom: it.is_custom,
+        origen: it.origen,
       };
     });
   }
@@ -77,6 +79,7 @@
         operacion_item_id: Number(tr.getAttribute("data-id") || 0),
         sku: tr.getAttribute("data-sku"),
         descripcion: tr.getAttribute("data-desc") || "",
+        is_custom: tr.getAttribute("data-custom") === "1",
         cantidad: crmParseNum(tr.querySelector(".i-cant").value),
         fob_unitario: crmParseNum(tr.querySelector(".i-fob").value),
       };
@@ -140,8 +143,10 @@
     tb.innerHTML = (est.items || []).map(function (it) {
       var r = bySku[it.sku] || {};
       return '<tr class="sheet-item" data-id="' + crmEsc(it.operacion_item_id || it.id || 0) +
-        '" data-sku="' + crmEsc(it.sku) + '" data-desc="' + crmEsc(it.descripcion || "") + '">' +
-        "<td><code>" + crmEsc(it.sku) + "</code></td>" +
+        '" data-sku="' + crmEsc(it.sku) + '" data-desc="' + crmEsc(it.descripcion || "") +
+        '" data-custom="' + (it.is_custom ? "1" : "0") + '">' +
+        "<td><code>" + crmEsc(it.sku) + "</code>" +
+        (it.is_custom ? ' <span class="badge-eval">Evaluación</span>' : "") + "</td>" +
         '<td><input class="form-control form-control-sm i-cant sheet-in" value="' + crmEsc(it.cantidad) + '"></td>' +
         '<td><input class="form-control form-control-sm i-fob sheet-in" value="' + crmEsc(it.fob_unitario) + '"></td>' +
         "<td>" + crmNum((it.factor || 0) * 100, 1) + "%</td>" +

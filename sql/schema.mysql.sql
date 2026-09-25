@@ -42,6 +42,10 @@ CREATE TABLE IF NOT EXISTS comex_operacion_items (
     cantidad DECIMAL(18,4) NOT NULL,
     precio_unitario DECIMAL(18,4) NOT NULL DEFAULT 0,
     imagen_path VARCHAR(255) DEFAULT '',
+    origen VARCHAR(16) NOT NULL DEFAULT 'inventario',
+    is_custom TINYINT(1) NOT NULL DEFAULT 0,
+    sku_temporal VARCHAR(64) DEFAULT '',
+    movimiento_id VARCHAR(64) DEFAULT '',
     KEY idx_comex_items_op (operacion_id),
     KEY idx_comex_items_sku (sku),
     CONSTRAINT fk_comex_items_op FOREIGN KEY (operacion_id) REFERENCES comex_operaciones(id)

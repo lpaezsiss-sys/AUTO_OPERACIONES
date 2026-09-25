@@ -25,6 +25,7 @@
         operacion_item_id: Number(tr.getAttribute("data-id") || 0),
         sku: tr.getAttribute("data-sku"),
         descripcion: tr.querySelector(".i-desc").value,
+        is_custom: tr.getAttribute("data-custom") === "1",
         cantidad: crmParseNum(tr.querySelector(".i-cant").value),
         fob_unitario: crmParseNum(tr.querySelector(".i-fob").value),
       };
@@ -61,11 +62,19 @@
     }).join("");
   }
 
+  function skuCell(it) {
+    var badge = it.is_custom
+      ? ' <span class="badge-eval">Evaluación</span>'
+      : "";
+    return "<code>" + crmEsc(it.sku) + "</code>" + badge;
+  }
+
   function renderItems(items) {
     var tb = document.querySelector("#tablaItems tbody");
     tb.innerHTML = (items || []).map(function (it) {
-      return '<tr data-id="' + crmEsc(it.id || it.operacion_item_id || 0) + '" data-sku="' + crmEsc(it.sku) + '">' +
-        "<td><code>" + crmEsc(it.sku) + "</code></td>" +
+      return '<tr data-id="' + crmEsc(it.id || it.operacion_item_id || 0) + '" data-sku="' + crmEsc(it.sku) +
+        '" data-custom="' + (it.is_custom ? "1" : "0") + '">' +
+        "<td>" + skuCell(it) + "</td>" +
         '<td><input class="form-control form-control-sm i-cant" value="' + crmEsc(it.cantidad || 0) + '"></td>' +
         '<td><input class="form-control form-control-sm i-fob" value="' + crmEsc(it.fob_unitario || it.precio_unitario || 0) + '"></td>' +
         '<td><input class="form-control form-control-sm i-desc" value="' + crmEsc(it.descripcion || "") + '"></td></tr>';
@@ -86,7 +95,9 @@
     }).join("");
     var tb = document.querySelector("#tablaResultado tbody");
     tb.innerHTML = (calc.items || []).map(function (it) {
-      return "<tr><td><code>" + crmEsc(it.sku) + "</code></td><td>" + crmNum(it.fob_origen, 2) +
+      return "<tr><td><code>" + crmEsc(it.sku) + "</code>" +
+        (it.is_custom ? ' <span class="badge-eval">Evaluación</span>' : "") +
+        "</td><td>" + crmNum(it.fob_origen, 2) +
         "</td><td>" + crmClp(it.fob_clp) + "</td><td>" + crmNum((it.share || 0) * 100, 1) +
         "%</td><td>" + crmClp(it.cif_clp) + "</td><td>" + crmClp(it.iva_clp) +
         "</td><td>" + crmClp(it.gastos_locales_clp) + "</td><td class=\"fw-semibold\">" +
@@ -152,6 +163,8 @@
           cantidad: it.cantidad,
           fob_unitario: it.precio_unitario,
           descripcion: it.descripcion,
+          is_custom: it.is_custom,
+          origen: it.origen,
         };
       }));
       document.getElementById("kpis").innerHTML = "";

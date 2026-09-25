@@ -16,6 +16,79 @@ final class Schema
         foreach (self::statements($driver) as $sql) {
             $pdo->exec($sql);
         }
+        self::ensureUpgrades($pdo, $driver);
+    }
+
+    /**
+     * Columnas nuevas sobre instalaciones ya creadas (CREATE TABLE IF NOT EXISTS no altera).
+     */
+    public static function ensureUpgrades(?PDO $pdo = null, ?string $driver = null): void
+    {
+        $pdo = $pdo ?? Connection::app();
+        $driver = $driver ?? ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' ? 'sqlite' : 'mysql');
+        $have = self::columnMap($pdo, 'comex_operacion_items', $driver);
+        foreach (self::itemUpgradeStatements($driver, $have) as $sql) {
+            $pdo->exec($sql);
+        }
+    }
+
+    /**
+     * @param array<string, true> $have
+     * @return list<string>
+     */
+    private static function itemUpgradeStatements(string $driver, array $have): array
+    {
+        $out = [];
+        if ($driver === 'sqlite') {
+            if (!isset($have['origen'])) {
+                $out[] = "ALTER TABLE comex_operacion_items ADD COLUMN origen TEXT DEFAULT 'inventario'";
+            }
+            if (!isset($have['is_custom'])) {
+                $out[] = 'ALTER TABLE comex_operacion_items ADD COLUMN is_custom INTEGER DEFAULT 0';
+            }
+            if (!isset($have['sku_temporal'])) {
+                $out[] = "ALTER TABLE comex_operacion_items ADD COLUMN sku_temporal TEXT DEFAULT ''";
+            }
+            if (!isset($have['movimiento_id'])) {
+                $out[] = "ALTER TABLE comex_operacion_items ADD COLUMN movimiento_id TEXT DEFAULT ''";
+            }
+            return $out;
+        }
+        if (!isset($have['origen'])) {
+            $out[] = "ALTER TABLE comex_operacion_items ADD COLUMN origen VARCHAR(16) NOT NULL DEFAULT 'inventario'";
+        }
+        if (!isset($have['is_custom'])) {
+            $out[] = 'ALTER TABLE comex_operacion_items ADD COLUMN is_custom TINYINT(1) NOT NULL DEFAULT 0';
+        }
+        if (!isset($have['sku_temporal'])) {
+            $out[] = "ALTER TABLE comex_operacion_items ADD COLUMN sku_temporal VARCHAR(64) DEFAULT ''";
+        }
+        if (!isset($have['movimiento_id'])) {
+            $out[] = "ALTER TABLE comex_operacion_items ADD COLUMN movimiento_id VARCHAR(64) DEFAULT ''";
+        }
+        return $out;
+    }
+
+    /** @return array<string, true> */
+    private static function columnMap(PDO $pdo, string $table, string $driver): array
+    {
+        $out = [];
+        if ($driver === 'sqlite') {
+            $rows = $pdo->query('PRAGMA table_info(' . $table . ')')->fetchAll(PDO::FETCH_ASSOC);
+            foreach (is_array($rows) ? $rows : [] as $row) {
+                if (is_array($row) && isset($row['name'])) {
+                    $out[strtolower((string) $row['name'])] = true;
+                }
+            }
+            return $out;
+        }
+        $rows = $pdo->query('SHOW COLUMNS FROM `' . str_replace('`', '', $table) . '`')->fetchAll(PDO::FETCH_ASSOC);
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            if (is_array($row) && isset($row['Field'])) {
+                $out[strtolower((string) $row['Field'])] = true;
+            }
+        }
+        return $out;
     }
 
     /** @return list<string> */
@@ -60,6 +133,10 @@ final class Schema
                     cantidad REAL NOT NULL,
                     precio_unitario REAL NOT NULL DEFAULT 0,
                     imagen_path TEXT DEFAULT \'\',
+                    origen TEXT NOT NULL DEFAULT \'inventario\',
+                    is_custom INTEGER NOT NULL DEFAULT 0,
+                    sku_temporal TEXT DEFAULT \'\',
+                    movimiento_id TEXT DEFAULT \'\',
                     FOREIGN KEY (operacion_id) REFERENCES comex_operaciones(id)
                 )',
                 'CREATE INDEX IF NOT EXISTS idx_comex_items_op ON comex_operacion_items(operacion_id)',
@@ -193,6 +270,10 @@ final class Schema
                 cantidad DECIMAL(18,4) NOT NULL,
                 precio_unitario DECIMAL(18,4) NOT NULL DEFAULT 0,
                 imagen_path VARCHAR(255) DEFAULT \'\',
+                origen VARCHAR(16) NOT NULL DEFAULT \'inventario\',
+                is_custom TINYINT(1) NOT NULL DEFAULT 0,
+                sku_temporal VARCHAR(64) DEFAULT \'\',
+                movimiento_id VARCHAR(64) DEFAULT \'\',
                 KEY idx_comex_items_op (operacion_id),
                 KEY idx_comex_items_sku (sku),
                 CONSTRAINT fk_comex_items_op FOREIGN KEY (operacion_id) REFERENCES comex_operaciones(id)

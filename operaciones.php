@@ -48,7 +48,7 @@ crm_layout_start('Pipeline de operaciones', 'operaciones');
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
-                <p class="small text-secondary">Al crear se generan las 13 etapas (Evaluación + Ejecución). El ítem de inventario es opcional en Solicitud.</p>
+                <p class="small text-secondary">Al crear se generan las 13 etapas (Evaluación + Ejecución). Puede cargar un SKU de inventario o un código temporal (ej. TEMP-001) con nombre si aún no existe en el catálogo.</p>
                 <div class="row g-2">
                     <div class="col-6">
                         <label class="form-label" for="tipo">Tipo</label>
@@ -71,13 +71,17 @@ crm_layout_start('Pipeline de operaciones', 'operaciones');
                     </div>
                     <div class="col-6">
                         <label class="form-label" for="sku">SKU (opcional)</label>
-                        <input id="sku" class="form-control" placeholder="12852-48">
+                        <input id="sku" class="form-control" placeholder="12852-48 o TEMP-001">
                     </div>
-                    <div class="col-3">
+                    <div class="col-6">
+                        <label class="form-label" for="itemNombre">Nombre / Descripción</label>
+                        <input id="itemNombre" class="form-control" placeholder="Requerido si el SKU es temporal">
+                    </div>
+                    <div class="col-6">
                         <label class="form-label" for="cantidad">Cant.</label>
                         <input id="cantidad" class="form-control" value="1">
                     </div>
-                    <div class="col-3">
+                    <div class="col-6">
                         <label class="form-label" for="precio">FOB</label>
                         <input id="precio" class="form-control" value="0">
                     </div>

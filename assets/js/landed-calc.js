@@ -111,6 +111,8 @@
         fob_unitario: fobU,
         fob_origen: fobOrig,
         fob_clp: roundN(aClp(fobOrig, moneda, tcUsd, tcEur), 2),
+        origen: it.origen || "",
+        is_custom: !!it.is_custom,
       });
       pesos.push(fobOrig);
     }
