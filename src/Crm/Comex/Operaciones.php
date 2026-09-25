@@ -61,8 +61,8 @@ final class Operaciones
             throw new ApiException('tipo debe ser IMPORTACION o EXPORTACION', 400);
         }
         $items = $data['items'] ?? [];
-        if (!is_array($items) || $items === []) {
-            throw new ApiException('La operación requiere ítems con SKU', 400);
+        if (!is_array($items)) {
+            throw new ApiException('Ítems inválidos', 400);
         }
         $folio = trim((string) ($data['folio'] ?? ''));
         if ($folio === '') {
@@ -80,7 +80,10 @@ final class Operaciones
             );
             $ins->execute([$tipo, $folio, 'borrador', $fecha, $referencia, '', null, '', $now, $now]);
             $id = (int) $pdo->lastInsertId();
-            self::insertarItems($pdo, $id, $items);
+            if ($items !== []) {
+                self::insertarItems($pdo, $id, $items);
+            }
+            Pipeline::sembrar($id, $tipo, $fecha);
             $pdo->commit();
         } catch (\Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -109,8 +112,10 @@ final class Operaciones
         if ((string) $op['estado'] !== 'borrador') {
             throw new ApiException('Solo se confirma una operación en borrador', 409);
         }
-        /** @var list<array<string, mixed>> $items */
         $items = $op['items'];
+        if ($items === []) {
+            throw new ApiException('La operación requiere ítems con SKU para confirmar', 400);
+        }
         $lineas = [];
         foreach ($items as $it) {
             $lineas[] = [
