@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Primer respaldo COMEX_lpaezsis — ejecutar en Git Bash (Windows).
+# Respaldo COMEX_lpaezsis — ejecutar en Git Bash (Windows).
 #   bash scripts/descargar-respaldo-gitbash.sh
 # O, sin clonar el repo:
 #   curl -fsSL "https://comex.lpaezsis.cl/downloads/descargar-COMEX_lpaezsis.sh" | bash
 set -euo pipefail
 
-ZIP_NAME="${COMEX_BACKUP_ZIP:-COMEX_lpaezsis-2026-09-14.zip}"
+ZIP_NAME="${COMEX_BACKUP_ZIP:-COMEX_lpaezsis-2026-09-24.zip}"
 ZIP_URL="${COMEX_BACKUP_URL:-https://comex.lpaezsis.cl/downloads/${ZIP_NAME}}"
 DEST_DIR="${COMEX_BACKUP_DIR:-$PWD}"
 
@@ -35,5 +35,6 @@ echo
 echo "Listo: ${DEST_DIR}/${ZIP_NAME}"
 echo "Para extraer: unzip ${ZIP_NAME}"
 echo "Clon Git (alternativa):"
-echo "  git clone --branch freeze-comex-lpaezsis-2026-09-14 --single-branch --depth 1 \\"
+echo "  git clone --branch freeze-comex-lpaezsis-2026-09-24 --single-branch --depth 1 \\"
 echo "    https://github.com/lpaezsiss-sys/AUTO_OPERACIONES.git COMEX_lpaezsis"
+echo "Primer respaldo (14-sep-2026): COMEX_lpaezsis-2026-09-14.zip / freeze-comex-lpaezsis-2026-09-14"
