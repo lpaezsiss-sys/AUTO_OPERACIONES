@@ -17,6 +17,7 @@ crm_layout_start('Pipeline de operaciones', 'operaciones');
             <button class="btn btn-navy" type="button" id="btnKanban">Kanban</button>
             <button class="btn btn-outline-secondary" type="button" id="btnLista">Lista</button>
         </div>
+        <a href="manual.php#modulo-pipeline" target="_blank" class="btn btn-outline-secondary btn-sm align-self-center"><i class="bi bi-book" aria-hidden="true"></i> Ayuda</a>
         <button class="btn btn-yellow" type="button" data-bs-toggle="modal" data-bs-target="#modalCrear">Nueva operación</button>
     </div>
 </div>

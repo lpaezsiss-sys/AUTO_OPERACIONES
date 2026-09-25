@@ -74,7 +74,9 @@ ServerSignature Off
     # Directorios de aplicación y config: 403 (no son document root público)
     RewriteRule ^(config|src|includes|sql|tests|data|database|scripts|deploy|vendor)(/|$) - [F,L]
 
-    # HTTPS forzado (terminación local o proxy X-Forwarded-Proto)
+    # HTTPS forzado (terminación local o proxy X-Forwarded-Proto).
+    # Excluir ACME HTTP-01 para AutoSSL / Let's Encrypt.
+    RewriteCond %{REQUEST_URI} !^/\.well-known/ [NC]
     RewriteCond %{HTTPS} !=on
     RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
@@ -113,4 +115,12 @@ ServerSignature Off
 <IfModule lsapi_module>
     php_flag display_errors Off
     php_flag display_startup_errors Off
+</IfModule>
+
+# CloudLinux PHP Selector en BlueHosting (mismo handler que CRM).
+<IfModule mime_module>
+    AddHandler application/x-httpd-alt-php81___lsphp .php .php8 .phtml
+</IfModule>
+<IfModule LiteSpeed>
+    AddHandler application/x-httpd-alt-php81___lsphp .php .php8 .phtml
 </IfModule>

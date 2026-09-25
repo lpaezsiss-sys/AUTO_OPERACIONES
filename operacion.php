@@ -32,6 +32,11 @@ $docs = $tab === 'documents';
             <a class="btn <?php echo $docs ? 'btn-navy' : 'btn-outline-secondary'; ?>" href="operacion.php?id=<?php echo $id; ?>&amp;tab=documents">Documentos</a>
             <a class="btn <?php echo $fin ? 'btn-navy' : 'btn-outline-secondary'; ?>" href="operacion.php?id=<?php echo $id; ?>&amp;tab=financials">Finanzas</a>
         </div>
+        <?php if ($fin) : ?>
+        <a href="manual.php#modulo-landed" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-book" aria-hidden="true"></i> Ayuda</a>
+        <?php elseif ($docs) : ?>
+        <a href="manual.php#modulo-documentos" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-book" aria-hidden="true"></i> Ayuda</a>
+        <?php endif; ?>
         <div class="btn-group <?php echo $pipe ? '' : 'd-none'; ?>" id="btnsPipelineVista" role="group">
             <button class="btn btn-navy" type="button" id="btnKanban">Kanban</button>
             <button class="btn btn-outline-secondary" type="button" id="btnLista">Lista</button>
@@ -59,7 +64,10 @@ $docs = $tab === 'documents';
 </div>
 
 <div id="tabDocumentos" class="<?php echo $docs ? '' : 'd-none'; ?>">
-    <p class="text-secondary">Repositorio de embarque: Factura Comercial, Packing List, BL/AWB, Certificados y DIN/DUS. Cada carga registra usuario y fecha.</p>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <p class="text-secondary mb-0">Repositorio de embarque: Factura Comercial, Packing List, BL/AWB, Certificados y DIN/DUS. Cada carga registra usuario y fecha.</p>
+        <a href="manual.php#modulo-documentos" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-book" aria-hidden="true"></i> Ayuda</a>
+    </div>
     <div class="row g-3 mb-3" id="docTipos"></div>
     <div class="card card-soft p-3 mb-3">
         <h2 class="h6 mb-3" style="color:#05294B">Subir documento</h2>
@@ -116,6 +124,7 @@ $docs = $tab === 'documents';
         <button class="btn btn-navy" type="button" id="btnSaveReal">Guardar costo real</button>
         <button class="btn btn-outline-secondary" type="button" id="btnXlsx">Excel (xlsx)</button>
         <button class="btn btn-outline-secondary" type="button" id="btnPdfMx">PDF matriz</button>
+        <a href="manual.php#modulo-landed" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-book" aria-hidden="true"></i> Ayuda</a>
         <span class="small text-secondary align-self-center" id="sheetHint">Recálculo en vivo · IVA 19% sobre CIF · prorrateo FOB</span>
     </div>
     <div class="row g-3 mb-3" id="finKpis"></div>
