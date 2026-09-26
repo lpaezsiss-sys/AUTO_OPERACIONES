@@ -62,6 +62,8 @@ $archivosRaiz = [
     'api/documentos.php' => 'API documentos',
     'api/dashboard.php' => 'API dashboard KPIs',
     'assets/css/app.css' => 'Estilos panel CRM',
+    'scripts/make-comex-backup.sh' => 'ZIP git archive de respaldo',
+    'scripts/descargar-respaldo-gitbash.sh' => 'Descarga Git Bash del freeze',
     'composer.json' => 'PSR-4 Crm\\ → src/Crm/',
 ];
 foreach ($archivosRaiz as $rel => $label) {
