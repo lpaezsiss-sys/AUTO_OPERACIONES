@@ -431,6 +431,12 @@ foreach (['index.php', 'operaciones.php', 'operacion.php', 'landed.php', 'fichas
     assert_true(str_contains($srcVista, 'Auth::requireLogin()'), $vistaAuth . ' exige requireLogin');
 }
 assert_true(str_contains((string) file_get_contents($root . '/src/Auth.php'), "header('Location: login.php')"), 'requireLogin redirige a login.php');
+$gitbash = (string) file_get_contents($root . '/scripts/descargar-respaldo-gitbash.sh');
+$mkBackup = (string) file_get_contents($root . '/scripts/make-comex-backup.sh');
+assert_true(str_contains($gitbash, 'COMEX_lpaezsis-2026-09-26.zip'), 'Git Bash apunta al ZIP 26-sep-2026');
+assert_true(str_contains($gitbash, 'freeze-comex-lpaezsis-2026-09-26'), 'Git Bash clona freeze 26-sep-2026');
+assert_true(str_contains($gitbash, 'COMEX_lpaezsis-2026-09-14.zip') && str_contains($gitbash, 'freeze-comex-lpaezsis-2026-09-14'), 'Conserva primer respaldo 14-sep-2026');
+assert_true(str_contains($mkBackup, 'git archive') && str_contains($mkBackup, '.env'), 'ZIP via git archive sin .env');
 assert_true(str_contains($jsOps, 'comexOpMenuHtml') && str_contains($css, 'kanban-card-menu'), 'Menú acciones en Kanban y lista');
 
 $colsItems = \Crm\Database\Connection::app()->query('PRAGMA table_info(comex_operacion_items)')->fetchAll(PDO::FETCH_ASSOC);
