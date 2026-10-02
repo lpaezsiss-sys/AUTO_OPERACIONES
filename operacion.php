@@ -108,7 +108,7 @@ $itemsTab = $tab === 'items';
             <table class="table table-sm table-landed align-middle mb-0" id="tablaItemsOp">
                 <thead>
                     <tr>
-                        <th>SKU</th><th>Origen</th><th>Descripción</th><th>Cant.</th><th>FOB</th><th>Stock</th><th></th>
+                        <th>SKU</th><th>Origen</th><th>Descripción</th><th>Cant.</th><th>FOB</th><th>Stock</th><th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -141,6 +141,62 @@ $itemsTab = $tab === 'items';
                 <button class="btn btn-yellow" type="submit">Vincular</button>
             </div>
         </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditarItem" tabindex="-1" aria-labelledby="modalEditarItemTitulo">
+    <div class="modal-dialog">
+        <form class="modal-content" id="formEditarItem">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="modalEditarItemTitulo">Editar ítem</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editItemId">
+                <p class="small text-secondary d-none" id="editItemLockHint">Esta línea ya tiene movimiento de stock: SKU y cantidad quedan bloqueados. Puede corregir descripción y FOB.</p>
+                <div class="mb-2">
+                    <label class="form-label" for="editItemSku">SKU</label>
+                    <input id="editItemSku" class="form-control" list="listaSkuCatalogo" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" for="editItemNombre">Nombre / Descripción</label>
+                    <input id="editItemNombre" class="form-control">
+                </div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label" for="editItemCant">Cantidad</label>
+                        <input id="editItemCant" class="form-control" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" for="editItemFob">FOB unit.</label>
+                        <input id="editItemFob" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-yellow" type="submit">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEliminarItem" tabindex="-1" aria-labelledby="modalEliminarItemTitulo">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="modalEliminarItemTitulo">Quitar ítem</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="delItemId">
+                <p class="mb-0">¿Eliminar la línea <code id="delItemSku"></code> de esta operación?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-outline-danger" type="button" id="btnDelItemConfirmar">Quitar</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -329,10 +385,10 @@ window.COMEX_IVA_PCT = <?php echo json_encode(crm_iva_pct()); ?>;
 window.comexOpOnDeleted = function () { location.href = "operaciones.php"; };
 window.comexOpOnChanged = function () { location.reload(); };
 </script>
-<script src="assets/js/operacion-crud.js"></script>
-<script src="assets/js/landed-calc.js"></script>
-<script src="assets/js/operacion.js"></script>
-<script src="assets/js/items.js"></script>
-<script src="assets/js/financials.js"></script>
-<script src="assets/js/documentos.js"></script>
+<script src="<?php echo crm_h(crm_asset('assets/js/operacion-crud.js')); ?>"></script>
+<script src="<?php echo crm_h(crm_asset('assets/js/landed-calc.js')); ?>"></script>
+<script src="<?php echo crm_h(crm_asset('assets/js/operacion.js')); ?>"></script>
+<script src="<?php echo crm_h(crm_asset('assets/js/items.js')); ?>"></script>
+<script src="<?php echo crm_h(crm_asset('assets/js/financials.js')); ?>"></script>
+<script src="<?php echo crm_h(crm_asset('assets/js/documentos.js')); ?>"></script>
 <?php crm_layout_end(); ?>

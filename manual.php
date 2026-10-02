@@ -77,7 +77,7 @@ require __DIR__ . '/includes/layout_header.php';
             <ul class="mb-0">
                 <li><strong>Atraso:</strong> etapa no completada con fecha estimada anterior a hoy (tarjeta roja / badge Atrasada).</li>
                 <li><strong>Bloqueo:</strong> estado <code>BLOCKED</code> (amarillo). Use la bitácora para dejar comentario, usuario y fecha.</li>
-                <li><strong>Ítems:</strong> en <code>operacion.php?id=&amp;tab=items</code> se agregan SKU de catálogo o temporales. Entrega/Cierre exige vincular los temporales al catálogo oficial.</li>
+                <li><strong>Ítems:</strong> en <code>operacion.php?id=&amp;tab=items</code> se agregan SKU de catálogo o temporales. Cada línea se puede <strong>Editar</strong> (SKU, descripción, cantidad, FOB) o <strong>Quitar</strong> mientras no tenga movimiento de stock. Entrega/Cierre exige vincular los temporales al catálogo oficial.</li>
                 <li><strong>Editar / Eliminar:</strong> menú <code>⋯</code> en tarjetas Kanban y filas de lista, o botones en el detalle. Editar actualiza nombre, proveedor, referencia/DIN/DUS y moneda base. Eliminar borra ítems, finanzas y documentos; si ya hay movimientos en <code>prod.db</code> la API responde HTTP 409. Solo el rol <code>admin</code> puede forzar ese borrado; el rol <code>comex</code> debe revertir stock.</li>
             </ul>
         </section>

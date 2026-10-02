@@ -1,19 +1,60 @@
 (function () {
   "use strict";
 
+  function crmWithQuery(path, params) {
+    var extra = [];
+    Object.keys(params || {}).forEach(function (k) {
+      var v = params[k];
+      if (v == null || v === "") {
+        return;
+      }
+      extra.push(encodeURIComponent(k) + "=" + encodeURIComponent(String(v)));
+    });
+    if (!extra.length) {
+      return path;
+    }
+    var qi = path.indexOf("?");
+    var existing = {};
+    if (qi >= 0) {
+      path.slice(qi + 1).split("&").forEach(function (pair) {
+        var key = decodeURIComponent((pair.split("=")[0] || "").replace(/\+/g, " "));
+        if (key) {
+          existing[key] = true;
+        }
+      });
+    }
+    var add = extra.filter(function (pair) {
+      var key = decodeURIComponent(pair.split("=")[0] || "");
+      return key && !existing[key];
+    });
+    if (!add.length) {
+      return path;
+    }
+    return path + (qi >= 0 ? "&" : "?") + add.join("&");
+  }
+
   window.crmApi = async function (path, options) {
     options = options || {};
     var headers = {
       Accept: "application/json",
       "Cache-Control": "no-cache",
       Pragma: "no-cache",
+      "X-Requested-With": "XMLHttpRequest",
     };
     if (options.body) {
       headers["Content-Type"] = "application/json";
     }
-    var res = await fetch(path, {
-      credentials: "same-origin",
+    var url = path;
+    if (options.body && typeof options.body === "object") {
+      url = crmWithQuery(path, {
+        action: options.body.action || "",
+        id: options.body.id || options.body.operacion_id || "",
+      });
+    }
+    var res = await fetch(url, {
+      credentials: "include",
       cache: "no-store",
+      redirect: "follow",
       method: options.method || "GET",
       headers: Object.assign(headers, options.headers || {}),
       body: options.body ? JSON.stringify(options.body) : undefined,
@@ -25,7 +66,11 @@
       data = { ok: false, success: false, error: "Respuesta inválida (HTTP " + res.status + ")" };
     }
     if (!res.ok || data.ok === false || data.success === false) {
-      var err = new Error(data.error || "Error de API");
+      var msg = data.error || "Error de API";
+      if (res.status === 401 && (!data.error || data.error === "No autenticado")) {
+        msg = "No autenticado. Recargue e inicie sesión.";
+      }
+      var err = new Error(msg);
       err.status = res.status;
       err.codigo = data.codigo || "";
       throw err;

@@ -34,9 +34,9 @@ $appName = (string) crm_env('APP_NAME', 'COMEX LPAEZsis');
     <link rel="icon" href="assets/img/logo.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="assets/css/app.css" rel="stylesheet">
+    <link href="<?php echo crm_h(crm_asset('assets/css/app.css')); ?>" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/app.js"></script>
+    <script src="<?php echo crm_h(crm_asset('assets/js/app.js')); ?>"></script>
 </head>
 <body class="page-login">
 <div id="crmToast" class="toast align-items-center text-bg-dark border-0" role="status">
@@ -70,6 +70,6 @@ $appName = (string) crm_env('APP_NAME', 'COMEX LPAEZsis');
         <p class="small text-secondary mt-3 mb-0">Pruebas: <code>admin@comex.lpaezsis.cl</code> o <code>comex@comex.lpaezsis.cl</code> · <code>Comex2026!</code></p>
     </div>
 </div>
-<script src="assets/js/login.js"></script>
+<script src="<?php echo crm_h(crm_asset('assets/js/login.js')); ?>"></script>
 </body>
 </html>

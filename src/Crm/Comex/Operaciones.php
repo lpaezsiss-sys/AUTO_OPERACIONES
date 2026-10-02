@@ -240,6 +240,112 @@ final class Operaciones
     }
 
     /**
+     * Actualiza SKU, descripción, cantidad y FOB de una línea.
+     * Con movimiento de stock no se permite cambiar SKU ni cantidad.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public static function actualizarItem(int $itemId, array $data): array
+    {
+        $row = self::itemPorId($itemId);
+        $mov = trim((string) ($row['movimiento_id'] ?? ''));
+        $sku = array_key_exists('sku', $data) ? trim((string) $data['sku']) : (string) ($row['sku'] ?? '');
+        $qty = array_key_exists('cantidad', $data) ? (float) $data['cantidad'] : (float) ($row['cantidad'] ?? 0);
+        $precio = array_key_exists('precio_unitario', $data)
+            ? (float) $data['precio_unitario']
+            : (float) ($row['precio_unitario'] ?? 0);
+        $nombre = trim((string) ($data['nombre'] ?? ''));
+        $desc = trim((string) ($data['descripcion'] ?? ''));
+        if ($desc === '') {
+            $desc = $nombre !== '' ? $nombre : trim((string) ($row['descripcion'] ?? ''));
+        }
+        if ($mov !== '') {
+            $skuCambia = $sku !== (string) ($row['sku'] ?? '');
+            $qtyCambia = abs($qty - (float) ($row['cantidad'] ?? 0)) > 0.0001;
+            if ($skuCambia || $qtyCambia) {
+                throw new ApiException(
+                    'El ítem ya tiene movimiento de stock. No se puede cambiar SKU ni cantidad.',
+                    409,
+                    ['codigo' => 'STOCK_MOVIMIENTOS']
+                );
+            }
+            $upd = Connection::app()->prepare(
+                'UPDATE comex_operacion_items SET descripcion = ?, precio_unitario = ? WHERE id = ?'
+            );
+            $upd->execute([$desc, $precio, $itemId]);
+            self::tocarOperacion((int) $row['operacion_id']);
+            $op = self::porId((int) $row['operacion_id']);
+            if ($op === null) {
+                throw new ApiException('Operación no encontrada', 404);
+            }
+            return $op;
+        }
+        $skuTemporal = trim((string) ($row['sku_temporal'] ?? ''));
+        if ($skuTemporal === '' && self::esPendienteCatalogo($row)) {
+            $skuTemporal = (string) ($row['sku'] ?? '');
+        }
+        $campos = self::resolverCamposItem([
+            'sku' => $sku,
+            'cantidad' => $qty,
+            'precio_unitario' => $precio,
+            'nombre' => $nombre,
+            'descripcion' => $desc,
+            'imagen_path' => (string) ($row['imagen_path'] ?? ''),
+        ], $skuTemporal);
+        $upd = Connection::app()->prepare(
+            'UPDATE comex_operacion_items
+             SET ficha_id = ?, sku = ?, inventario_id = ?, descripcion = ?, cantidad = ?, precio_unitario = ?,
+                 imagen_path = ?, origen = ?, is_custom = ?, sku_temporal = ?
+             WHERE id = ?'
+        );
+        $upd->execute([
+            $campos['ficha_id'],
+            $campos['sku'],
+            $campos['inventario_id'],
+            $campos['descripcion'],
+            $campos['cantidad'],
+            $campos['precio_unitario'],
+            $campos['imagen_path'],
+            $campos['origen'],
+            $campos['is_custom'],
+            $campos['sku_temporal'],
+            $itemId,
+        ]);
+        self::tocarOperacion((int) $row['operacion_id']);
+        $op = self::porId((int) $row['operacion_id']);
+        if ($op === null) {
+            throw new ApiException('Operación no encontrada', 404);
+        }
+        return $op;
+    }
+
+    /**
+     * Quita una línea. Bloqueado si ya hay movimiento de stock.
+     *
+     * @return array<string, mixed>
+     */
+    public static function eliminarItem(int $itemId): array
+    {
+        $row = self::itemPorId($itemId);
+        if (trim((string) ($row['movimiento_id'] ?? '')) !== '') {
+            throw new ApiException(
+                'El ítem ya tiene movimiento de stock. No se puede eliminar la línea.',
+                409,
+                ['codigo' => 'STOCK_MOVIMIENTOS']
+            );
+        }
+        $opId = (int) $row['operacion_id'];
+        Connection::app()->prepare('DELETE FROM comex_operacion_items WHERE id = ?')->execute([$itemId]);
+        self::tocarOperacion($opId);
+        $op = self::porId($opId);
+        if ($op === null) {
+            throw new ApiException('Operación no encontrada', 404);
+        }
+        return $op;
+    }
+
+    /**
      * Vincula un SKU de evaluación al catálogo oficial (prod.db).
      *
      * @return array<string, mixed>
@@ -450,6 +556,111 @@ final class Operaciones
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private static function itemPorId(int $itemId): array
+    {
+        if ($itemId <= 0) {
+            throw new ApiException('Ítem inválido', 400);
+        }
+        $stmt = Connection::app()->prepare('SELECT * FROM comex_operacion_items WHERE id = ? LIMIT 1');
+        $stmt->execute([$itemId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            throw new ApiException('Ítem no encontrado', 404);
+        }
+        return $row;
+    }
+
+    private static function tocarOperacion(int $operacionId): void
+    {
+        if ($operacionId <= 0) {
+            return;
+        }
+        Connection::app()->prepare(
+            'UPDATE comex_operaciones SET updated_at = ? WHERE id = ?'
+        )->execute([crm_now(), $operacionId]);
+    }
+
+    /**
+     * @param array<string, mixed> $raw
+     * @return array{
+     *   ficha_id: mixed,
+     *   sku: string,
+     *   inventario_id: mixed,
+     *   descripcion: string,
+     *   cantidad: float,
+     *   precio_unitario: float,
+     *   imagen_path: string,
+     *   origen: string,
+     *   is_custom: int,
+     *   sku_temporal: string,
+     *   movimiento_id: string
+     * }
+     */
+    private static function resolverCamposItem(array $raw, string $skuTemporalPref = ''): array
+    {
+        $sku = trim((string) ($raw['sku'] ?? ''));
+        $qty = (float) ($raw['cantidad'] ?? 0);
+        if ($sku === '' || $qty <= 0) {
+            throw new ApiException('Cada ítem necesita sku y cantidad > 0', 400);
+        }
+        if (strlen($sku) > 64) {
+            throw new ApiException('SKU demasiado largo (máx. 64)', 400);
+        }
+        $nombre = trim((string) ($raw['nombre'] ?? ''));
+        $desc = trim((string) ($raw['descripcion'] ?? ''));
+        if ($desc === '') {
+            $desc = $nombre;
+        }
+        $inv = Catalogo::porCodigo($sku);
+        $img = trim((string) ($raw['imagen_path'] ?? ''));
+
+        if ($inv !== null) {
+            $ficha = Fichas::porSku($sku);
+            if ($desc === '') {
+                $desc = is_array($ficha) ? (string) ($ficha['nombre'] ?? $inv['name']) : (string) $inv['name'];
+            }
+            if ($img === '' && is_array($ficha)) {
+                $img = trim((string) ($ficha['imagen_path'] ?? ''));
+            }
+            return [
+                'ficha_id' => is_array($ficha) ? ($ficha['id'] ?? null) : null,
+                'sku' => $sku,
+                'inventario_id' => $inv['id'],
+                'descripcion' => $desc,
+                'cantidad' => $qty,
+                'precio_unitario' => (float) ($raw['precio_unitario'] ?? 0),
+                'imagen_path' => $img,
+                'origen' => self::ORIGEN_INVENTARIO,
+                'is_custom' => 0,
+                'sku_temporal' => $skuTemporalPref,
+                'movimiento_id' => '',
+            ];
+        }
+
+        if ($desc === '') {
+            throw new ApiException(
+                'El SKU ' . $sku . ' no está en el catálogo. Indique Nombre/Descripción para evaluarlo como ítem temporal.',
+                400
+            );
+        }
+        return [
+            'ficha_id' => null,
+            'sku' => $sku,
+            'inventario_id' => null,
+            'descripcion' => $desc,
+            'cantidad' => $qty,
+            'precio_unitario' => (float) ($raw['precio_unitario'] ?? 0),
+            'imagen_path' => $img,
+            'origen' => self::ORIGEN_EVALUACION,
+            'is_custom' => 1,
+            'sku_temporal' => $skuTemporalPref !== '' ? $skuTemporalPref : $sku,
+            'movimiento_id' => '',
+        ];
+    }
+
+    /**
      * @param list<mixed> $items
      */
     private static function insertarItems(PDO $pdo, int $operacionId, array $items): void
@@ -464,67 +675,20 @@ final class Operaciones
             if (!is_array($raw)) {
                 throw new ApiException('Ítem inválido', 400);
             }
-            $sku = trim((string) ($raw['sku'] ?? ''));
-            $qty = (float) ($raw['cantidad'] ?? 0);
-            if ($sku === '' || $qty <= 0) {
-                throw new ApiException('Cada ítem necesita sku y cantidad > 0', 400);
-            }
-            if (strlen($sku) > 64) {
-                throw new ApiException('SKU demasiado largo (máx. 64)', 400);
-            }
-            $nombre = trim((string) ($raw['nombre'] ?? ''));
-            $desc = trim((string) ($raw['descripcion'] ?? ''));
-            if ($desc === '') {
-                $desc = $nombre;
-            }
-            $inv = Catalogo::porCodigo($sku);
-
-            if ($inv !== null) {
-                $ficha = Fichas::porSku($sku);
-                if ($desc === '') {
-                    $desc = is_array($ficha) ? (string) ($ficha['nombre'] ?? $inv['name']) : (string) $inv['name'];
-                }
-                $img = trim((string) ($raw['imagen_path'] ?? ''));
-                if ($img === '' && is_array($ficha)) {
-                    $img = trim((string) ($ficha['imagen_path'] ?? ''));
-                }
-                $ins->execute([
-                    $operacionId,
-                    is_array($ficha) ? ($ficha['id'] ?? null) : null,
-                    $sku,
-                    $inv['id'],
-                    $desc,
-                    $qty,
-                    (float) ($raw['precio_unitario'] ?? 0),
-                    $img,
-                    self::ORIGEN_INVENTARIO,
-                    0,
-                    '',
-                    '',
-                ]);
-                continue;
-            }
-
-            if ($desc === '') {
-                throw new ApiException(
-                    'El SKU ' . $sku . ' no está en el catálogo. Indique Nombre/Descripción para evaluarlo como ítem temporal.',
-                    400
-                );
-            }
-            $img = trim((string) ($raw['imagen_path'] ?? ''));
+            $campos = self::resolverCamposItem($raw);
             $ins->execute([
                 $operacionId,
-                null,
-                $sku,
-                $inv['id'] ?? null,
-                $desc,
-                $qty,
-                (float) ($raw['precio_unitario'] ?? 0),
-                $img,
-                self::ORIGEN_EVALUACION,
-                1,
-                $sku,
-                '',
+                $campos['ficha_id'],
+                $campos['sku'],
+                $campos['inventario_id'],
+                $campos['descripcion'],
+                $campos['cantidad'],
+                $campos['precio_unitario'],
+                $campos['imagen_path'],
+                $campos['origen'],
+                $campos['is_custom'],
+                $campos['sku_temporal'],
+                $campos['movimiento_id'],
             ]);
         }
     }
