@@ -400,6 +400,16 @@ $jsItems = (string) file_get_contents($root . '/assets/js/items.js');
 $jsOps = (string) file_get_contents($root . '/assets/js/operaciones.js');
 $jsLanded = (string) file_get_contents($root . '/assets/js/landed.js');
 assert_true(str_contains($jsItems, 'agregar_items') && str_contains($jsItems, 'vincular'), 'JS agrega y vincula SKU temporales');
+assert_true(str_contains($jsItems, 'actualizar_item') && str_contains($jsItems, 'eliminar_item'), 'JS edita y quita líneas de ítem');
+assert_true(str_contains($jsItems, 'action=agregar_items'), 'POST agregar_items lleva action en query');
+$jsApp = (string) file_get_contents($root . '/assets/js/app.js');
+assert_true(str_contains($jsApp, 'credentials: "include"') && str_contains($jsApp, 'X-Requested-With'), 'fetch envía cookie de sesión e X-Requested-With');
+assert_true(str_contains($jsApp, 'crmWithQuery') && str_contains($jsApp, 'action: options.body.action'), 'crmApi agrega action a la query del POST');
+$apiOps = (string) file_get_contents($root . '/api/operaciones.php');
+assert_true(str_contains($apiOps, 'actualizar_item') && str_contains($apiOps, 'eliminar_item'), 'API actualiza y elimina líneas');
+assert_true(str_contains($uiFin, 'id="formEditarItem"') && str_contains($uiFin, 'id="modalEliminarItem"'), 'Modales editar/quitar ítem en detalle');
+assert_true(str_contains((string) file_get_contents($root . '/includes/bootstrap.php'), 'function crm_asset'), 'crm_asset bust de caché JS/CSS');
+assert_true(str_contains((string) file_get_contents($root . '/src/Crm/Http.php'), '$cachedBody'), 'Http cachea php://input');
 assert_true(str_contains($jsOps, 'itemNombre') && str_contains((string) file_get_contents($root . '/operaciones.php'), 'id="itemNombre"'), 'Alta con Nombre/Descripción de evaluación');
 assert_true(str_contains($jsLanded, 'badge-eval') && str_contains($jsFin, 'badge-eval'), 'Landed y finanzas marcan ítems de evaluación');
 assert_true(str_contains($css, '.badge-eval'), 'CSS badge evaluación');
@@ -512,6 +522,33 @@ $opAgregar = \Crm\Comex\Operaciones::agregarItems((int) $opTemp['id'], [
 ]);
 assert_true(count($opAgregar['items']) === 3, 'agregarItems suma línea de evaluación');
 
+$editLineId = 0;
+foreach ($opAgregar['items'] as $itLine) {
+    if (($itLine['sku'] ?? '') === 'TEMP-002') {
+        $editLineId = (int) $itLine['id'];
+    }
+}
+$opLinea = \Crm\Comex\Operaciones::actualizarItem($editLineId, [
+    'sku' => 'TEMP-002',
+    'descripcion' => 'Muestra editada',
+    'cantidad' => 5,
+    'precio_unitario' => 33.5,
+]);
+$itEditado = null;
+foreach ($opLinea['items'] as $itLine) {
+    if ((int) ($itLine['id'] ?? 0) === $editLineId) {
+        $itEditado = $itLine;
+    }
+}
+assert_true(is_array($itEditado) && (string) $itEditado['descripcion'] === 'Muestra editada', 'actualizarItem cambia descripción');
+assert_true(is_array($itEditado) && (float) $itEditado['cantidad'] === 5.0 && (float) $itEditado['precio_unitario'] === 33.5, 'actualizarItem cambia cantidad y FOB');
+$opSinLinea = \Crm\Comex\Operaciones::eliminarItem($editLineId);
+assert_true(count($opSinLinea['items']) === 2, 'eliminarItem quita la línea');
+$opAgregar = \Crm\Comex\Operaciones::agregarItems((int) $opTemp['id'], [
+    ['sku' => 'TEMP-002', 'cantidad' => 3, 'precio_unitario' => 20, 'descripcion' => 'Otra muestra'],
+]);
+assert_true(count($opAgregar['items']) === 3, 'reinserta TEMP-002 tras prueba de edición');
+
 $stockBandaAntes = (float) \Crm\Inventory\InventarioStock::stockPorCodigo('12852-48');
 $confTemp = \Crm\Comex\Operaciones::confirmar((int) $opTemp['id']);
 assert_true($confTemp['estado'] === 'confirmada', 'Confirma operación con SKU temporal');
@@ -531,6 +568,50 @@ foreach ($confTemp['items'] as $it) {
 }
 assert_true($movCat !== '', 'Movimiento en ítem de catálogo al confirmar');
 assert_true($movTemp === '', 'SKU evaluación no escribe stock al confirmar');
+
+$itemCatId = 0;
+$itemEvalId = 0;
+foreach ($confTemp['items'] as $it) {
+    if (($it['sku'] ?? '') === '12852-48') {
+        $itemCatId = (int) $it['id'];
+    }
+    if (($it['sku'] ?? '') === 'TEMP-001') {
+        $itemEvalId = (int) $it['id'];
+    }
+}
+$lockQty = false;
+try {
+    \Crm\Comex\Operaciones::actualizarItem($itemCatId, ['cantidad' => 99]);
+} catch (\Crm\ApiException $e) {
+    $lockQty = $e->status === 409 && ($e->extra['codigo'] ?? '') === 'STOCK_MOVIMIENTOS';
+}
+assert_true($lockQty, 'actualizarItem bloquea cantidad con movimiento de stock');
+$lockDel = false;
+try {
+    \Crm\Comex\Operaciones::eliminarItem($itemCatId);
+} catch (\Crm\ApiException $e) {
+    $lockDel = $e->status === 409;
+}
+assert_true($lockDel, 'eliminarItem bloquea línea con movimiento de stock');
+$fobLock = \Crm\Comex\Operaciones::actualizarItem($itemCatId, [
+    'descripcion' => 'Banda corregida',
+    'precio_unitario' => 1800,
+]);
+$itFob = null;
+foreach ($fobLock['items'] as $it) {
+    if ((int) ($it['id'] ?? 0) === $itemCatId) {
+        $itFob = $it;
+    }
+}
+assert_true(is_array($itFob) && (string) $itFob['descripcion'] === 'Banda corregida' && (float) $itFob['precio_unitario'] === 1800.0, 'Con movimiento se puede corregir FOB y descripción');
+$evalUpd = \Crm\Comex\Operaciones::actualizarItem($itemEvalId, ['cantidad' => 8, 'descripcion' => 'Eval post-confirm']);
+$itEvalUpd = null;
+foreach ($evalUpd['items'] as $it) {
+    if ((int) ($it['id'] ?? 0) === $itemEvalId) {
+        $itEvalUpd = $it;
+    }
+}
+assert_true(is_array($itEvalUpd) && (float) $itEvalUpd['cantidad'] === 8.0, 'SKU evaluación sin movimiento sí cambia cantidad');
 
 $pipeEval = \Crm\Comex\Pipeline::crearOperacion([
     'tipo' => 'IMPORTACION',
@@ -822,6 +903,7 @@ $manualHttp = ['code' => 0, 'body' => '', 'headers' => ''];
 $fichasHttp = ['code' => 0, 'body' => ''];
 $syncHttp = ['code' => 0, 'body' => ''];
 $authHttp = ['vistas_302' => false, 'login_ok' => false, 'api_401' => false];
+$itemsHttp = ['add' => 0, 'edit' => 0, 'edit_ok' => false, 'del' => 0, 'anon_post' => 0];
 $cookieJar = sys_get_temp_dir() . '/comex-auth-http.cookie';
 if (is_file($cookieJar)) {
     unlink($cookieJar);
@@ -900,6 +982,73 @@ if (is_resource($manualProc)) {
             'cookie_jar' => $cookieJar,
             'timeout' => 5,
         ]);
+        $created = $httpCall($baseHttp . '/api/operaciones.php?action=crear', [
+            'post' => json_encode([
+                'action' => 'crear',
+                'tipo' => 'IMPORTACION',
+                'folio' => 'IMP-HTTP-ITEMS',
+                'fecha' => '2026-09-25',
+                'items' => [],
+            ]),
+            'cookie_jar' => $cookieJar,
+        ]);
+        $createdBody = json_decode((string) $created['body'], true);
+        $httpOpId = (int) ($createdBody['operacion']['id'] ?? 0);
+        $addItem = $httpCall($baseHttp . '/api/operaciones.php?action=agregar_items&id=' . $httpOpId, [
+            'post' => json_encode([
+                'action' => 'agregar_items',
+                'id' => $httpOpId,
+                'items' => [[
+                    'sku' => 'HTTP-TEMP',
+                    'nombre' => 'Línea HTTP',
+                    'cantidad' => 4,
+                    'precio_unitario' => 12.5,
+                ]],
+            ]),
+            'cookie_jar' => $cookieJar,
+        ]);
+        $itemsHttp['add'] = (int) $addItem['code'];
+        $addBody = json_decode((string) $addItem['body'], true);
+        $httpItemId = 0;
+        foreach (($addBody['operacion']['items'] ?? []) as $it) {
+            if (is_array($it) && ($it['sku'] ?? '') === 'HTTP-TEMP') {
+                $httpItemId = (int) ($it['id'] ?? 0);
+            }
+        }
+        $editItem = $httpCall($baseHttp . '/api/operaciones.php?action=actualizar_item&item_id=' . $httpItemId, [
+            'post' => json_encode([
+                'action' => 'actualizar_item',
+                'item_id' => $httpItemId,
+                'sku' => 'HTTP-TEMP',
+                'descripcion' => 'Línea HTTP editada',
+                'cantidad' => 7,
+                'precio_unitario' => 15,
+            ]),
+            'cookie_jar' => $cookieJar,
+        ]);
+        $itemsHttp['edit'] = (int) $editItem['code'];
+        $editBody = json_decode((string) $editItem['body'], true);
+        foreach (($editBody['operacion']['items'] ?? []) as $it) {
+            if (is_array($it) && (int) ($it['id'] ?? 0) === $httpItemId && (float) ($it['cantidad'] ?? 0) === 7.0) {
+                $itemsHttp['edit_ok'] = true;
+            }
+        }
+        $delItem = $httpCall($baseHttp . '/api/operaciones.php?action=eliminar_item&item_id=' . $httpItemId, [
+            'post' => json_encode([
+                'action' => 'eliminar_item',
+                'item_id' => $httpItemId,
+            ]),
+            'cookie_jar' => $cookieJar,
+        ]);
+        $itemsHttp['del'] = (int) $delItem['code'];
+        $anonPost = $httpCall($baseHttp . '/api/operaciones.php?action=agregar_items&id=' . $httpOpId, [
+            'post' => json_encode([
+                'action' => 'agregar_items',
+                'id' => $httpOpId,
+                'items' => [['sku' => 'X', 'nombre' => 'n', 'cantidad' => 1]],
+            ]),
+        ]);
+        $itemsHttp['anon_post'] = (int) $anonPost['code'];
         if ((int) ($logged['code'] ?? 0) !== 200) {
             $manualHttp = ['code' => 0, 'body' => ''];
         }
@@ -929,6 +1078,10 @@ if ((int) $manualHttp['code'] !== 200) {
 assert_true($authHttp['vistas_302'], 'Vistas sin sesión redirigen 302 a login.php (o 401/403)');
 assert_true($authHttp['login_ok'], 'login.php HTTP 200 con formulario');
 assert_true($authHttp['api_401'], 'API sin sesión responde 401/403');
+assert_true($itemsHttp['add'] === 200, 'HTTP POST agregar_items con sesión = 200');
+assert_true($itemsHttp['edit'] === 200 && $itemsHttp['edit_ok'], 'HTTP POST actualizar_item persiste cantidad');
+assert_true($itemsHttp['del'] === 200, 'HTTP POST eliminar_item con sesión = 200');
+assert_true($itemsHttp['anon_post'] === 401, 'HTTP POST agregar_items sin cookie = 401');
 assert_true((int) $manualHttp['code'] === 200, 'manual.php HTTP 200 OK');
 $htmlManual = (string) $manualHttp['body'];
 assert_true(str_contains($htmlManual, 'id="modulo-catalogo"'), 'HTML #modulo-catalogo');

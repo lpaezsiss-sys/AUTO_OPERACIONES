@@ -6,6 +6,9 @@ namespace Crm;
 
 final class Http
 {
+    /** @var array<string, mixed>|null */
+    private static ?array $cachedBody = null;
+
     public static function noCacheHeaders(): void
     {
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -26,6 +29,9 @@ final class Http
     /** @return array<string, mixed> */
     public static function body(): array
     {
+        if (self::$cachedBody !== null) {
+            return self::$cachedBody;
+        }
         $raw = file_get_contents('php://input');
         if (!is_string($raw)) {
             $raw = '';
@@ -34,10 +40,13 @@ final class Http
             $data = json_decode($raw, true);
             if (is_array($data)) {
                 /** @var array<string, mixed> $data */
+                self::$cachedBody = $data;
                 return $data;
             }
         }
-        return is_array($_POST) ? $_POST : [];
+        $post = is_array($_POST) ? $_POST : [];
+        self::$cachedBody = $post;
+        return $post;
     }
 
     public static function method(): string
@@ -68,6 +77,9 @@ final class Http
     /** @param array<string, mixed> $data */
     public static function json(array $data, int $code = 200): never
     {
+        if (!headers_sent()) {
+            self::jsonHeaders();
+        }
         http_response_code($code);
         echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;

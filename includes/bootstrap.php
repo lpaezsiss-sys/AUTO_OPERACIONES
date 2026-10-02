@@ -37,10 +37,16 @@ if (PHP_SAPI !== 'cli') {
 }
 
 if (PHP_SAPI !== 'cli' && session_status() !== PHP_SESSION_ACTIVE) {
+    $fwd = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
     $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || ((int) ($_SERVER['SERVER_PORT'] ?? 0) === 443)
+        || $fwd === 'https'
         || str_starts_with(Env::getInstance()->string('APP_URL', ''), 'https://');
     session_name('comex_lpaezsis');
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.cookie_httponly', '1');
+    ini_set('session.cookie_samesite', 'Lax');
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',
@@ -113,6 +119,17 @@ function crm_pdo_driver(): string
 function crm_h(mixed $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * Asset estático con bust de caché por mtime (evita JS/CSS viejo en el navegador).
+ */
+function crm_asset(string $relative): string
+{
+    $relative = ltrim(str_replace('\\', '/', $relative), '/');
+    $abs = dirname(__DIR__) . '/' . $relative;
+    $v = is_file($abs) ? (string) filemtime($abs) : '1';
+    return $relative . '?v=' . rawurlencode($v);
 }
 
 function crm_now(): string

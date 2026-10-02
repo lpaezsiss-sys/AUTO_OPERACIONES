@@ -35,9 +35,19 @@ require __DIR__ . '/_init.php';
     }
 
     if ($method === 'POST' && $action === 'vincular') {
-        $itemId = (int) ($body['item_id'] ?? $body['id'] ?? 0);
+        $itemId = (int) ($body['item_id'] ?? $_GET['item_id'] ?? 0);
         $skuOficial = trim((string) ($body['sku_oficial'] ?? $body['sku'] ?? ''));
         return ['operacion' => \Crm\Comex\Operaciones::vincularItem($itemId, $skuOficial)];
+    }
+
+    if ($method === 'POST' && in_array($action, ['actualizar_item', 'update_item', 'editar_item'], true)) {
+        $itemId = (int) ($body['item_id'] ?? $_GET['item_id'] ?? 0);
+        return ['operacion' => \Crm\Comex\Operaciones::actualizarItem($itemId, $body)];
+    }
+
+    if ($method === 'POST' && in_array($action, ['eliminar_item', 'delete_item', 'quitar_item'], true)) {
+        $itemId = (int) ($body['item_id'] ?? $_GET['item_id'] ?? 0);
+        return ['operacion' => \Crm\Comex\Operaciones::eliminarItem($itemId)];
     }
 
     if ($method === 'POST' && ($action === 'update' || $action === 'actualizar')) {

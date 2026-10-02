@@ -29,9 +29,9 @@ if ($rolActual !== 'admin' && $rolActual !== 'comex') {
     <link rel="icon" href="assets/img/logo.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="assets/css/app.css" rel="stylesheet">
+    <link href="<?php echo crm_h(crm_asset('assets/css/app.css')); ?>" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/app.js"></script>
+    <script src="<?php echo crm_h(crm_asset('assets/js/app.js')); ?>"></script>
     <script>window.COMEX_ROL = <?php echo json_encode($rolActual); ?>;</script>
 </head>
 <body class="<?php echo $page === 'manual' ? 'page-manual' : ''; ?>">
