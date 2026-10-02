@@ -96,7 +96,7 @@ $itemsTab = $tab === 'items';
                     <label class="form-label" for="itemFob">FOB unit.</label>
                     <input id="itemFob" class="form-control" value="0">
                 </div>
-                <div class="col-12 col-md-1">
+                <div class="col-12 col-md-auto">
                     <button class="btn btn-yellow w-100" type="submit">Agregar</button>
                 </div>
             </div>
