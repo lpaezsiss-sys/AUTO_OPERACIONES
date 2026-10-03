@@ -87,11 +87,11 @@ require __DIR__ . '/includes/layout_header.php';
             <p class="text-secondary">Hoja en el detalle de la operación: <code>operacion.php?id=&amp;tab=financials</code>. Recálculo en vivo, sin Composer.</p>
             <ul>
                 <li><strong>Prorrateo por FOB:</strong> cada SKU (catálogo o evaluación) recibe un factor igual a su FOB sobre el FOB total. Gastos de origen (flete internacional, seguro) entran al CIF; gastos locales en CLP (Aduana, Agencia, Flete interno, Bancarios) se prorratean y no van en el IVA.</li>
-                <li><strong>IVA 19% CIF Chile:</strong> IVA aduanero = 19% sobre CIF (FOB + flete intl + seguro), configurable con <code>IVA_PCT</code>.</li>
+                <li><strong>IVA 19% CIF Chile:</strong> IVA aduanero = 19% sobre CIF (FOB + flete intl + seguro), configurable con <code>IVA_PCT</code>. Se muestra en la columna IVA. El <strong>unitario de la estimación</strong> no lo incluye (costo neto = CIF + locales, crédito fiscal). El unitario real sí incluye IVA pagado en aduana.</li>
                 <li><strong>Estimada vs Real:</strong> dos versiones por operación. La matriz muestra delta en CLP y USD (unitario = CLP / tipo de cambio USD).</li>
                 <li><strong>Exportación:</strong> Excel (.xlsx, ZipArchive OOXML) y PDF de la matriz Estimación vs Real.</li>
             </ul>
-            <p class="mb-0 small text-secondary">Ejemplo de control: FOB 300 USD, TC 900 → FOB CLP 270.000, CIF 302.400, IVA 57.456, locales 33.000, landed 392.856.</p>
+            <p class="mb-0 small text-secondary">Ejemplo de control: FOB 300 USD, TC 900 → FOB CLP 270.000, CIF 302.400, IVA 57.456, locales 33.000, landed 392.856. Unitario estimado SKU A (cant. 2) = (CIF 201.600 + locales 22.000) / 2 = 111.800 CLP (sin IVA).</p>
         </section>
 
         <section id="modulo-documentos" class="manual-section card card-soft p-4 mb-4">

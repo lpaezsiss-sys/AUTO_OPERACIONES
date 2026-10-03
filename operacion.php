@@ -262,7 +262,7 @@ $itemsTab = $tab === 'items';
         <button class="btn btn-outline-secondary" type="button" id="btnXlsx">Excel (xlsx)</button>
         <button class="btn btn-outline-secondary" type="button" id="btnPdfMx">PDF matriz</button>
         <a href="manual.php#modulo-landed" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-book" aria-hidden="true"></i> Ayuda</a>
-        <span class="small text-secondary align-self-center" id="sheetHint">Recálculo en vivo · IVA 19% sobre CIF · prorrateo FOB</span>
+        <span class="small text-secondary align-self-center" id="sheetHint">Recálculo en vivo · IVA 19% sobre CIF · unitario estimado sin IVA</span>
     </div>
     <div class="row g-3 mb-3" id="finKpis"></div>
     <div class="card card-soft p-3 mb-3">
@@ -314,8 +314,8 @@ $itemsTab = $tab === 'items';
                 <thead>
                     <tr>
                         <th>SKU</th><th>Cant.</th><th>FOB unit.</th><th>Factor</th>
-                        <th>CIF est</th><th>IVA est</th><th>Landed est CLP</th><th>Unit est CLP</th><th>Unit est USD</th>
-                        <th>CIF real</th><th>IVA real</th><th>Landed real CLP</th><th>Unit real CLP</th><th>Unit real USD</th>
+                        <th>CIF est</th><th>IVA est</th><th>Landed est CLP</th><th title="Costo unitario estimado = (CIF + locales) / cant. Sin IVA aduanero">Unit est CLP</th><th title="Unitario estimado en USD, sin IVA aduanero">Unit est USD</th>
+                        <th>CIF real</th><th>IVA real</th><th>Landed real CLP</th><th title="Costo unitario real = (CIF + IVA + locales) / cant.">Unit real CLP</th><th>Unit real USD</th>
                     </tr>
                 </thead>
                 <tbody></tbody>

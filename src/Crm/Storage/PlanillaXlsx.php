@@ -98,7 +98,7 @@ final class PlanillaXlsx
             ];
         }
         $rows[] = [];
-        $rows[] = ['SKU', 'Landed est CLP', 'Landed real CLP', 'Delta', 'Unit est CLP', 'Unit real CLP', 'Unit est USD', 'Unit real USD'];
+        $rows[] = ['SKU', 'Landed est CLP', 'Landed real CLP', 'Delta', 'Unit est CLP (sin IVA)', 'Unit real CLP (con IVA)', 'Unit est USD (sin IVA)', 'Unit real USD (con IVA)'];
         foreach ($comp['items'] ?? [] as $it) {
             if (!is_array($it)) {
                 continue;
@@ -141,7 +141,8 @@ final class PlanillaXlsx
             ];
         }
         $rows[] = [];
-        $rows[] = ['SKU', 'Cant', 'FOB unit', 'FOB orig', 'Factor', 'FOB CLP', 'CIF CLP', 'IVA CLP', 'Locales CLP', 'Landed CLP', 'Unit CLP', 'Landed USD', 'Unit USD'];
+        $unitHint = str_contains($titulo, 'ESTIMACION') ? ' (sin IVA)' : ' (con IVA)';
+        $rows[] = ['SKU', 'Cant', 'FOB unit', 'FOB orig', 'Factor', 'FOB CLP', 'CIF CLP', 'IVA CLP', 'Locales CLP', 'Landed CLP', 'Unit CLP' . $unitHint, 'Landed USD', 'Unit USD' . $unitHint];
         foreach ($calculo['items'] ?? [] as $it) {
             if (!is_array($it)) {
                 continue;
