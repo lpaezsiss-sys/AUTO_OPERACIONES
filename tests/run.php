@@ -341,7 +341,12 @@ assert_true((float) $calc['totales']['gastos_locales_clp'] === 33000.0, 'Gastos 
 assert_true((float) $calc['totales']['landed_clp'] === 392856.0, 'Landed = CIF + IVA + locales');
 assert_true((float) $calc['items'][0]['share'] === 0.666667, 'Share ítem A 200/300');
 assert_true((float) $calc['items'][0]['factor'] === 0.666667, 'Factor prorrateo FOB 2/3');
-assert_true(abs((float) $calc['items'][0]['landed_unitario_usd'] - 145.5022) < 0.0002, 'Unitario USD = CLP / TC');
+assert_true((float) $calc['items'][0]['iva_clp'] === 38304.0, 'IVA línea A 19% sobre CIF');
+assert_true((float) $calc['items'][0]['costo_neto_clp'] === 223600.0, 'Costo neto estimación = CIF + locales');
+assert_true((float) $calc['items'][0]['landed_total_clp'] === 261904.0, 'Landed línea A sigue incluyendo IVA');
+assert_true((float) $calc['items'][0]['landed_unitario_clp'] === 111800.0, 'Unitario ESTIMADA CLP sin IVA');
+assert_true(empty($calc['items'][0]['unitario_incluye_iva']), 'ESTIMADA no mete IVA en el unitario');
+assert_true(abs((float) $calc['items'][0]['landed_unitario_usd'] - 124.2222) < 0.0002, 'Unitario USD estimación = neto / TC');
 assert_true((float) $calc['totales']['landed_usd'] === 436.51, 'Landed total USD');
 
 $est = \Crm\Comex\LandedCostStore::guardar([
@@ -369,6 +374,15 @@ $pack = \Crm\Comex\LandedCostStore::paraOperacion((int) $opLc['id']);
 assert_true(!empty($pack['comparacion']['disponible']), 'Comparación Estimada vs Real');
 $dLand = $pack['comparacion']['totales']['landed_clp']['delta'] ?? null;
 assert_true((float) $dLand === 12000.0, 'Delta landed = extra aduana 12000');
+$unitReal = (float) ($pack['real']['calculo']['items'][0]['landed_unitario_clp'] ?? 0);
+$unitEst = (float) ($pack['estimada']['calculo']['items'][0]['landed_unitario_clp'] ?? 0);
+assert_true($unitEst === 111800.0, 'Unitario guardado ESTIMADA sin IVA');
+assert_true(!empty($pack['real']['calculo']['items'][0]['unitario_incluye_iva']), 'Unitario REAL guardado incluye IVA');
+assert_true($unitReal === 134952.0, 'Unitario REAL CLP con IVA y aduana extra');
+$pdoLc = \Crm\Database\Connection::app();
+$pdoLc->prepare('UPDATE comex_landed_items SET landed_unitario_clp = 130952 WHERE landed_id = ?')->execute([(int) $est['id']]);
+$packLegacy = \Crm\Comex\LandedCostStore::paraOperacion((int) $opLc['id']);
+assert_true((float) $packLegacy['estimada']['calculo']['items'][0]['landed_unitario_clp'] === 111800.0, 'Hidrata estimación antigua sin IVA');
 
 $pdfRow = \Crm\Comex\LandedCostStore::exportarPdf((int) $est['id']);
 $pdfLc = $root . '/' . $pdfRow['pdf_path'];
@@ -383,6 +397,11 @@ assert_true($zx->open($xlsxAbs) === true, 'XLSX es zip OOXML');
 $sheet1 = (string) $zx->getFromName('xl/worksheets/sheet1.xml');
 $zx->close();
 assert_true(str_contains($sheet1, 'Estimacion') || str_contains($sheet1, 'Landed'), 'XLSX contiene matriz');
+$zx2 = new ZipArchive();
+assert_true($zx2->open($xlsxAbs) === true, 'XLSX sheet2 abre');
+$sheet2 = (string) $zx2->getFromName('xl/worksheets/sheet2.xml');
+$zx2->close();
+assert_true(str_contains($sheet2, 'sin IVA'), 'XLSX estimación etiqueta unitario sin IVA');
 $pdfMx = \Crm\Comex\LandedCostStore::exportarPdfMatriz((int) $opLc['id']);
 assert_true(is_file($root . '/' . $pdfMx['pdf_path']) && str_starts_with((string) file_get_contents($root . '/' . $pdfMx['pdf_path']), '%PDF'), 'PDF matriz Estimación vs Real');
 $dUsd = $pack['comparacion']['totales']['landed_usd']['delta'] ?? null;
@@ -393,6 +412,8 @@ $jsFin = (string) file_get_contents($root . '/assets/js/financials.js');
 $jsCalc = (string) file_get_contents($root . '/assets/js/landed-calc.js');
 assert_true(str_contains($uiFin, 'tab=financials') && str_contains($uiFin, 'sheetGastos'), 'Finanzas en detalle de operación');
 assert_true(str_contains($jsFin, 'crmLandedCalcular') && str_contains($jsCalc, 'prorratear'), 'Recálculo en vivo JS');
+assert_true(str_contains($jsCalc, 'unitarioIncluyeIva') && str_contains($jsCalc, 'REAL'), 'JS unitario estimación sin IVA');
+assert_true(str_contains($jsFin, 'sin IVA') && str_contains($uiFin, 'unitario estimado sin IVA'), 'UI indica unitario estimado sin IVA');
 assert_true(str_contains($uiFin, 'Excel (xlsx)') && str_contains($uiFin, 'PDF matriz'), 'Exportación xlsx y PDF');
 assert_true(str_contains($uiFin, 'tab=items') && str_contains($uiFin, 'id="formItem"'), 'Pestaña Ítems en detalle de operación');
 
@@ -515,7 +536,7 @@ assert_true((float) $calcTemp['totales']['iva_clp'] === 57456.0, 'IVA 19% sobre 
 assert_true((float) $calcTemp['totales']['landed_clp'] === 392856.0, 'Landed prorratea TEMP igual que catálogo');
 assert_true((string) $calcTemp['items'][1]['sku'] === 'TEMP-001', 'Matriz FOB lista TEMP-001');
 assert_true(!empty($calcTemp['items'][1]['is_custom']), 'Cálculo conserva is_custom');
-assert_true(abs((float) $calcTemp['items'][0]['landed_unitario_usd'] - 145.5022) < 0.0002, 'Unitario USD TEMP mix');
+assert_true(abs((float) $calcTemp['items'][0]['landed_unitario_usd'] - 124.2222) < 0.0002, 'Unitario USD TEMP mix sin IVA en estimación');
 
 $opAgregar = \Crm\Comex\Operaciones::agregarItems((int) $opTemp['id'], [
     ['sku' => 'TEMP-002', 'cantidad' => 3, 'precio_unitario' => 20, 'descripcion' => 'Otra muestra'],

@@ -112,7 +112,8 @@ final class PlanillaPdf
         self::txt($im, 20, $y, 'Prorrateo por FOB', $navy, 4);
         $y += 24;
         imagefilledrectangle($im, 16, $y - 4, $w - 16, $y + 18, $navy);
-        self::txt($im, 20, $y, 'SKU        Cant   FOB orig     FOB CLP        CIF        IVA 19%     Locales      Landed     Unit', $white, 3);
+        $unitHdr = (($calculo['version'] ?? '') === 'REAL') ? 'Unit+IVA' : 'Unit-IVA';
+        self::txt($im, 20, $y, 'SKU        Cant   FOB orig     FOB CLP        CIF        IVA 19%     Locales      Landed     ' . $unitHdr, $white, 3);
         $y += 26;
         foreach ($items as $it) {
             if (!is_array($it)) {
@@ -249,7 +250,7 @@ final class PlanillaPdf
             $y += $rowH;
         }
         $y += 16;
-        self::txt($im, 20, $y, 'SKU        Landed est    Landed real     Unit CLP est/real      Unit USD est/real', $navy, 4);
+        self::txt($im, 20, $y, 'SKU        Landed est    Landed real     Unit est(-IVA)/real(+IVA)   Unit USD est/real', $navy, 4);
         $y += 24;
         foreach ($items as $it) {
             if (!is_array($it)) {

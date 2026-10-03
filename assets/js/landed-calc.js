@@ -130,7 +130,12 @@
       var ivaItem = roundN(cifItem * (ivaPct / 100), 2);
       var locItem = partesLoc[k];
       var landed = roundN(cifItem + ivaItem + locItem, 2);
-      var unit = row.cantidad > 0 ? roundN(landed / row.cantidad, 4) : 0;
+      var neto = roundN(cifItem + locItem, 2);
+      var version = String(input.version || "ESTIMADA").toUpperCase();
+      var unitarioIncluyeIva = version === "REAL";
+      var baseUnit = unitarioIncluyeIva ? landed : neto;
+      var unit = row.cantidad > 0 ? roundN(baseUnit / row.cantidad, 4) : 0;
+      var netoUnit = row.cantidad > 0 ? roundN(neto / row.cantidad, 4) : 0;
       var factor = fobTotal > 0 ? roundN(row.fob_origen / fobTotal, 6) : 0;
       lineas.push(Object.assign({}, row, {
         share: factor,
@@ -140,11 +145,16 @@
         iva_clp: ivaItem,
         gastos_locales_clp: locItem,
         landed_total_clp: landed,
+        costo_neto_clp: neto,
+        costo_neto_unitario_clp: netoUnit,
         landed_unitario_clp: unit,
+        unitario_incluye_iva: unitarioIncluyeIva,
         fob_usd: aUsd(row.fob_clp, tcUsd, 4),
         cif_usd: aUsd(cifItem, tcUsd, 4),
         iva_usd: aUsd(ivaItem, tcUsd, 4),
         landed_total_usd: aUsd(landed, tcUsd, 4),
+        costo_neto_usd: aUsd(neto, tcUsd, 4),
+        costo_neto_unitario_usd: aUsd(netoUnit, tcUsd, 4),
         landed_unitario_usd: aUsd(unit, tcUsd, 4),
       }));
       totFobClp += row.fob_clp;

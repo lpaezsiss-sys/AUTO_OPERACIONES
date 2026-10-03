@@ -183,7 +183,13 @@ final class LandedCost
             $ivaItem = round($cifItem * ($ivaPct / 100), 2);
             $locItem = $partesLoc[$i];
             $landed = round($cifItem + $ivaItem + $locItem, 2);
-            $unit = $row['cantidad'] > 0 ? round($landed / $row['cantidad'], 4) : 0.0;
+            // Estimación: unitario neto (CIF + locales) — IVA aduanero es crédito fiscal.
+            // Real: unitario landed (CIF + IVA + locales) — IVA pagado en aduana.
+            $neto = round($cifItem + $locItem, 2);
+            $unitarioIncluyeIva = $version === self::VERSION_REAL;
+            $baseUnit = $unitarioIncluyeIva ? $landed : $neto;
+            $unit = $row['cantidad'] > 0 ? round($baseUnit / $row['cantidad'], 4) : 0.0;
+            $netoUnit = $row['cantidad'] > 0 ? round($neto / $row['cantidad'], 4) : 0.0;
             $factor = $fobTotalOrig > 0 ? round($row['fob_origen'] / $fobTotalOrig, 6) : 0.0;
             $linea = $row + [
                 'share' => $factor,
@@ -193,7 +199,10 @@ final class LandedCost
                 'iva_clp' => $ivaItem,
                 'gastos_locales_clp' => $locItem,
                 'landed_total_clp' => $landed,
+                'costo_neto_clp' => $neto,
+                'costo_neto_unitario_clp' => $netoUnit,
                 'landed_unitario_clp' => $unit,
+                'unitario_incluye_iva' => $unitarioIncluyeIva,
             ];
             $lineas[] = $linea;
             $totFobClp += $row['fob_clp'];
@@ -234,6 +243,7 @@ final class LandedCost
     public static function enriquecerUsd(array $calculo): array
     {
         $tcUsd = self::num($calculo['tipo_cambio_usd'] ?? 0);
+        $version = strtoupper(trim((string) ($calculo['version'] ?? self::VERSION_ESTIMADA)));
         $items = is_array($calculo['items'] ?? null) ? $calculo['items'] : [];
         foreach ($items as $i => $it) {
             if (!is_array($it)) {
@@ -245,7 +255,10 @@ final class LandedCost
             $it['cif_usd'] = self::aUsd((float) ($it['cif_clp'] ?? 0), $tcUsd, 4);
             $it['iva_usd'] = self::aUsd((float) ($it['iva_clp'] ?? 0), $tcUsd, 4);
             $it['landed_total_usd'] = self::aUsd((float) ($it['landed_total_clp'] ?? 0), $tcUsd, 4);
+            $it['costo_neto_usd'] = self::aUsd((float) ($it['costo_neto_clp'] ?? 0), $tcUsd, 4);
+            $it['costo_neto_unitario_usd'] = self::aUsd((float) ($it['costo_neto_unitario_clp'] ?? 0), $tcUsd, 4);
             $it['landed_unitario_usd'] = self::aUsd((float) ($it['landed_unitario_clp'] ?? 0), $tcUsd, 4);
+            $it['unitario_incluye_iva'] = $version === self::VERSION_REAL;
             $items[$i] = $it;
         }
         $calculo['items'] = $items;

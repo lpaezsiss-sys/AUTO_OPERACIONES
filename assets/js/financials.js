@@ -119,7 +119,7 @@
       paintMatriz(comp);
       paintKpis(lastEst, lastReal, comp);
       paintGastoDeltas();
-      hint.textContent = "Recálculo en vivo · factor FOB · IVA " + lastEst.iva_pct + "% CIF";
+      hint.textContent = "Recálculo en vivo · factor FOB · IVA " + lastEst.iva_pct + "% CIF · unitario estimado sin IVA";
     } catch (e) {
       hint.textContent = e.message || "No se pudo calcular";
     }
@@ -184,11 +184,10 @@
   function paintKpis(est, real, comp) {
     var tE = est.totales || {};
     var tR = real.totales || {};
-    var d = (comp.totales && comp.totales.landed_clp) || {};
     document.getElementById("finKpis").innerHTML = [
       ["Landed est CLP", crmClp(tE.landed_clp)],
       ["Landed real CLP", crmClp(tR.landed_clp)],
-      ["Delta landed", crmClp(d.delta || 0)],
+      ["Unit est USD (sin IVA)", "US$ " + crmNum((est.items && est.items[0] && est.items[0].landed_unitario_usd) || 0, 4)],
       ["Unitario USD (real)", "US$ " + crmNum((real.items && real.items[0] && real.items[0].landed_unitario_usd) || 0, 4)],
     ].map(function (it) {
       return '<div class="col-6 col-xl-3"><div class="card kpi p-3"><div class="kpi-label">' + it[0] +

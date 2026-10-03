@@ -98,7 +98,7 @@ crm_layout_start('Landed cost', 'landed');
             <thead>
                 <tr>
                     <th>SKU</th><th>FOB orig.</th><th>FOB CLP</th><th>Share</th>
-                    <th>CIF</th><th>IVA 19%</th><th>Locales</th><th>Landed</th><th>Unitario</th>
+                    <th>CIF</th><th>IVA 19%</th><th>Locales</th><th>Landed</th><th title="Estimación: (CIF + locales) / cant. Real: incluye IVA aduanero">Unitario</th>
                 </tr>
             </thead>
             <tbody></tbody>

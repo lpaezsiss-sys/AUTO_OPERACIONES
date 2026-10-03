@@ -339,6 +339,21 @@ final class LandedCostStore
         $it = Connection::app()->prepare('SELECT * FROM comex_landed_items WHERE landed_id = ? ORDER BY id ASC');
         $it->execute([$id]);
         $items = $it->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $version = strtoupper(trim((string) ($row['version'] ?? LandedCost::VERSION_ESTIMADA)));
+        $unitarioIncluyeIva = $version === LandedCost::VERSION_REAL;
+        foreach ($items as $i => $linea) {
+            if (!is_array($linea)) {
+                continue;
+            }
+            $qty = (float) ($linea['cantidad'] ?? 0);
+            $neto = round((float) ($linea['cif_clp'] ?? 0) + (float) ($linea['gastos_locales_clp'] ?? 0), 2);
+            $landed = (float) ($linea['landed_total_clp'] ?? 0);
+            $baseUnit = $unitarioIncluyeIva ? $landed : $neto;
+            $items[$i]['costo_neto_clp'] = $neto;
+            $items[$i]['costo_neto_unitario_clp'] = $qty > 0 ? round($neto / $qty, 4) : 0.0;
+            $items[$i]['landed_unitario_clp'] = $qty > 0 ? round($baseUnit / $qty, 4) : 0.0;
+            $items[$i]['unitario_incluye_iva'] = $unitarioIncluyeIva;
+        }
         $totales = [
             'fob_origen' => 0.0,
             'fob_clp' => 0.0,
