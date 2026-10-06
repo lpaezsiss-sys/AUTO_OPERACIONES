@@ -1450,6 +1450,8 @@ assert_true(strpos($uiList, 'dropdown-toggle') !== false && strpos($uiList, 'dat
 $layoutP0 = (string) file_get_contents($root . '/includes/layout.php');
 assert_true(strpos($layoutP0, 'nav-group-label') !== false, 'Menú agrupado por secciones');
 assert_true(strpos($layoutP0, 'nav-link-muted') !== false, 'Contactos/Manual/Marcas con peso menor');
+$cssP0 = (string) file_get_contents($root . '/assets/css/app.css');
+assert_true(strpos($cssP0, 'flex-wrap: nowrap') !== false, 'Sidebar nav no se parte en dos columnas');
 
 $cotizadorP0 = (string) file_get_contents($root . '/cotizador.php');
 assert_true(strpos($cotizadorP0, 'empresa_q') !== false && strpos($cotizadorP0, 'crmEmpresaPicker') !== false, 'Cotizador busca empresa por typeahead');
