@@ -100,6 +100,110 @@
     bootstrap.Toast.getOrCreateInstance(el, { delay: 3200 }).show();
   };
 
+  window.crmWhatsAppUrl = function (raw) {
+    var d = String(raw == null ? "" : raw).replace(/\D/g, "");
+    if (d.length === 9 && d.charAt(0) === "9") {
+      d = "56" + d;
+    }
+    if (d.length === 8) {
+      d = "569" + d;
+    }
+    if (d.length < 10) {
+      return "";
+    }
+    return "https://wa.me/" + d;
+  };
+
+  /**
+   * Typeahead de empresa (RUT / razón social) sobre api/empresas.php.
+   * cfg: { inputId, hiddenId, listId, onSelect }
+   */
+  window.crmEmpresaPicker = function (cfg) {
+    var input = document.getElementById(cfg.inputId);
+    var hidden = document.getElementById(cfg.hiddenId);
+    var list = document.getElementById(cfg.listId);
+    var timer = null;
+    var lastList = [];
+    if (!input || !hidden || !list) {
+      return null;
+    }
+    function labelOf(e) {
+      if (!e) {
+        return "";
+      }
+      return (e.razon_social || "") + (e.rut ? " · " + e.rut : "");
+    }
+    function setEmpresa(e) {
+      hidden.value = e && e.id ? String(e.id) : "";
+      input.value = e ? labelOf(e) : "";
+      list.style.display = "none";
+      if (typeof cfg.onSelect === "function") {
+        cfg.onSelect(e || null);
+      }
+    }
+    function search(q) {
+      var url = "api/empresas.php?limit=25";
+      if (q) {
+        url += "&q=" + encodeURIComponent(q);
+      }
+      crmApi(url).then(function (d) {
+        lastList = d.empresas || [];
+        if (!lastList.length) {
+          list.innerHTML = '<div class="list-group-item small text-secondary">Sin empresas</div>';
+          list.style.display = "block";
+          return;
+        }
+        list.innerHTML = lastList.map(function (e, i) {
+          return '<button type="button" class="list-group-item list-group-item-action" data-idx="' + i + '">' +
+            crmEsc(e.razon_social) +
+            '<div class="small text-secondary">' + crmEsc(e.rut || "") + "</div></button>";
+        }).join("");
+        list.style.display = "block";
+        list.querySelectorAll("button").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            setEmpresa(lastList[Number(btn.getAttribute("data-idx"))]);
+          });
+        });
+      }).catch(function (e) {
+        crmToast(e.message, true);
+      });
+    }
+    input.addEventListener("input", function () {
+      hidden.value = "";
+      if (timer) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(function () {
+        search(input.value);
+      }, 220);
+    });
+    input.addEventListener("focus", function () {
+      search(input.value);
+    });
+    document.addEventListener("click", function (ev) {
+      if (ev.target === input || list.contains(ev.target)) {
+        return;
+      }
+      list.style.display = "none";
+    });
+    return {
+      setEmpresa: setEmpresa,
+      loadById: function (id) {
+        if (!id) {
+          setEmpresa(null);
+          return Promise.resolve(null);
+        }
+        return crmApi("api/empresas.php?id=" + encodeURIComponent(id)).then(function (d) {
+          var e = d.empresa || null;
+          if (e) {
+            setEmpresa(e);
+          }
+          return e;
+        });
+      }
+    };
+  };
+
   window.crmForm = function (id) {
     var form = document.getElementById(id);
     var data = {};

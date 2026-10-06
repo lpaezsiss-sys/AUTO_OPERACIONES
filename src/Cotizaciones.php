@@ -16,6 +16,7 @@ final class Cotizaciones
     public static function index()
     {
         $estado = crm_str(isset($_GET['estado']) ? $_GET['estado'] : '', 40);
+        $empresaId = crm_int(isset($_GET['empresa_id']) ? $_GET['empresa_id'] : 0, 0);
         $sql = 'SELECT c.*, e.razon_social, e.rut
                 FROM crm_cotizaciones c
                 INNER JOIN crm_empresas e ON e.id = c.empresa_id
@@ -24,6 +25,10 @@ final class Cotizaciones
         if ($estado !== '') {
             $sql .= ' AND c.estado = ?';
             $params[] = $estado;
+        }
+        if ($empresaId > 0) {
+            $sql .= ' AND c.empresa_id = ?';
+            $params[] = $empresaId;
         }
         $sql .= ' ORDER BY c.created_at DESC';
         $stmt = crm_pdo()->prepare($sql);

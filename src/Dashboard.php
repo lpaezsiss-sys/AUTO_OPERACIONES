@@ -28,6 +28,7 @@ final class Dashboard
         $pendientes = (int) $pdo->query(
             "SELECT COUNT(*) FROM crm_actividades WHERE estado = 'pendiente'"
         )->fetchColumn();
+        $agendaResumen = Actividades::index(array('estado' => ''))['resumen'];
         $bajoStock = (int) $pdo->query(
             'SELECT COUNT(*) FROM productos WHERE activo = 1 AND stock <= umbral_stock'
         )->fetchColumn();
@@ -64,6 +65,8 @@ final class Dashboard
                 'pipeline_clp' => $pipeline,
                 'cotizaciones_mes' => $cotsMes,
                 'actividades_pendientes' => $pendientes,
+                'actividades_hoy' => isset($agendaResumen['hoy']) ? (int) $agendaResumen['hoy'] : 0,
+                'actividades_vencidas' => isset($agendaResumen['vencidas']) ? (int) $agendaResumen['vencidas'] : 0,
                 'productos_bajo_stock' => $bajoStock,
             ),
             'pipeline' => $porEtapa,

@@ -1443,6 +1443,44 @@ $prodSrc = (string) file_get_contents($root . '/src/Productos.php');
 assert_true(strpos($prodSrc, 'tablaTieneUpdatedAt()') !== false, 'Productos::index tolera productos sin updated_at');
 $uiList = (string) file_get_contents($root . '/cotizaciones.php');
 assert_true(strpos($uiList, 'data-folio') !== false, 'UI Cambiar folio en listado');
+assert_true(strpos($uiList, 'id="fEstado"') !== false, 'Listado filtra por estado');
+assert_true(strpos($uiList, 'crmEmpresaPicker') !== false, 'Listado filtra empresa con typeahead');
+assert_true(strpos($uiList, 'dropdown-toggle') !== false && strpos($uiList, 'data-del') !== false, 'Eliminar va en menú Más');
+
+$layoutP0 = (string) file_get_contents($root . '/includes/layout.php');
+assert_true(strpos($layoutP0, 'nav-group-label') !== false, 'Menú agrupado por secciones');
+assert_true(strpos($layoutP0, 'nav-link-muted') !== false, 'Contactos/Manual/Marcas con peso menor');
+
+$cotizadorP0 = (string) file_get_contents($root . '/cotizador.php');
+assert_true(strpos($cotizadorP0, 'empresa_q') !== false && strpos($cotizadorP0, 'crmEmpresaPicker') !== false, 'Cotizador busca empresa por typeahead');
+assert_true(strpos($cotizadorP0, "\$_GET['empresa_id']") !== false, 'Cotizador acepta empresa_id en URL');
+
+$fichaP0 = (string) file_get_contents($root . '/empresa.php');
+assert_true(strpos($fichaP0, 'btnCotizar') !== false, 'Ficha tiene CTA Cotizar');
+assert_true(strpos($fichaP0, 'btnWhatsapp') !== false && strpos($fichaP0, 'crmWhatsAppUrl') !== false, 'Ficha tiene CTA WhatsApp');
+
+$dashSrc = (string) file_get_contents($root . '/index.php');
+assert_true(strpos($dashSrc, '<h2 class="h6"') !== false, 'Dashboard H2 de actividades está bien formado');
+assert_true(strpos($dashSrc, 'actividades.php?estado=pendiente&agenda=hoy') !== false, 'KPI hoy enlaza a agenda');
+assert_true(strpos($dashSrc, 'agenda=vencidas') !== false, 'KPI vencidas enlaza a agenda');
+
+$_GET = array();
+$dashP0 = \Crm\Dashboard::stats();
+assert_true(isset($dashP0['kpis']['actividades_hoy'], $dashP0['kpis']['actividades_vencidas']), 'Dashboard expone KPIs de agenda hoy/vencidas');
+
+$_GET = array('estado' => 'enviada', 'empresa_id' => (string) $empId);
+$filtradas = \Crm\Cotizaciones::index();
+assert_true(isset($filtradas['cotizaciones']) && is_array($filtradas['cotizaciones']), 'Cotizaciones::index acepta estado y empresa_id');
+foreach ($filtradas['cotizaciones'] as $rowF) {
+    assert_true((string) $rowF['estado'] === 'enviada', 'Filtro estado=enviada');
+    assert_true((int) $rowF['empresa_id'] === (int) $empId, 'Filtro empresa_id');
+}
+$_GET = array();
+
+$_GET = array('q' => 'a', 'limit' => '2');
+$empLim = \Crm\Empresas::index();
+assert_true(count($empLim['empresas']) <= 2, 'Empresas::index respeta limit de typeahead');
+$_GET = array();
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

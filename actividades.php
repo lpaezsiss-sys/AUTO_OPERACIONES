@@ -41,6 +41,14 @@ crm_layout_start('Agenda y seguimiento', 'actividades', $user);
             </select>
         </div>
         <div class="col-md-2">
+            <label class="form-label" for="fAgenda">Agenda</label>
+            <select class="form-select" id="fAgenda">
+                <option value="">Todas</option>
+                <option value="hoy">Hoy</option>
+                <option value="vencidas">Vencidas</option>
+            </select>
+        </div>
+        <div class="col-md-2">
             <label class="form-label" for="fDesde">Desde</label>
             <input class="form-control" type="date" id="fDesde">
         </div>
@@ -139,9 +147,11 @@ crm_layout_start('Agenda y seguimiento', 'actividades', $user);
   function qs() {
     var v = document.getElementById("fVendedor").value;
     var e = document.getElementById("fEstado").value;
+    var a = document.getElementById("fAgenda").value;
     var d = document.getElementById("fDesde").value;
     var h = document.getElementById("fHasta").value;
     var q = "estado=" + encodeURIComponent(e);
+    if (a) q += "&agenda=" + encodeURIComponent(a);
     if (v) q += "&vendedor_id=" + encodeURIComponent(v);
     if (d) q += "&desde=" + encodeURIComponent(d);
     if (h) q += "&hasta=" + encodeURIComponent(h);
@@ -263,6 +273,18 @@ crm_layout_start('Agenda y seguimiento', 'actividades', $user);
   var now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   document.getElementById("actFecha").value = now.toISOString().slice(0, 16);
+
+  (function applyUrlFilters() {
+    var s = String(window.location.search || "").replace(/^\?/, "");
+    if (!s) return;
+    s.split("&").forEach(function (part) {
+      var bits = part.split("=");
+      var k = decodeURIComponent(bits[0] || "");
+      var v = decodeURIComponent((bits[1] || "").replace(/\+/g, " "));
+      if (k === "estado") document.getElementById("fEstado").value = v;
+      if (k === "agenda") document.getElementById("fAgenda").value = v;
+    });
+  })();
 
   load();
 })();

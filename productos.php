@@ -40,6 +40,9 @@ function load() {
 }
 document.getElementById("q").addEventListener("input", load);
 document.getElementById("bajo").addEventListener("change", load);
+if (/\bbajo_stock=1\b/.test(String(window.location.search || ""))) {
+  document.getElementById("bajo").checked = true;
+}
 load();
 </script>
 <?php crm_layout_end(); ?>

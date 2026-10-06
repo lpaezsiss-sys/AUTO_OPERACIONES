@@ -12,6 +12,19 @@ function crm_layout_start($title, $page, array $user)
 {
     $title = (string) $title;
     $page = (string) $page;
+    $isAdmin = (string) $user['rol'] === 'admin';
+    $cssV = (int) @filemtime(__DIR__ . '/../assets/css/app.css');
+    $jsV = (int) @filemtime(__DIR__ . '/../assets/js/app.js');
+    $link = static function ($key, $href, $label, $page, $muted = false) {
+        $cls = 'nav-link';
+        if ($page === $key) {
+            $cls .= ' active';
+        }
+        if ($muted) {
+            $cls .= ' nav-link-muted';
+        }
+        echo '<a class="' . $cls . '" href="' . $href . '">' . $label . '</a>' . "\n";
+    };
     ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -21,9 +34,9 @@ function crm_layout_start($title, $page, array $user)
     <title><?php echo crm_h($title); ?> · CRM LPAEZsis</title>
     <link rel="icon" href="assets/img/logo.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/css/app.css" rel="stylesheet">
+    <link href="assets/css/app.css?v=<?php echo $cssV; ?>" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/app.js"></script>
+    <script src="assets/js/app.js?v=<?php echo $jsV; ?>"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -33,25 +46,34 @@ function crm_layout_start($title, $page, array $user)
             <span>CRM LPAEZsis</span>
         </a>
         <nav class="nav flex-column">
-            <a class="nav-link<?php echo $page === 'dashboard' ? ' active' : ''; ?>" href="index.php">Dashboard</a>
-            <a class="nav-link<?php echo $page === 'empresas' ? ' active' : ''; ?>" href="empresas.php">Empresas</a>
-            <a class="nav-link<?php echo $page === 'contactos' ? ' active' : ''; ?>" href="contactos.php">Contactos</a>
-            <a class="nav-link<?php echo $page === 'oportunidades' ? ' active' : ''; ?>" href="oportunidades.php">Oportunidades</a>
-            <a class="nav-link<?php echo $page === 'cotizaciones' ? ' active' : ''; ?>" href="cotizaciones.php">Cotizaciones</a>
-            <a class="nav-link<?php echo $page === 'cotizador' ? ' active' : ''; ?>" href="cotizador.php">Cotizador</a>
-            <a class="nav-link<?php echo $page === 'manual' ? ' active' : ''; ?>" href="manual.php">Manual</a>
-            <a class="nav-link<?php echo $page === 'vendedores' ? ' active' : ''; ?>" href="vendedores.php">Vendedores</a>
-            <?php if ((string) $user['rol'] === 'admin') { ?>
-            <a class="nav-link<?php echo $page === 'usuarios' ? ' active' : ''; ?>" href="usuarios.php">Usuarios</a>
-            <a class="nav-link<?php echo $page === 'listas_precios' ? ' active' : ''; ?>" href="listas_precios.php">Listas de precios</a>
+            <div class="nav-group-label">Hoy</div>
+            <?php $link('dashboard', 'index.php', 'Dashboard', $page); ?>
+            <?php $link('actividades', 'actividades.php', 'Agenda', $page); ?>
+
+            <div class="nav-group-label">Vender</div>
+            <?php $link('cotizador', 'cotizador.php', 'Cotizador', $page); ?>
+            <?php $link('cotizaciones', 'cotizaciones.php', 'Cotizaciones', $page); ?>
+            <?php $link('oportunidades', 'oportunidades.php', 'Oportunidades', $page); ?>
+
+            <div class="nav-group-label">Clientes</div>
+            <?php $link('empresas', 'empresas.php', 'Empresas', $page); ?>
+            <?php $link('contactos', 'contactos.php', 'Contactos', $page, true); ?>
+
+            <div class="nav-group-label">Catálogo</div>
+            <?php $link('productos', 'productos.php', 'Inventario', $page); ?>
+            <?php $link('estadisticas_a_pedido', 'estadisticas_a_pedido.php', 'Estadísticas a pedido', $page); ?>
+
+            <div class="nav-group-label">Gestión</div>
+            <?php $link('vendedores', 'vendedores.php', 'Vendedores', $page); ?>
+            <?php $link('comisiones', 'comisiones.php', 'Comisiones', $page); ?>
+            <?php $link('reportes', 'reportes.php', 'Informes', $page); ?>
+            <?php if ($isAdmin) { ?>
+            <?php $link('usuarios', 'usuarios.php', 'Usuarios', $page); ?>
+            <?php $link('listas_precios', 'listas_precios.php', 'Listas de precios', $page); ?>
             <?php } ?>
-            <a class="nav-link<?php echo $page === 'comisiones' ? ' active' : ''; ?>" href="comisiones.php">Comisiones</a>
-            <a class="nav-link<?php echo $page === 'reportes' ? ' active' : ''; ?>" href="reportes.php">Informes</a>
-            <a class="nav-link<?php echo $page === 'estadisticas_a_pedido' ? ' active' : ''; ?>" href="estadisticas_a_pedido.php">Estadísticas a pedido</a>
-            <a class="nav-link<?php echo $page === 'actividades' ? ' active' : ''; ?>" href="actividades.php">Agenda</a>
-            <a class="nav-link<?php echo $page === 'productos' ? ' active' : ''; ?>" href="productos.php">Inventario</a>
-            <a class="nav-link<?php echo $page === 'configuracion' ? ' active' : ''; ?>" href="configuracion.php">Empresa</a>
-            <a class="nav-link<?php echo $page === 'marcas' ? ' active' : ''; ?>" href="marcas.php">Marcas</a>
+            <?php $link('configuracion', 'configuracion.php', 'Empresa', $page); ?>
+            <?php $link('marcas', 'marcas.php', 'Marcas', $page, true); ?>
+            <?php $link('manual', 'manual.php', 'Manual', $page, true); ?>
         </nav>
         <div class="sidebar-user">
             <div class="small text-uppercase opacity-75">Sesión</div>

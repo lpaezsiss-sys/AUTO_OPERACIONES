@@ -33,6 +33,13 @@ final class Empresas
             $params[] = $estado;
         }
         $sql .= ' ORDER BY e.razon_social ASC';
+        $limit = crm_int(isset($_GET['limit']) ? $_GET['limit'] : 0, 0);
+        if ($limit > 0) {
+            if ($limit > 50) {
+                $limit = 50;
+            }
+            $sql .= ' LIMIT ' . $limit;
+        }
         $stmt = crm_pdo()->prepare($sql);
         $stmt->execute($params);
         return array('empresas' => $stmt->fetchAll(PDO::FETCH_ASSOC));

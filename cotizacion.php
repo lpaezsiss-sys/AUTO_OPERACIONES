@@ -37,7 +37,13 @@ crm_layout_start($folioAsignado !== '' ? $folioAsignado : 'Nueva cotización', '
 <form id="formCot" class="card card-soft p-4">
     <input type="hidden" name="id" value="<?php echo (int) $id; ?>">
     <div class="row g-2">
-        <div class="col-md-6"><label class="form-label">Empresa</label><select class="form-select" name="empresa_id" id="selEmpresa" required></select></div>
+        <div class="col-md-6"><label class="form-label">Empresa</label>
+            <div class="crm-typeahead">
+                <input type="hidden" name="empresa_id" id="selEmpresa" required>
+                <input class="form-control" id="empresa_q" autocomplete="off" placeholder="Buscar razón social o RUT…">
+                <div id="empresa_sug" class="list-group position-absolute w-100 shadow" style="display:none"></div>
+            </div>
+        </div>
         <div class="col-md-6"><label class="form-label">Contacto</label><select class="form-select" name="contacto_id" id="selContacto"><option value="">(sin contacto)</option></select></div>
         <div class="col-md-3"><label class="form-label">Vendedor</label><select class="form-select" name="vendedor_id" id="selVendedor"></select></div>
         <div class="col-md-3"><label class="form-label">Lista de precios</label>
@@ -100,6 +106,7 @@ var items = [];
 var productos = [];
 var marcasCatalogo = [];
 var empresasCache = [];
+var empPicker = null;
 var listasCache = [];
 var pendingContactoId = "";
 function defaultListaId() {
@@ -282,14 +289,22 @@ function aplicarCotizacion(payload) {
   if (btnFolioLoad) {
     btnFolioLoad.hidden = !c.folio_editable;
   }
-  setSelectValue(document.querySelector('[name=empresa_id]'), c.empresa_id, c.razon_social);
   pendingContactoId = c.contacto_id || "";
-  loadContactos(c.empresa_id, pendingContactoId);
-  setSelectValue(document.querySelector('[name=vendedor_id]'), c.vendedor_id || "", c.vendedor_nombre);
-  if (document.getElementById("selListaPrecio")) {
-    fillListasSelect(c.lista_precio_id || defaultListaId());
-    setSelectValue(document.getElementById("selListaPrecio"), c.lista_precio_id || "", "Lista");
+  var afterEmp = function () {
+    loadContactos(c.empresa_id, pendingContactoId);
+    if (document.getElementById("selListaPrecio")) {
+      fillListasSelect(c.lista_precio_id || defaultListaId());
+      setSelectValue(document.getElementById("selListaPrecio"), c.lista_precio_id || "", "Lista");
+    }
+  };
+  if (empPicker) {
+    empPicker.loadById(c.empresa_id).then(afterEmp).catch(function (e) { crmToast(e.message, true); afterEmp(); });
+  } else {
+    document.getElementById("selEmpresa").value = c.empresa_id || "";
+    document.getElementById("empresa_q").value = c.razon_social || "";
+    afterEmp();
   }
+  setSelectValue(document.querySelector('[name=vendedor_id]'), c.vendedor_id || "", c.vendedor_nombre);
   setSelectValue(document.querySelector('[name=estado]'), c.estado || "borrador");
   document.querySelector('[name=fecha_validez]').value = c.fecha_validez || "";
   setSelectValue(document.querySelector('[name=moneda]'), c.moneda || "CLP");
@@ -307,7 +322,6 @@ function aplicarCotizacion(payload) {
   renderMarcas(marcaIds.map(Number));
 }
 Promise.all([
-  crmSettle(crmApi("api/empresas.php")),
   crmSettle(crmApi("api/productos.php")),
   crmSettle(crmApi("api/vendedores.php")),
   crmSettle(crmApi("api/marcas.php")),
@@ -320,26 +334,26 @@ Promise.all([
     if (r && r.error && r.error.message) crmToast(r.error.message, true);
     return {};
   }
-  empresasCache = val(0).empresas || [];
-  document.getElementById("selEmpresa").innerHTML = empresasCache.map(function (e) {
-    return '<option value="'+e.id+'">'+e.razon_social+'</option>';
-  }).join("");
+  empPicker = crmEmpresaPicker({
+    inputId: "empresa_q",
+    hiddenId: "selEmpresa",
+    listId: "empresa_sug",
+    onSelect: function (emp) {
+      empresasCache = emp ? [emp] : [];
+      loadContactos(emp ? emp.id : "", pendingContactoId);
+      aplicarListaEmpresa();
+    }
+  });
   document.getElementById("selVendedor").innerHTML = '<option value="">(según usuario)</option>' +
-    (val(2).vendedores||[]).filter(function (v) { return Number(v.activo) === 1; }).map(function (v) {
+    (val(1).vendedores||[]).filter(function (v) { return Number(v.activo) === 1; }).map(function (v) {
       return '<option value="'+v.id+'">'+v.nombre_completo+' · '+Number(v.comision_porcentaje).toFixed(2)+'%</option>';
     }).join("");
-  productos = val(1).productos || [];
-  marcasCatalogo = val(3).marcas || [];
-  listasCache = val(4).listas || [];
+  productos = val(0).productos || [];
+  marcasCatalogo = val(2).marcas || [];
+  listasCache = val(3).listas || [];
   fillListasSelect(defaultListaId());
   renderMarcas([]);
-  var empSel = document.getElementById("selEmpresa");
-  empSel.addEventListener("change", function () { loadContactos(empSel.value, ""); aplicarListaEmpresa(); });
-  if (!cotId) {
-    loadContactos(empSel.value, "");
-    aplicarListaEmpresa();
-  }
-  var cotRes = arr[5];
+  var cotRes = arr[4];
   if (cotId) {
     if (cotRes && cotRes.ok && cotRes.value) {
       aplicarCotizacion(cotRes.value);
