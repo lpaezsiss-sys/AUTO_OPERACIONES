@@ -15,9 +15,11 @@ crm_layout_start('Ficha empresa', 'empresas', $user);
 ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <a href="empresas.php" class="text-decoration-none">← Empresas</a>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-sm" style="background:#fec001;color:#05294B;font-weight:700" id="btnCotizar" href="cotizador.php">Cotizar</a>
+        <a class="btn btn-sm btn-outline-success" id="btnWhatsapp" target="_blank" rel="noopener" hidden>WhatsApp</a>
         <button class="btn btn-sm btn-outline-primary" type="button" id="btnEditar">Editar</button>
-        <button class="btn btn-sm btn-outline-danger" type="button" id="btnEliminar">Eliminar</button>
+        <button class="btn btn-sm btn-outline-secondary" type="button" id="btnEliminar">Eliminar</button>
     </div>
 </div>
 <div id="ficha"></div>
@@ -68,14 +70,16 @@ function fillSelect(elId, arr, first) {
 function renderFicha(d) {
   var e = d.empresa;
   var html = '';
-  html += '<div class="card card-soft p-4 mb-3"><h1 class="h4 page-title">'+e.razon_social+'</h1>';
-  html += '<div class="text-secondary">'+e.rut+' · '+(e.industria||"")+' · '+(e.region||"")+'</div>';
-  html += '<div class="mt-2">'+(e.direccion||"")+(e.comuna ? ' · '+e.comuna : '')+'</div>';
-  html += '<div class="mt-2">Origen: <strong>'+e.origen+'</strong> · Estado: <strong>'+e.estado+'</strong></div>';
-  html += '<div class="mt-2">Lista de precios: <strong>'+(e.lista_precio_nombre || "Predeterminada del sistema")+'</strong></div></div>';
+  html += '<div class="card card-soft p-4 mb-3"><h1 class="h4 page-title">'+crmEsc(e.razon_social)+'</h1>';
+  html += '<div class="text-secondary">'+crmEsc(e.rut)+' · '+crmEsc(e.industria||"")+' · '+crmEsc(e.region||"")+'</div>';
+  html += '<div class="mt-2">'+crmEsc(e.direccion||"")+(e.comuna ? ' · '+crmEsc(e.comuna) : '')+'</div>';
+  html += '<div class="mt-2">Origen: <strong>'+crmEsc(e.origen)+'</strong> · Estado: <strong>'+crmEsc(e.estado)+'</strong></div>';
+  html += '<div class="mt-2">Lista de precios: <strong>'+crmEsc(e.lista_precio_nombre || "Predeterminada del sistema")+'</strong></div></div>';
   html += '<div class="row g-3">';
   html += '<div class="col-lg-4"><div class="card card-soft p-3"><h2 class="h6">Contactos</h2>'+(d.contactos||[]).map(function (c) {
-    return '<div class="border-bottom py-2"><strong>'+c.nombre+' '+(c.apellido||"")+'</strong><div class="small text-secondary">'+(c.cargo||"")+' · '+(c.telefono||c.whatsapp||c.email||"")+'</div></div>';
+    var wa = window.crmWhatsAppUrl(c.whatsapp || c.telefono);
+    var waLink = wa ? ' · <a href="'+wa+'" target="_blank" rel="noopener">WhatsApp</a>' : '';
+    return '<div class="border-bottom py-2"><strong>'+crmEsc(c.nombre)+' '+crmEsc(c.apellido||"")+'</strong><div class="small text-secondary">'+crmEsc(c.cargo||"")+' · '+crmEsc(c.telefono||c.whatsapp||c.email||"")+waLink+'</div></div>';
   }).join("")+'</div></div>';
   html += '<div class="col-lg-4"><div class="card card-soft p-3"><h2 class="h6">Oportunidades</h2>'+(d.oportunidades||[]).map(function (o) {
     return '<div class="border-bottom py-2"><div>'+o.codigo+' · '+o.titulo+'</div><div class="small">'+o.etapa+' · '+crmClp(o.valor_estimado)+'</div></div>';
@@ -92,6 +96,24 @@ function loadFicha() {
   return crmApi("api/empresas.php?id="+id).then(function (d) {
     fichaData = d;
     renderFicha(d);
+    var cot = document.getElementById("btnCotizar");
+    if (cot) cot.href = "cotizador.php?empresa_id="+id;
+    var waBtn = document.getElementById("btnWhatsapp");
+    var contactos = d.contactos || [];
+    var principal = null;
+    contactos.forEach(function (c) {
+      if (!principal && Number(c.es_principal) === 1) principal = c;
+    });
+    if (!principal && contactos.length) principal = contactos[0];
+    var wa = principal ? window.crmWhatsAppUrl(principal.whatsapp || principal.telefono) : "";
+    if (waBtn) {
+      if (wa) {
+        waBtn.href = wa;
+        waBtn.hidden = false;
+      } else {
+        waBtn.hidden = true;
+      }
+    }
     return d;
   }).catch(function (e) { crmToast(e.message, true); });
 }

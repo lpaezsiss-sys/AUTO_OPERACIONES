@@ -23,7 +23,11 @@ crm_layout_start('Cotizador', 'cotizador', $user);
     <div class="row g-3">
         <div class="col-md-5">
             <label class="form-label">Empresa</label>
-            <select class="form-select" id="empresa_id"></select>
+            <div class="crm-typeahead">
+                <input type="hidden" id="empresa_id" value="">
+                <input class="form-control" id="empresa_q" autocomplete="off" placeholder="Buscar razón social o RUT…">
+                <div id="empresa_sug" class="list-group position-absolute w-100 shadow" style="display:none"></div>
+            </div>
         </div>
         <div class="col-md-4">
             <label class="form-label">Contacto</label>
@@ -302,14 +306,20 @@ crm_layout_start('Cotizador', 'cotizador', $user);
     }).catch(function (e) { crmToast(e.message, true); });
   }
 
-  crmApi("api/empresas.php").then(function (d) {
-    empresasCache = d.empresas || [];
-    document.getElementById("empresa_id").innerHTML = empresasCache.map(function (e) {
-      return '<option value="' + e.id + '">' + e.razon_social + '</option>';
-    }).join("");
-    loadContactos(document.getElementById("empresa_id").value);
-    aplicarListaEmpresa();
-  }).catch(function (e) { crmToast(e.message, true); });
+  var empPicker = crmEmpresaPicker({
+    inputId: "empresa_q",
+    hiddenId: "empresa_id",
+    listId: "empresa_sug",
+    onSelect: function (emp) {
+      empresasCache = emp ? [emp] : [];
+      loadContactos(emp ? emp.id : "");
+      aplicarListaEmpresa();
+    }
+  });
+  var preEmp = <?php echo (int) (isset($_GET['empresa_id']) ? $_GET['empresa_id'] : 0); ?>;
+  if (empPicker && preEmp > 0) {
+    empPicker.loadById(preEmp).catch(function (e) { crmToast(e.message, true); });
+  }
 
   function loadContactos(empresaId) {
     var sel = document.getElementById("contacto_id");
@@ -321,10 +331,6 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       }).join("");
     }).catch(function (e) { crmToast(e.message, true); });
   }
-  document.getElementById("empresa_id").addEventListener("change", function () {
-    loadContactos(this.value);
-    aplicarListaEmpresa();
-  });
 
   crmApi("api/marcas.php").then(function (d) {
     marcasCatalogo = d.marcas || [];
@@ -484,6 +490,10 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   document.getElementById("btnGuardar").addEventListener("click", function () {
     var okMsg = document.getElementById("okMsg");
     okMsg.hidden = true;
+    if (!Number(document.getElementById("empresa_id").value || 0)) {
+      crmToast("Seleccione una empresa", true);
+      return;
+    }
     fetch("api/crear_cotizacion.php?action=guardar", {
       method: "POST",
       credentials: "same-origin",

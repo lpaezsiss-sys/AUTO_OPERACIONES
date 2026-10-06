@@ -93,9 +93,17 @@ final class Actividades
         if (!is_array($rows)) {
             $rows = array();
         }
+        $agenda = crm_lower(crm_str(isset($filtros['agenda']) ? $filtros['agenda'] : '', 20));
         $actividades = array();
         foreach ($rows as $row) {
-            $actividades[] = self::hidratar($row);
+            $act = self::hidratar($row);
+            if ($agenda === 'hoy' && empty($act['es_hoy'])) {
+                continue;
+            }
+            if (($agenda === 'vencidas' || $agenda === 'vencida') && empty($act['vencida'])) {
+                continue;
+            }
+            $actividades[] = $act;
         }
         return $actividades;
     }

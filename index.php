@@ -11,14 +11,14 @@ crm_layout_start('Dashboard', 'dashboard', $user);
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h1 class="page-title h3 mb-1">Dashboard comercial</h1>
-        <p class="text-secondary mb-0">Pipeline B2B, cotizaciones e inventario en vivo.</p>
+        <p class="text-secondary mb-0">Qué hay que hacer hoy: seguimientos, pipeline y cotizaciones.</p>
     </div>
 </div>
 <div class="row g-3" id="kpis"></div>
 <div class="row g-3 mt-1">
     <div class="col-lg-7">
         <div class="card card-soft p-3">
-                        h2 class="h6" style="color:#05294B">Actividades recientes</h2>
+            <h2 class="h6" style="color:#05294B">Actividades recientes</h2>
             <div id="actList" class="small"></div>
         </div>
     </div>
@@ -33,15 +33,15 @@ crm_layout_start('Dashboard', 'dashboard', $user);
 crmApi("api/dashboard.php").then(function (d) {
   var k = d.kpis || {};
   var items = [
-    ["Empresas", k.empresas],
-    ["Oportunidades abiertas", k.oportunidades_abiertas],
-    ["Pipeline", crmClp(k.pipeline_clp)],
-    ["Cotizaciones del mes", k.cotizaciones_mes],
-    ["Actividades pendientes", k.actividades_pendientes],
-    ["SKU bajo stock", k.productos_bajo_stock]
+    ["Seguimientos hoy", k.actividades_hoy, "actividades.php?estado=pendiente&agenda=hoy"],
+    ["Vencidas", k.actividades_vencidas, "actividades.php?estado=pendiente&agenda=vencidas"],
+    ["Oportunidades abiertas", k.oportunidades_abiertas, "oportunidades.php"],
+    ["Pipeline", crmClp(k.pipeline_clp), "oportunidades.php"],
+    ["Cotizaciones del mes", k.cotizaciones_mes, "cotizaciones.php"],
+    ["SKU bajo stock", k.productos_bajo_stock, "productos.php?bajo_stock=1"]
   ];
   document.getElementById("kpis").innerHTML = items.map(function (it) {
-    return '<div class="col-6 col-xl-4"><div class="card kpi p-3"><div class="kpi-label">'+it[0]+'</div><div class="kpi-value">'+it[1]+'</div></div></div>';
+    return '<div class="col-6 col-xl-4"><a class="card kpi kpi-link p-3" href="'+it[2]+'"><div class="kpi-label">'+it[0]+'</div><div class="kpi-value">'+it[1]+'</div></a></div>';
   }).join("");
   document.getElementById("actList").innerHTML = (d.actividades_recientes || []).map(function (a) {
     return '<div class="d-flex justify-content-between border-bottom py-2"><div><strong>'+a.titulo+'</strong><div class="text-secondary">'+ (a.razon_social || "Sin empresa") +' · '+a.canal+'</div></div><span class="badge text-bg-light">'+a.estado+'</span></div>';
