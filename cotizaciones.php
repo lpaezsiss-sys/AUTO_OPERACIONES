@@ -62,6 +62,7 @@ function loadCots() {
         '<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Más</button>' +
         '<ul class="dropdown-menu dropdown-menu-end">' +
         folioBtn +
+        '<li><button class="dropdown-item" type="button" data-dup="'+c.id+'">Duplicar</button></li>' +
         '<li><button class="dropdown-item text-danger" type="button" data-del="'+c.id+'">Eliminar</button></li>' +
         '</ul></div></td></tr>';
     }).join("") || '<tr><td colspan="6" class="text-secondary">No hay cotizaciones con ese filtro.</td></tr>';
@@ -91,6 +92,18 @@ document.getElementById("rows").addEventListener("click", function (ev) {
       .then(function (d) {
         loadCots();
         crmToast(d.message || "Folio actualizado");
+      })
+      .catch(function (e) { crmToast(e.message, true); });
+    return;
+  }
+  var dupBtn = ev.target.closest("[data-dup]");
+  if (dupBtn) {
+    var dupId = dupBtn.getAttribute("data-dup");
+    if (!window.confirm("¿Duplicar esta cotización como un borrador nuevo?")) return;
+    crmApi("api/cotizaciones.php?action=duplicar", { method: "POST", body: { id: Number(dupId) } })
+      .then(function (d) {
+        crmToast("Duplicada " + d.cotizacion.folio);
+        window.location.href = "cotizacion.php?id=" + d.cotizacion.id;
       })
       .catch(function (e) { crmToast(e.message, true); });
     return;

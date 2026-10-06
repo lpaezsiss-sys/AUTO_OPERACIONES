@@ -1484,5 +1484,65 @@ $empLim = \Crm\Empresas::index();
 assert_true(count($empLim['empresas']) <= 2, 'Empresas::index respeta limit de typeahead');
 $_GET = array();
 
+$srcP1 = \Crm\Cotizaciones::store(array(
+    'empresa_id' => $empId,
+    'contacto_id' => (int) $cto['contacto']['id'],
+    'oportunidad_id' => (int) $opp['oportunidad']['id'],
+    'estado' => 'enviada',
+    'descuento' => 500,
+    'notas' => 'Origen P1',
+    'validez_oferta' => '15 días',
+    'items' => array(array('producto_id' => (int) $prod['id'], 'cantidad' => 2)),
+), $login);
+assert_true((int) $srcP1['cotizacion']['oportunidad_id'] === (int) $opp['oportunidad']['id'], 'Alta vincula oportunidad');
+$dupP1 = \Crm\Cotizaciones::duplicar((int) $srcP1['cotizacion']['id'], $login);
+assert_true((int) $dupP1['cotizacion']['id'] !== (int) $srcP1['cotizacion']['id'], 'Duplicar crea id nuevo');
+assert_true($dupP1['cotizacion']['folio'] !== $srcP1['cotizacion']['folio'], 'Duplicar asigna folio nuevo');
+assert_true((string) $dupP1['cotizacion']['estado'] === 'borrador', 'Duplicado nace en borrador');
+assert_true((int) $dupP1['cotizacion']['empresa_id'] === (int) $empId, 'Duplicado conserva empresa');
+assert_true((int) $dupP1['cotizacion']['contacto_id'] === (int) $cto['contacto']['id'], 'Duplicado conserva contacto');
+assert_true((int) $dupP1['cotizacion']['oportunidad_id'] === (int) $opp['oportunidad']['id'], 'Duplicado conserva oportunidad');
+assert_true(count($dupP1['cotizacion']['items']) === 1, 'Duplicado copia ítems');
+assert_true((string) $dupP1['cotizacion']['notas'] === 'Origen P1', 'Duplicado copia notas');
+$keepOpp = \Crm\Cotizaciones::update((int) $dupP1['cotizacion']['id'], array(
+    'empresa_id' => $empId,
+    'estado' => 'borrador',
+    'descuento' => 0,
+    'items' => array(array('producto_id' => (int) $prod['id'], 'cantidad' => 1)),
+), $login);
+assert_true((int) $keepOpp['cotizacion']['oportunidad_id'] === (int) $opp['oportunidad']['id'], 'Update sin oportunidad_id conserva el vínculo');
+try {
+    \Crm\Cotizaciones::store(array(
+        'empresa_id' => $empId,
+        'oportunidad_id' => 999999,
+        'estado' => 'borrador',
+        'items' => array(array('producto_id' => (int) $prod['id'], 'cantidad' => 1)),
+    ), $login);
+    assert_true(false, 'Oportunidad inexistente debe fallar');
+} catch (\Crm\ApiException $e) {
+    assert_true($e->status === 404, 'Oportunidad inexistente = 404');
+}
+
+$apiCotSrcP1 = (string) file_get_contents($root . '/api/cotizaciones.php');
+assert_true(strpos($apiCotSrcP1, "action === 'duplicar'") !== false, 'POST cotizaciones action=duplicar');
+$uiListP1 = (string) file_get_contents($root . '/cotizaciones.php');
+assert_true(strpos($uiListP1, 'data-dup') !== false, 'Listado tiene Duplicar');
+$uiCotP1 = (string) file_get_contents($root . '/cotizacion.php');
+assert_true(strpos($uiCotP1, 'btnDuplicarCot') !== false, 'Ficha tiene Duplicar');
+assert_true(strpos($uiCotP1, 'crm-save-bar') !== false, 'Ficha tiene barra fija Guardar');
+assert_true(strpos($uiCotP1, 'chkCosto') !== false && strpos($uiCotP1, 'col-costo') !== false, 'Ficha puede ocultar costo');
+$uiAltaP1 = (string) file_get_contents($root . '/cotizador.php');
+assert_true(strpos($uiAltaP1, "\$_GET['oportunidad_id']") !== false, 'Cotizador acepta oportunidad_id en URL');
+assert_true(strpos($uiAltaP1, 'crm-save-bar') !== false, 'Cotizador tiene barra fija Guardar');
+assert_true(strpos($uiAltaP1, 'chkCosto') !== false, 'Cotizador tiene toggle de costo');
+$uiOppP1 = (string) file_get_contents($root . '/oportunidades.php');
+assert_true(strpos($uiOppP1, 'btn-cotizar-opp') !== false, 'Kanban tiene Cotizar desde oportunidad');
+$uiEmpP1 = (string) file_get_contents($root . '/empresa.php');
+assert_true(strpos($uiEmpP1, 'oportunidad_id=') !== false, 'Ficha empresa cotiza desde oportunidad');
+$jsP1 = (string) file_get_contents($root . '/assets/js/app.js');
+assert_true(strpos($jsP1, 'crmInitCostoToggle') !== false && strpos($jsP1, 'crmBusyButton') !== false, 'JS comparte toggle de costo y busy button');
+$cssP1 = (string) file_get_contents($root . '/assets/css/app.css');
+assert_true(strpos($cssP1, 'crm-hide-cost') !== false && strpos($cssP1, '.crm-save-bar') !== false, 'CSS de costo oculto y barra fija');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

@@ -233,6 +233,34 @@ body {
   padding: 2rem;
 }
 
+.crm-hide-cost .col-costo {
+  display: none;
+}
+
+.crm-save-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  padding: 0.8rem 0 0.15rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #fff 18%, #fff 100%);
+  border-top: 1px solid #e4ebf2;
+}
+
+.crm-save-bar-total {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.kanban-card .btn-cotizar-opp {
+  font-weight: 600;
+}
+
 .act-card.vencida {
   border-left: 3px solid #b02a37;
 }

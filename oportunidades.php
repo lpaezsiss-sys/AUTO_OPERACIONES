@@ -38,7 +38,8 @@ function render(rows) {
   var cols = etapas.map(function (et) {
     var items = cache.filter(function (o) { return o.etapa === et; });
     var cards = items.map(function (o) {
-      return '<div class="kanban-card" data-id="'+o.id+'"><div class="small text-secondary">'+o.codigo+'</div><strong>'+o.titulo+'</strong><div class="small">'+o.razon_social+'</div><div class="small">'+crmClp(o.valor_estimado)+'</div><select class="form-select form-select-sm mt-2 etapa-sel" data-id="'+o.id+'">'+etapas.map(function (x){return '<option value="'+x+'"'+(x===o.etapa?' selected':'')+'>'+x+'</option>';}).join("")+'</select></div>';
+      var cotHref = "cotizador.php?empresa_id="+o.empresa_id+"&oportunidad_id="+o.id+(o.contacto_id ? "&contacto_id="+o.contacto_id : "");
+      return '<div class="kanban-card" data-id="'+o.id+'"><div class="small text-secondary">'+o.codigo+'</div><strong>'+o.titulo+'</strong><div class="small">'+o.razon_social+'</div><div class="small">'+crmClp(o.valor_estimado)+'</div><a class="btn btn-sm btn-outline-primary mt-2 btn-cotizar-opp" href="'+cotHref+'">Cotizar</a><select class="form-select form-select-sm mt-2 etapa-sel" data-id="'+o.id+'">'+etapas.map(function (x){return '<option value="'+x+'"'+(x===o.etapa?' selected':'')+'>'+x+'</option>';}).join("")+'</select></div>';
     }).join("");
     return '<div class="kanban-col"><div class="fw-bold mb-2 text-capitalize">'+et+' <span class="badge text-bg-light">'+items.length+'</span></div>'+cards+'</div>';
   }).join("");

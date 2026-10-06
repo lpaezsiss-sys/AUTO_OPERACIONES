@@ -174,7 +174,24 @@ final class Cotizaciones
                 Http::fail('El contacto no pertenece a la empresa seleccionada');
             }
         }
-        $oppId = crm_int(isset($body['oportunidad_id']) ? $body['oportunidad_id'] : 0, 0);
+        $oppProvided = array_key_exists('oportunidad_id', $body);
+        $oppId = $oppProvided ? crm_int($body['oportunidad_id'], 0) : 0;
+        if (!$oppProvided && $id > 0) {
+            $prevOpp = $pdo->prepare('SELECT oportunidad_id FROM crm_cotizaciones WHERE id = ? LIMIT 1');
+            $prevOpp->execute(array($id));
+            $oppId = crm_int($prevOpp->fetchColumn(), 0);
+        }
+        if ($oppId > 0) {
+            $oppStmt = $pdo->prepare('SELECT id, empresa_id FROM crm_oportunidades WHERE id = ? LIMIT 1');
+            $oppStmt->execute(array($oppId));
+            $oppRow = $oppStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$oppRow) {
+                Http::fail('Oportunidad no encontrada', 404);
+            }
+            if ((int) $oppRow['empresa_id'] !== $empresaId) {
+                Http::fail('La oportunidad no pertenece a la empresa seleccionada');
+            }
+        }
         $fechaEmision = crm_str(isset($body['fecha_emision']) ? $body['fecha_emision'] : date('Y-m-d'), 10);
         if ($fechaEmision === '') {
             $fechaEmision = date('Y-m-d');
@@ -310,6 +327,46 @@ final class Cotizaciones
         }
 
         return self::show($id);
+    }
+
+    /**
+     * Copia una cotización a un borrador nuevo (folio fresco).
+     *
+     * @param int $id
+     * @param array $user
+     * @return array
+     */
+    public static function duplicar($id, array $user)
+    {
+        $src = self::show((int) $id);
+        $c = $src['cotizacion'];
+        $items = array();
+        foreach ((isset($c['items']) && is_array($c['items'])) ? $c['items'] : array() as $it) {
+            if (!is_array($it)) {
+                continue;
+            }
+            $items[] = $it;
+        }
+        $body = array(
+            'empresa_id' => isset($c['empresa_id']) ? $c['empresa_id'] : 0,
+            'contacto_id' => isset($c['contacto_id']) ? $c['contacto_id'] : 0,
+            'oportunidad_id' => isset($c['oportunidad_id']) ? $c['oportunidad_id'] : 0,
+            'vendedor_id' => isset($c['vendedor_id']) ? $c['vendedor_id'] : 0,
+            'lista_precio_id' => isset($c['lista_precio_id']) ? $c['lista_precio_id'] : 0,
+            'estado' => 'borrador',
+            'fecha_emision' => date('Y-m-d'),
+            'fecha_validez' => isset($c['fecha_validez']) ? $c['fecha_validez'] : '',
+            'validez_oferta' => isset($c['validez_oferta']) ? $c['validez_oferta'] : '',
+            'moneda' => isset($c['moneda']) ? $c['moneda'] : 'CLP',
+            'condiciones_pago' => isset($c['condiciones_pago']) ? $c['condiciones_pago'] : '',
+            'plazo_entrega' => isset($c['plazo_entrega']) ? $c['plazo_entrega'] : '',
+            'lugar_entrega' => isset($c['lugar_entrega']) ? $c['lugar_entrega'] : '',
+            'descuento' => isset($c['descuento']) ? $c['descuento'] : 0,
+            'notas' => isset($c['notas']) ? $c['notas'] : '',
+            'marca_ids' => isset($c['marca_ids']) && is_array($c['marca_ids']) ? $c['marca_ids'] : array(),
+            'items' => $items,
+        );
+        return self::persist(0, $body, $user);
     }
 
     /**

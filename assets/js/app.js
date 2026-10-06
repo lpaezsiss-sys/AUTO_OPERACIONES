@@ -204,6 +204,62 @@
     };
   };
 
+  window.crmBusyButton = function (btn, work) {
+    if (!btn) {
+      return Promise.resolve().then(work);
+    }
+    if (btn.getAttribute("data-busy") === "1") {
+      return Promise.resolve();
+    }
+    var prev = btn.textContent;
+    btn.setAttribute("data-busy", "1");
+    btn.disabled = true;
+    btn.textContent = "Guardando…";
+    return Promise.resolve()
+      .then(work)
+      .then(function (value) {
+        btn.removeAttribute("data-busy");
+        btn.disabled = false;
+        btn.textContent = prev;
+        return value;
+      }, function (err) {
+        btn.removeAttribute("data-busy");
+        btn.disabled = false;
+        btn.textContent = prev;
+        throw err;
+      });
+  };
+
+  /**
+   * Columna Costo: oculta para vendedor. Admin puede mostrarla/ocultarla.
+   */
+  window.crmInitCostoToggle = function () {
+    var isAdmin = window.crmRol === "admin";
+    var stored = null;
+    try {
+      stored = window.localStorage.getItem("crmMostrarCosto");
+    } catch (e) {
+      stored = null;
+    }
+    var visible = isAdmin ? (stored === null ? true : stored === "1") : false;
+    document.body.classList.toggle("crm-hide-cost", !visible);
+    var wrap = document.getElementById("wrapCosto");
+    var chk = document.getElementById("chkCosto");
+    if (wrap) {
+      wrap.hidden = !isAdmin;
+    }
+    if (chk) {
+      chk.checked = visible;
+      chk.addEventListener("change", function () {
+        var on = !!chk.checked;
+        try {
+          window.localStorage.setItem("crmMostrarCosto", on ? "1" : "0");
+        } catch (e2) {}
+        document.body.classList.toggle("crm-hide-cost", !on);
+      });
+    }
+  };
+
   window.crmForm = function (id) {
     var form = document.getElementById(id);
     var data = {};
