@@ -14,6 +14,10 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         <p class="text-secondary mb-0">Búsqueda en vivo sobre <code>productos</code> · IVA 19% · guardado asíncrono.</p>
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap">
+        <label class="form-check mb-0" id="wrapCosto" hidden>
+            <input class="form-check-input" type="checkbox" id="chkCosto">
+            <span class="form-check-label small">Mostrar costo</span>
+        </label>
         <span id="folioBadge" class="badge-folio badge-folio-new">Cotización Nueva (Próximo Nº: …)</span>
         <a class="text-decoration-none" href="cotizaciones.php">Ver cotizaciones</a>
     </div>
@@ -25,6 +29,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
             <label class="form-label">Empresa</label>
             <div class="crm-typeahead">
                 <input type="hidden" id="empresa_id" value="">
+                <input type="hidden" id="oportunidad_id" value="<?php echo (int) (isset($_GET['oportunidad_id']) ? $_GET['oportunidad_id'] : 0); ?>">
                 <input class="form-control" id="empresa_q" autocomplete="off" placeholder="Buscar razón social o RUT…">
                 <div id="empresa_sug" class="list-group position-absolute w-100 shadow" style="display:none"></div>
             </div>
@@ -108,7 +113,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
                     <th>Stock</th>
                     <th>Cant.</th>
                     <th>Precio</th>
-                    <th>Costo</th>
+                    <th class="col-costo">Costo</th>
                     <th>% Desc.</th>
                     <th class="text-end">Subtotal</th>
                     <th></th>
@@ -136,9 +141,12 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         <div class="form-text">Si no marca ninguna, el PDF usa las marcas globales activas.</div>
     </div>
 
-    <button class="btn mt-3" id="btnGuardar" type="button" style="background:#fec001;color:#05294B;font-weight:700">
-        Guardar cotización
-    </button>
+    <div class="crm-save-bar">
+        <div class="crm-save-bar-total" id="saveBarTotal">Total $0</div>
+        <button class="btn" id="btnGuardar" type="button" style="background:#fec001;color:#05294B;font-weight:700">
+            Guardar cotización
+        </button>
+    </div>
     <div class="small text-success mt-2" id="okMsg" hidden></div>
 </div>
 
@@ -259,7 +267,7 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         '<td><span class="badge badge-stock ' + (warn ? "low" : "") + '">' + (libre || stockVal == null ? "—" : stockVal) + '</span></td>' +
         '<td><input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.cantidad) + '" data-i="' + i + '" data-k="cantidad"></td>' +
         '<td><input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.precio_unitario) + '" data-i="' + i + '" data-k="precio_unitario"></td>' +
-        '<td>' + (pedido ? '<input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.costo_unitario || 0) + '" data-i="' + i + '" data-k="costo_unitario">' : "—") + '</td>' +
+        '<td class="col-costo">' + (pedido ? '<input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.costo_unitario || 0) + '" data-i="' + i + '" data-k="costo_unitario">' : "—") + '</td>' +
         '<td><input class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="' + crmEsc(it.descuento_pct) + '" data-i="' + i + '" data-k="descuento_pct"></td>' +
         '<td class="text-end line-sub">' + crmClp(lineSub(it)) + '</td>' +
         '<td><button class="btn btn-sm btn-outline-danger" type="button" data-del="' + i + '">x</button></td>' +
@@ -277,6 +285,8 @@ crm_layout_start('Cotizador', 'cotizador', $user);
       '<div>Subtotal ' + crmClp(sub) + '</div>' +
       '<div>IVA 19% ' + crmClp(iva) + '</div>' +
       '<div class="fw-bold">Total ' + crmClp(neto + iva) + '</div>';
+    var bar = document.getElementById("saveBarTotal");
+    if (bar) bar.textContent = "Total " + crmClp(neto + iva);
   }
 
   function addProducto(p) {
@@ -317,18 +327,33 @@ crm_layout_start('Cotizador', 'cotizador', $user);
     }
   });
   var preEmp = <?php echo (int) (isset($_GET['empresa_id']) ? $_GET['empresa_id'] : 0); ?>;
-  if (empPicker && preEmp > 0) {
-    empPicker.loadById(preEmp).catch(function (e) { crmToast(e.message, true); });
+  var preOpp = <?php echo (int) (isset($_GET['oportunidad_id']) ? $_GET['oportunidad_id'] : 0); ?>;
+  var preCto = <?php echo (int) (isset($_GET['contacto_id']) ? $_GET['contacto_id'] : 0); ?>;
+  function applyEmpresaYContacto(empresaId, contactoId) {
+    if (!empresaId || !empPicker) return Promise.resolve();
+    return empPicker.loadById(empresaId).then(function () {
+      return loadContactos(empresaId, contactoId);
+    });
+  }
+  if (preOpp > 0) {
+    crmApi("api/oportunidades.php?id=" + preOpp).then(function (d) {
+      var o = d.oportunidad || {};
+      document.getElementById("oportunidad_id").value = o.id || preOpp;
+      return applyEmpresaYContacto(o.empresa_id || preEmp, o.contacto_id || preCto);
+    }).catch(function (e) { crmToast(e.message, true); });
+  } else if (empPicker && preEmp > 0) {
+    applyEmpresaYContacto(preEmp, preCto).catch(function (e) { crmToast(e.message, true); });
   }
 
-  function loadContactos(empresaId) {
+  function loadContactos(empresaId, selected) {
     var sel = document.getElementById("contacto_id");
     sel.innerHTML = '<option value="">(sin contacto)</option>';
-    if (!empresaId) return;
-    crmApi("api/contactos.php?empresa_id=" + empresaId).then(function (d) {
+    if (!empresaId) return Promise.resolve();
+    return crmApi("api/contactos.php?empresa_id=" + empresaId).then(function (d) {
       sel.innerHTML = '<option value="">(sin contacto)</option>' + (d.contactos || []).map(function (c) {
         return '<option value="' + c.id + '">' + c.nombre + ' ' + (c.apellido || "") + (c.email ? ' · ' + c.email : '') + '</option>';
       }).join("");
+      if (selected) sel.value = String(selected);
     }).catch(function (e) { crmToast(e.message, true); });
   }
 
@@ -488,19 +513,22 @@ crm_layout_start('Cotizador', 'cotizador', $user);
   document.getElementById("descuento").addEventListener("input", render);
 
   document.getElementById("btnGuardar").addEventListener("click", function () {
+    var btn = document.getElementById("btnGuardar");
     var okMsg = document.getElementById("okMsg");
     okMsg.hidden = true;
     if (!Number(document.getElementById("empresa_id").value || 0)) {
       crmToast("Seleccione una empresa", true);
       return;
     }
-    fetch("api/crear_cotizacion.php?action=guardar", {
+    crmBusyButton(btn, function () {
+    return fetch("api/crear_cotizacion.php?action=guardar", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
         empresa_id: Number(document.getElementById("empresa_id").value || 0),
         contacto_id: Number(document.getElementById("contacto_id").value || 0),
+        oportunidad_id: Number(document.getElementById("oportunidad_id").value || 0),
         vendedor_id: Number(document.getElementById("vendedor_id").value || 0),
         lista_precio_id: Number(document.getElementById("lista_precio_id").value || 0),
         estado: document.getElementById("estado").value,
@@ -536,8 +564,10 @@ crm_layout_start('Cotizador', 'cotizador', $user);
         items = [];
         render();
       }).catch(function (e) { crmToast(e.message, true); });
+    });
   });
 
+  crmInitCostoToggle();
   render();
 })();
 </script>

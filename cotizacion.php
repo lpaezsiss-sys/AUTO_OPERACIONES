@@ -25,8 +25,13 @@ crm_layout_start($folioAsignado !== '' ? $folioAsignado : 'Nueva cotización', '
         <?php } else { ?>
         <span id="folioBadge" class="badge-folio badge-folio-new">Cotización Nueva (Próximo Nº: <?php echo crm_h($proximoFolio); ?>)</span>
         <?php } ?>
+        <label class="form-check mb-0" id="wrapCosto" hidden>
+            <input class="form-check-input" type="checkbox" id="chkCosto">
+            <span class="form-check-label small">Mostrar costo</span>
+        </label>
         <?php if ($id) { ?>
         <a class="btn btn-sm btn-outline-primary" href="api/cotizacion_pdf.php?id=<?php echo (int) $id; ?>" target="_blank">PDF</a>
+        <button class="btn btn-sm btn-outline-secondary" type="button" id="btnDuplicarCot">Duplicar</button>
         <?php if ((string) $user['rol'] === 'admin') { ?>
         <button class="btn btn-sm btn-outline-secondary" type="button" id="btnCambiarFolio" hidden>Cambiar folio</button>
         <?php } ?>
@@ -36,6 +41,7 @@ crm_layout_start($folioAsignado !== '' ? $folioAsignado : 'Nueva cotización', '
 </div>
 <form id="formCot" class="card card-soft p-4">
     <input type="hidden" name="id" value="<?php echo (int) $id; ?>">
+    <input type="hidden" name="oportunidad_id" id="selOportunidad" value="">
     <div class="row g-2">
         <div class="col-md-6"><label class="form-label">Empresa</label>
             <div class="crm-typeahead">
@@ -93,12 +99,15 @@ crm_layout_start($folioAsignado !== '' ? $folioAsignado : 'Nueva cotización', '
     </div>
     <div class="table-responsive">
         <table class="table" id="items">
-            <thead><tr><th>Tipo</th><th>Código</th><th>Descripción</th><th>Marca</th><th>Stock</th><th>Cant.</th><th>Precio</th><th>Costo</th><th>% Desc.</th><th>Subtotal</th><th></th></tr></thead>
+            <thead><tr><th>Tipo</th><th>Código</th><th>Descripción</th><th>Marca</th><th>Stock</th><th>Cant.</th><th>Precio</th><th class="col-costo">Costo</th><th>% Desc.</th><th>Subtotal</th><th></th></tr></thead>
             <tbody></tbody>
         </table>
     </div>
     <div class="text-end" id="totales"></div>
-    <button class="btn mt-3" style="background:#fec001;color:#05294B;font-weight:700" type="submit">Guardar cotización</button>
+    <div class="crm-save-bar">
+        <div class="crm-save-bar-total" id="saveBarTotal">Total $0</div>
+        <button class="btn" id="btnGuardar" style="background:#fec001;color:#05294B;font-weight:700" type="submit">Guardar cotización</button>
+    </div>
 </form>
 <script>
 var cotId = <?php echo (int) $id; ?>;
@@ -194,7 +203,7 @@ function renderItems() {
     var warn = !esLibre(it) && it.stock_actual != null && parseNum(it.stock_actual) < parseNum(it.cantidad);
     var libre = esLibre(it);
     var pedido = it.tipo_item === "a_pedido";
-    return '<tr><td>'+tipoLabel(it)+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+crmEsc(it.codigo||"")+'">':crmEsc(it.codigo||""))+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+crmEsc(it.descripcion||"")+'">':crmEsc(it.descripcion||""))+'</td><td>'+marcaCell(it,i)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(libre||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.cantidad)+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.precio_unitario)+'"></td><td>'+(pedido?'<input data-i="'+i+'" data-k="costo_unitario" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.costo_unitario||0)+'">':'—')+'</td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.descuento_pct)+'"></td><td class="text-end line-sub">'+crmClp(lineSub(it))+'</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>'+extraRow(it,i);
+    return '<tr><td>'+tipoLabel(it)+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="codigo" class="form-control form-control-sm" value="'+crmEsc(it.codigo||"")+'">':crmEsc(it.codigo||""))+'</td><td>'+(libre?'<input data-i="'+i+'" data-k="descripcion" class="form-control form-control-sm" value="'+crmEsc(it.descripcion||"")+'">':crmEsc(it.descripcion||""))+'</td><td>'+marcaCell(it,i)+'</td><td><span class="badge badge-stock '+(warn?'low':'')+'">'+(libre||it.stock_actual==null?'—':it.stock_actual)+'</span></td><td><input data-i="'+i+'" data-k="cantidad" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.cantidad)+'"></td><td><input data-i="'+i+'" data-k="precio_unitario" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.precio_unitario)+'"></td><td class="col-costo">'+(pedido?'<input data-i="'+i+'" data-k="costo_unitario" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.costo_unitario||0)+'">':'—')+'</td><td><input data-i="'+i+'" data-k="descuento_pct" class="form-control form-control-sm" type="text" inputmode="decimal" lang="es" autocomplete="off" value="'+crmEsc(it.descuento_pct)+'"></td><td class="text-end line-sub">'+crmClp(lineSub(it))+'</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-del="'+i+'">x</button></td></tr>'+extraRow(it,i);
   }).join("");
   updateTotalesCot();
 }
@@ -204,6 +213,8 @@ function updateTotalesCot() {
   var neto = Math.max(0, sub - desc);
   var iva = Math.round(neto * 0.19);
   document.getElementById("totales").innerHTML = '<div>Subtotal '+crmClp(sub)+'</div><div>IVA 19% '+crmClp(iva)+'</div><div class="fw-bold">Total '+crmClp(neto+iva)+'</div>';
+  var bar = document.getElementById("saveBarTotal");
+  if (bar) bar.textContent = "Total "+crmClp(neto+iva);
 }
 function addProducto(p) {
   var empId = Number(document.getElementById("selEmpresa").value || 0);
@@ -304,6 +315,7 @@ function aplicarCotizacion(payload) {
     document.getElementById("empresa_q").value = c.razon_social || "";
     afterEmp();
   }
+  document.getElementById("selOportunidad").value = c.oportunidad_id || "";
   setSelectValue(document.querySelector('[name=vendedor_id]'), c.vendedor_id || "", c.vendedor_nombre);
   setSelectValue(document.querySelector('[name=estado]'), c.estado || "borrador");
   document.querySelector('[name=fecha_validez]').value = c.fecha_validez || "";
@@ -419,6 +431,7 @@ document.querySelector("#items tbody").addEventListener("change", function (ev) 
 });
 document.getElementById("formCot").addEventListener("submit", function (ev) {
   ev.preventDefault();
+  var btn = document.getElementById("btnGuardar");
   var body = crmForm("formCot");
   body.items = sanitizeItems(items);
   body.descuento = parseNum(body.descuento);
@@ -427,9 +440,11 @@ document.getElementById("formCot").addEventListener("submit", function (ev) {
   });
   var method = cotId ? "PUT" : "POST";
   var url = cotId ? "api/cotizaciones.php?id="+cotId : "api/cotizaciones.php";
-  crmApi(url, { method: method, body: body })
-    .then(function (d) { crmToast("Cotización "+d.cotizacion.folio+" guardada"); window.location.href = "cotizacion.php?id="+d.cotizacion.id; })
-    .catch(function (e) { crmToast(e.message, true); });
+  crmBusyButton(btn, function () {
+    return crmApi(url, { method: method, body: body })
+      .then(function (d) { crmToast("Cotización "+d.cotizacion.folio+" guardada"); window.location.href = "cotizacion.php?id="+d.cotizacion.id; })
+      .catch(function (e) { crmToast(e.message, true); throw e; });
+  });
 });
 function aplicarFolioEnPantalla(folio) {
   document.getElementById("title").textContent = folio;
@@ -460,6 +475,18 @@ if (btnFolio) {
       .catch(function (e) { crmToast(e.message, true); });
   });
 }
+var btnDup = document.getElementById("btnDuplicarCot");
+if (btnDup) {
+  btnDup.addEventListener("click", function () {
+    if (!window.confirm("¿Duplicar esta cotización como un borrador nuevo?")) return;
+    crmApi("api/cotizaciones.php?action=duplicar", { method: "POST", body: { id: cotId } })
+      .then(function (d) {
+        crmToast("Duplicada " + d.cotizacion.folio);
+        window.location.href = "cotizacion.php?id=" + d.cotizacion.id;
+      })
+      .catch(function (e) { crmToast(e.message, true); });
+  });
+}
 var btnDel = document.getElementById("btnEliminarCot");
 if (btnDel) {
   btnDel.addEventListener("click", function () {
@@ -469,6 +496,7 @@ if (btnDel) {
       .catch(function (e) { crmToast(e.message, true); });
   });
 }
+crmInitCostoToggle();
 renderItems();
 </script>
 <?php crm_layout_end(); ?>

@@ -18,7 +18,13 @@ require __DIR__ . '/_init.php';
         return \Crm\Cotizaciones::index();
     }
     if ($method === 'POST') {
-        return \Crm\Cotizaciones::store(\Crm\Http::body(), $user);
+        $body = \Crm\Http::body();
+        $action = isset($_GET['action']) ? (string) $_GET['action'] : (isset($body['action']) ? (string) $body['action'] : '');
+        if ($action === 'duplicar') {
+            $dupId = $id > 0 ? $id : crm_int(isset($body['id']) ? $body['id'] : 0, 0);
+            return \Crm\Cotizaciones::duplicar($dupId, $user);
+        }
+        return \Crm\Cotizaciones::store($body, $user);
     }
     if ($method === 'PUT' || $method === 'PATCH') {
         $body = \Crm\Http::body();

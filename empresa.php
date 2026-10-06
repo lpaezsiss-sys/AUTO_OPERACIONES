@@ -82,7 +82,7 @@ function renderFicha(d) {
     return '<div class="border-bottom py-2"><strong>'+crmEsc(c.nombre)+' '+crmEsc(c.apellido||"")+'</strong><div class="small text-secondary">'+crmEsc(c.cargo||"")+' · '+crmEsc(c.telefono||c.whatsapp||c.email||"")+waLink+'</div></div>';
   }).join("")+'</div></div>';
   html += '<div class="col-lg-4"><div class="card card-soft p-3"><h2 class="h6">Oportunidades</h2>'+(d.oportunidades||[]).map(function (o) {
-    return '<div class="border-bottom py-2"><div>'+o.codigo+' · '+o.titulo+'</div><div class="small">'+o.etapa+' · '+crmClp(o.valor_estimado)+'</div></div>';
+    return '<div class="border-bottom py-2"><div>'+o.codigo+' · '+o.titulo+'</div><div class="small">'+o.etapa+' · '+crmClp(o.valor_estimado)+' · <a href="cotizador.php?empresa_id='+id+'&oportunidad_id='+o.id+'">Cotizar</a></div></div>';
   }).join("")+'</div></div>';
   html += '<div class="col-lg-4"><div class="card card-soft p-3"><h2 class="h6">Cotizaciones</h2>'+(d.cotizaciones||[]).map(function (c) {
     return '<div class="border-bottom py-2"><a href="cotizacion.php?id='+c.id+'">'+c.folio+'</a> · '+c.estado+'<div class="small">'+crmClp(c.total)+'</div></div>';
