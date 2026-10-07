@@ -38,6 +38,64 @@ final class Precios
     }
 
     /**
+     * Último precio por SKU cotizado a la empresa (misma regla que ultimoHistorial).
+     *
+     * @param int $empresaId
+     * @param int $limit
+     * @return array
+     */
+    public static function historialEmpresa($empresaId, $limit = 40)
+    {
+        $empresaId = (int) $empresaId;
+        $limit = (int) $limit;
+        if ($limit <= 0) {
+            $limit = 40;
+        }
+        if ($limit > 80) {
+            $limit = 80;
+        }
+        if ($empresaId <= 0) {
+            return array();
+        }
+        $sql = 'SELECT i.producto_id, i.codigo, i.descripcion, i.precio_unitario,
+                       c.fecha_emision, c.folio, c.id AS cotizacion_id, c.estado
+                FROM crm_cotizacion_items i
+                INNER JOIN crm_cotizaciones c ON c.id = i.cotizacion_id
+                WHERE c.empresa_id = ?
+                  AND i.tipo_item = ?
+                  AND i.producto_id IS NOT NULL
+                  AND c.estado NOT IN (?, ?)
+                ORDER BY c.id DESC';
+        $stmt = crm_pdo()->prepare($sql);
+        $stmt->execute(array($empresaId, 'producto', 'rechazada', 'vencida'));
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $byProd = array();
+        foreach (is_array($rows) ? $rows : array() as $row) {
+            $pid = (int) $row['producto_id'];
+            if ($pid <= 0) {
+                continue;
+            }
+            if (!isset($byProd[$pid])) {
+                $precio = (float) $row['precio_unitario'];
+                $byProd[$pid] = array(
+                    'producto_id' => $pid,
+                    'codigo' => (string) $row['codigo'],
+                    'descripcion' => (string) $row['descripcion'],
+                    'precio_unitario' => $precio,
+                    'fecha_emision' => (string) $row['fecha_emision'],
+                    'folio' => (string) $row['folio'],
+                    'cotizacion_id' => (int) $row['cotizacion_id'],
+                    'veces' => 1,
+                    'badge' => 'Último precio cliente: ' . self::clp($precio) . ' el ' . self::fechaDmy((string) $row['fecha_emision']),
+                );
+            } else {
+                $byProd[$pid]['veces']++;
+            }
+        }
+        return array_slice(array_values($byProd), 0, $limit);
+    }
+
+    /**
      * Jerarquía: historial cliente → lista de precios → precio base inventario.
      *
      * @param int $empresaId

@@ -12,7 +12,7 @@ require __DIR__ . '/_init.php';
         return \Crm\Oportunidades::show($id);
     }
     if ($method === 'GET') {
-        return \Crm\Oportunidades::index();
+        return \Crm\Oportunidades::index($user);
     }
     if ($method === 'POST') {
         return \Crm\Oportunidades::store(\Crm\Http::body(), $user);

@@ -75,6 +75,36 @@ final class Catalog
     }
 
     /**
+     * @param string $etapa
+     * @return string
+     */
+    public static function etiquetaEtapa($etapa)
+    {
+        $map = array(
+            'prospecto' => 'Prospecto',
+            'calificacion' => 'Calificación',
+            'propuesta' => 'Propuesta',
+            'negociacion' => 'Negociación',
+            'ganada' => 'Ganada',
+            'perdida' => 'Perdida',
+        );
+        $k = crm_lower(trim((string) $etapa));
+        return isset($map[$k]) ? $map[$k] : (string) $etapa;
+    }
+
+    /**
+     * @return array
+     */
+    public static function etapasEtiquetas()
+    {
+        $out = array();
+        foreach (self::etapas() as $et) {
+            $out[$et] = self::etiquetaEtapa($et);
+        }
+        return $out;
+    }
+
+    /**
      * @return string[]
      */
     public static function cotizacionEstados()
@@ -140,6 +170,7 @@ final class Catalog
             'origenes' => self::origenes(),
             'canales' => self::canales(),
             'etapas' => self::etapas(),
+            'etapa_etiquetas' => self::etapasEtiquetas(),
             'cotizacion_estados' => self::cotizacionEstados(),
             'item_tipos' => self::itemTipos(),
             'monedas' => self::monedas(),

@@ -67,31 +67,63 @@ function fillSelect(elId, arr, first) {
     return '<option value="'+v+'">'+v+'</option>';
   }).join("");
 }
+function emptyBox(msg) {
+  return '<div class="text-secondary small py-2">'+crmEsc(msg)+'</div>';
+}
 function renderFicha(d) {
   var e = d.empresa;
+  var skus = d.skus || [];
   var html = '';
-  html += '<div class="card card-soft p-4 mb-3"><h1 class="h4 page-title">'+crmEsc(e.razon_social)+'</h1>';
-  html += '<div class="text-secondary">'+crmEsc(e.rut)+' · '+crmEsc(e.industria||"")+' · '+crmEsc(e.region||"")+'</div>';
-  html += '<div class="mt-2">'+crmEsc(e.direccion||"")+(e.comuna ? ' · '+crmEsc(e.comuna) : '')+'</div>';
-  html += '<div class="mt-2">Origen: <strong>'+crmEsc(e.origen)+'</strong> · Estado: <strong>'+crmEsc(e.estado)+'</strong></div>';
-  html += '<div class="mt-2">Lista de precios: <strong>'+crmEsc(e.lista_precio_nombre || "Predeterminada del sistema")+'</strong></div></div>';
+  html += '<div class="card card-soft p-4 mb-3"><h1 class="h4 page-title mb-1">'+crmEsc(e.razon_social)+'</h1>';
+  html += '<div class="text-secondary">'+crmEsc(e.rut)+' · <span class="text-capitalize">'+crmEsc(e.estado||"")+'</span> · Lista: <strong>'+crmEsc(e.lista_precio_nombre || "Predeterminada del sistema")+'</strong></div>';
+  html += '<div class="small mt-2">'+crmEsc(e.industria||"")+(e.region ? ' · '+crmEsc(e.region) : '')+(e.direccion ? ' · '+crmEsc(e.direccion) : '')+(e.comuna ? ' · '+crmEsc(e.comuna) : '')+'</div></div>';
+  html += '<ul class="nav nav-tabs ficha-tabs mb-3" id="fichaTabs">';
+  html += '<li class="nav-item"><button class="nav-link active" type="button" data-tab="resumen">Resumen</button></li>';
+  html += '<li class="nav-item"><button class="nav-link" type="button" data-tab="skus">Equipos / SKU</button></li>';
+  html += '<li class="nav-item"><button class="nav-link" type="button" data-tab="cots">Cotizaciones</button></li>';
+  html += '<li class="nav-item"><button class="nav-link" type="button" data-tab="act">Actividad</button></li>';
+  html += '</ul>';
+  html += '<div class="tab-pane-crm" data-pane="resumen">';
   html += '<div class="row g-3">';
-  html += '<div class="col-lg-4"><div class="card card-soft p-3"><h2 class="h6">Contactos</h2>'+(d.contactos||[]).map(function (c) {
+  html += '<div class="col-lg-6"><div class="card card-soft p-3"><h2 class="h6">Contactos</h2>'+((d.contactos||[]).length ? (d.contactos||[]).map(function (c) {
     var wa = window.crmWhatsAppUrl(c.whatsapp || c.telefono);
     var waLink = wa ? ' · <a href="'+wa+'" target="_blank" rel="noopener">WhatsApp</a>' : '';
     return '<div class="border-bottom py-2"><strong>'+crmEsc(c.nombre)+' '+crmEsc(c.apellido||"")+'</strong><div class="small text-secondary">'+crmEsc(c.cargo||"")+' · '+crmEsc(c.telefono||c.whatsapp||c.email||"")+waLink+'</div></div>';
-  }).join("")+'</div></div>';
-  html += '<div class="col-lg-4"><div class="card card-soft p-3"><h2 class="h6">Oportunidades</h2>'+(d.oportunidades||[]).map(function (o) {
-    return '<div class="border-bottom py-2"><div>'+o.codigo+' · '+o.titulo+'</div><div class="small">'+o.etapa+' · '+crmClp(o.valor_estimado)+' · <a href="cotizador.php?empresa_id='+id+'&oportunidad_id='+o.id+'">Cotizar</a></div></div>';
-  }).join("")+'</div></div>';
-  html += '<div class="col-lg-4"><div class="card card-soft p-3"><h2 class="h6">Cotizaciones</h2>'+(d.cotizaciones||[]).map(function (c) {
-    return '<div class="border-bottom py-2"><a href="cotizacion.php?id='+c.id+'">'+c.folio+'</a> · '+c.estado+'<div class="small">'+crmClp(c.total)+'</div></div>';
-  }).join("")+'</div></div></div>';
-  html += '<div class="card card-soft p-3 mt-3"><h2 class="h6">Línea de tiempo omnicanal</h2>'+(d.actividades||[]).map(function (a) {
-    return '<div class="border-bottom py-2"><strong>'+a.titulo+'</strong> <span class="badge text-bg-light">'+a.canal+'</span><div class="small text-secondary">'+a.tipo+' · '+a.estado+'</div></div>';
-  }).join("")+'</div>';
+  }).join("") : emptyBox("Sin contactos"))+'</div></div>';
+  html += '<div class="col-lg-6"><div class="card card-soft p-3"><h2 class="h6">Oportunidades</h2>'+((d.oportunidades||[]).length ? (d.oportunidades||[]).map(function (o) {
+    return '<div class="border-bottom py-2"><div>'+crmEsc(o.codigo)+' · '+crmEsc(o.titulo)+'</div><div class="small">'+crmEsc(o.etapa)+' · '+crmClp(o.valor_estimado)+' · <a href="cotizador.php?empresa_id='+id+'&oportunidad_id='+o.id+'">Cotizar</a></div></div>';
+  }).join("") : emptyBox("Sin oportunidades"))+'</div></div></div></div>';
+  html += '<div class="tab-pane-crm" data-pane="skus" hidden>';
+  html += '<div class="card card-soft p-3"><h2 class="h6">Últimos SKU y precios</h2>';
+  if (!skus.length) {
+    html += emptyBox("Aún no hay SKU cotizados (se omiten rechazadas y vencidas).");
+  } else {
+    html += '<div class="table-responsive"><table class="table align-middle"><thead><tr><th>SKU</th><th>Descripción</th><th class="text-end">Último precio</th><th>Fecha</th><th>Folio</th><th>Veces</th></tr></thead><tbody>';
+    html += skus.map(function (s) {
+      return '<tr><td>'+crmEsc(s.codigo)+'</td><td>'+crmEsc(s.descripcion)+'<div class="small text-secondary">'+crmEsc(s.badge||"")+'</div></td><td class="text-end">'+crmClp(s.precio_unitario)+'</td><td>'+crmEsc(s.fecha_emision||"")+'</td><td><a href="cotizacion.php?id='+s.cotizacion_id+'">'+crmEsc(s.folio)+'</a></td><td>'+crmEsc(s.veces)+'</td></tr>';
+    }).join("");
+    html += '</tbody></table></div>';
+  }
+  html += '</div></div>';
+  html += '<div class="tab-pane-crm" data-pane="cots" hidden><div class="card card-soft p-3"><h2 class="h6">Cotizaciones</h2>'+((d.cotizaciones||[]).length ? (d.cotizaciones||[]).map(function (c) {
+    return '<div class="border-bottom py-2"><a href="cotizacion.php?id='+c.id+'">'+crmEsc(c.folio)+'</a> · '+crmEsc(c.estado)+'<div class="small">'+crmClp(c.total)+'</div></div>';
+  }).join("") : emptyBox("Sin cotizaciones"))+'</div></div>';
+  html += '<div class="tab-pane-crm" data-pane="act" hidden><div class="card card-soft p-3"><h2 class="h6">Actividad</h2>'+((d.actividades||[]).length ? (d.actividades||[]).map(function (a) {
+    return '<div class="border-bottom py-2"><strong>'+crmEsc(a.titulo)+'</strong> <span class="badge text-bg-light">'+crmEsc(a.canal)+'</span><div class="small text-secondary">'+crmEsc(a.tipo)+' · '+crmEsc(a.estado)+'</div></div>';
+  }).join("") : emptyBox("Sin actividad"))+'</div></div>';
   document.getElementById("ficha").innerHTML = html;
 }
+document.getElementById("ficha").addEventListener("click", function (ev) {
+  var btn = ev.target.closest("[data-tab]");
+  if (!btn) return;
+  var tab = btn.getAttribute("data-tab");
+  document.querySelectorAll("#fichaTabs .nav-link").forEach(function (el) {
+    el.classList.toggle("active", el.getAttribute("data-tab") === tab);
+  });
+  document.querySelectorAll("#ficha .tab-pane-crm").forEach(function (el) {
+    el.hidden = el.getAttribute("data-pane") !== tab;
+  });
+});
 function loadFicha() {
   return crmApi("api/empresas.php?id="+id).then(function (d) {
     fichaData = d;

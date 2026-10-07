@@ -471,6 +471,7 @@ foreach (array('prospecto', 'negociacion', 'ganada', 'perdida') as $etReporte) {
         'etapa' => $etReporte,
         'valor_estimado' => 250000,
         'origen_canal' => 'web',
+        'motivo_perdida' => $etReporte === 'perdida' ? 'Precio / presupuesto' : '',
     ), $login);
     assert_true((string) $oppRep['oportunidad']['etapa'] === $etReporte, 'Oportunidad etapa ' . $etReporte);
 }
@@ -1543,6 +1544,68 @@ $jsP1 = (string) file_get_contents($root . '/assets/js/app.js');
 assert_true(strpos($jsP1, 'crmInitCostoToggle') !== false && strpos($jsP1, 'crmBusyButton') !== false, 'JS comparte toggle de costo y busy button');
 $cssP1 = (string) file_get_contents($root . '/assets/css/app.css');
 assert_true(strpos($cssP1, 'crm-hide-cost') !== false && strpos($cssP1, '.crm-save-bar') !== false, 'CSS de costo oculto y barra fija');
+
+$histEmp = \Crm\Precios::historialEmpresa((int) $empId);
+assert_true(is_array($histEmp) && count($histEmp) >= 1, 'Historial SKU de empresa reusa Precios');
+$skuHit = false;
+foreach ($histEmp as $skuRow) {
+    if ((int) $skuRow['producto_id'] === (int) $prod['id']) {
+        $skuHit = true;
+        assert_true(isset($skuRow['badge'], $skuRow['folio'], $skuRow['precio_unitario']), 'SKU expone badge folio y precio');
+    }
+}
+assert_true($skuHit, 'Historial incluye el SKU cotizado');
+$fichaP2 = \Crm\Empresas::show((int) $empId);
+assert_true(isset($fichaP2['skus']) && is_array($fichaP2['skus']) && count($fichaP2['skus']) >= 1, 'Ficha empresa expone skus');
+
+assert_true(\Crm\Catalog::etiquetaEtapa('calificacion') === 'Calificación', 'Etiqueta humana Calificación');
+assert_true(\Crm\Catalog::etiquetaEtapa('negociacion') === 'Negociación', 'Etiqueta humana Negociación');
+$catAll = \Crm\Catalog::all();
+assert_true(isset($catAll['etapa_etiquetas']['propuesta']) && $catAll['etapa_etiquetas']['propuesta'] === 'Propuesta', 'Catálogo expone etapa_etiquetas');
+
+try {
+    \Crm\Oportunidades::store(array(
+        'empresa_id' => $empId,
+        'titulo' => 'Sin motivo',
+        'etapa' => 'perdida',
+        'valor_estimado' => 1000,
+        'origen_canal' => 'web',
+    ), $login);
+    assert_true(false, 'Pérdida sin motivo debe fallar');
+} catch (\Crm\ApiException $e) {
+    assert_true(strpos($e->getMessage(), 'motivo') !== false, 'Pérdida exige motivo');
+}
+$oppPerdida = \Crm\Oportunidades::store(array(
+    'empresa_id' => $empId,
+    'titulo' => 'Perdida con motivo',
+    'etapa' => 'perdida',
+    'valor_estimado' => 1000,
+    'origen_canal' => 'web',
+    'motivo_perdida' => 'Eligió competencia',
+), $login);
+assert_true((string) $oppPerdida['oportunidad']['motivo_perdida'] === 'Eligió competencia', 'Motivo de pérdida persistido');
+$showOpp = \Crm\Oportunidades::show((int) $opp['oportunidad']['id']);
+assert_true(array_key_exists('proxima_actividad', $showOpp['oportunidad']), 'show() expone proxima_actividad');
+assert_true($showOpp['oportunidad']['etapa_etiqueta'] !== '', 'show() expone etapa_etiqueta');
+
+$_GET = array('mias' => '1');
+$miasAdmin = \Crm\Oportunidades::index($login);
+assert_true(isset($miasAdmin['oportunidades']), 'index acepta mias=1');
+foreach ($miasAdmin['oportunidades'] as $rowM) {
+    assert_true((int) $rowM['ejecutivo_id'] === (int) $login['id'], 'mias=1 filtra por ejecutivo');
+}
+$_GET = array();
+$todas = \Crm\Oportunidades::index($login);
+assert_true(count($todas['oportunidades']) >= count($miasAdmin['oportunidades']), 'Sin mias lista todas');
+
+$uiOppP2 = (string) file_get_contents($root . '/oportunidades.php');
+assert_true(strpos($uiOppP2, 'fMias') !== false, 'UI Mis oportunidades');
+assert_true(strpos($uiOppP2, 'drawerOpp') !== false, 'UI drawer de oportunidad');
+assert_true(strpos($uiOppP2, 'modalPerdida') !== false, 'UI pide motivo de pérdida');
+assert_true(strpos($uiOppP2, 'etapa_etiquetas') !== false, 'UI usa etiquetas humanas de etapa');
+$uiFichaP2 = (string) file_get_contents($root . '/empresa.php');
+assert_true(strpos($uiFichaP2, 'data-tab="skus"') !== false && strpos($uiFichaP2, 'Equipos / SKU') !== false, 'Ficha tiene pestaña Equipos/SKU');
+assert_true(strpos($uiFichaP2, 'ficha-tabs') !== false, 'Ficha usa pestañas Resumen/SKU/Cotizaciones/Actividad');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

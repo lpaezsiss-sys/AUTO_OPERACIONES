@@ -9,11 +9,13 @@ use PDO;
 final class Oportunidades
 {
     /**
+     * @param array|null $user
      * @return array
      */
-    public static function index()
+    public static function index($user = null)
     {
         $etapa = crm_str(isset($_GET['etapa']) ? $_GET['etapa'] : '', 40);
+        $mias = crm_str(isset($_GET['mias']) ? $_GET['mias'] : '', 4);
         $sql = 'SELECT o.*, e.razon_social, e.rut, u.nombre AS ejecutivo_nombre
                 FROM crm_oportunidades o
                 INNER JOIN crm_empresas e ON e.id = o.empresa_id
@@ -24,13 +26,24 @@ final class Oportunidades
             $sql .= ' AND o.etapa = ?';
             $params[] = $etapa;
         }
+        if ($mias === '1' && is_array($user) && isset($user['id'])) {
+            $sql .= ' AND o.ejecutivo_id = ?';
+            $params[] = (int) $user['id'];
+        }
         $sql .= ' ORDER BY o.updated_at DESC';
         $stmt = crm_pdo()->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!is_array($rows)) {
+            $rows = array();
+        }
+        foreach ($rows as &$row) {
+            $row['etapa_etiqueta'] = Catalog::etiquetaEtapa(isset($row['etapa']) ? (string) $row['etapa'] : '');
+        }
+        unset($row);
         $pipeline = array();
         foreach (Catalog::etapas() as $et) {
-            $pipeline[$et] = array('etapa' => $et, 'cantidad' => 0, 'valor' => 0.0);
+            $pipeline[$et] = array('etapa' => $et, 'etiqueta' => Catalog::etiquetaEtapa($et), 'cantidad' => 0, 'valor' => 0.0);
         }
         foreach ($rows as $row) {
             $et = (string) $row['etapa'];
@@ -64,6 +77,17 @@ final class Oportunidades
         if (!$row) {
             Http::fail('Oportunidad no encontrada', 404);
         }
+        $row['etapa_etiqueta'] = Catalog::etiquetaEtapa(isset($row['etapa']) ? (string) $row['etapa'] : '');
+        $act = crm_pdo()->prepare(
+            "SELECT id, titulo, tipo, canal, fecha_programada, estado
+             FROM crm_actividades
+             WHERE oportunidad_id = ? AND estado = 'pendiente'
+             ORDER BY COALESCE(fecha_programada, created_at) ASC
+             LIMIT 1"
+        );
+        $act->execute(array((int) $id));
+        $prox = $act->fetch(PDO::FETCH_ASSOC);
+        $row['proxima_actividad'] = $prox ? $prox : null;
         return array('oportunidad' => $row);
     }
 
@@ -78,9 +102,10 @@ final class Oportunidades
         $pdo = crm_pdo();
         Codes::requireEmpresa($pdo, $data['empresa_id']);
         $codigo = Codes::next('crm_oportunidades', 'codigo', 'OPP');
+        $now = crm_now();
         $stmt = $pdo->prepare(
-            'INSERT INTO crm_oportunidades (codigo, empresa_id, contacto_id, titulo, etapa, valor_estimado, probabilidad, fecha_cierre_esperada, ejecutivo_id, origen_canal, motivo_perdida, notas, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO crm_oportunidades (codigo, empresa_id, contacto_id, titulo, etapa, valor_estimado, probabilidad, fecha_cierre_esperada, ejecutivo_id, origen_canal, motivo_perdida, notas, updated_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute(array(
             $codigo,
@@ -95,7 +120,8 @@ final class Oportunidades
             $data['origen_canal'],
             $data['motivo_perdida'],
             $data['notas'],
-            crm_now(),
+            $now,
+            $now,
         ));
         return self::show((int) $pdo->lastInsertId());
     }
@@ -159,6 +185,10 @@ final class Oportunidades
         $contacto = crm_int(isset($body['contacto_id']) ? $body['contacto_id'] : 0, 0);
         $ejecutivo = crm_int(isset($body['ejecutivo_id']) ? $body['ejecutivo_id'] : $user['id'], (int) $user['id']);
         $fecha = crm_str(isset($body['fecha_cierre_esperada']) ? $body['fecha_cierre_esperada'] : '', 10);
+        $motivo = crm_str(isset($body['motivo_perdida']) ? $body['motivo_perdida'] : '', 250);
+        if ($etapa === 'perdida' && $motivo === '') {
+            Http::fail('El motivo de pérdida es obligatorio');
+        }
         return array(
             'empresa_id' => $empresaId,
             'contacto_id' => $contacto > 0 ? $contacto : null,
@@ -169,7 +199,7 @@ final class Oportunidades
             'fecha_cierre_esperada' => $fecha !== '' ? $fecha : null,
             'ejecutivo_id' => $ejecutivo,
             'origen_canal' => $canal,
-            'motivo_perdida' => crm_str(isset($body['motivo_perdida']) ? $body['motivo_perdida'] : '', 250) ?: null,
+            'motivo_perdida' => $motivo !== '' ? $motivo : null,
             'notas' => crm_str(isset($body['notas']) ? $body['notas'] : '', 4000) ?: null,
         );
     }

@@ -77,6 +77,7 @@ final class Empresas
             'oportunidades' => $o->fetchAll(PDO::FETCH_ASSOC),
             'cotizaciones' => $q->fetchAll(PDO::FETCH_ASSOC),
             'actividades' => $a->fetchAll(PDO::FETCH_ASSOC),
+            'skus' => Precios::historialEmpresa((int) $id),
         );
     }
 

@@ -219,6 +219,20 @@ body {
   border-left: 3px solid var(--yellow);
 }
 
+.ficha-tabs .nav-link {
+  color: var(--navy);
+  font-weight: 600;
+}
+.ficha-tabs .nav-link.active {
+  color: var(--navy);
+  border-bottom-color: var(--yellow);
+}
+
+.crm-drawer-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .login-wrap {
   min-height: 100vh;
   display: grid;
