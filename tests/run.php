@@ -858,6 +858,8 @@ assert_true((string) $itPedImg['imagen_url'] === $up, 'A pedido guarda ruta de i
 $htmlDet = \Crm\CotizacionPdf::html($cotPedidoImg['cotizacion']);
 assert_true(strpos($htmlDet, 'Pintura epoxy RAL 5010') !== false, 'PDF imprime descripción detallada');
 assert_true(strpos($htmlDet, 'item-thumb') !== false, 'PDF incluye miniatura del ítem');
+assert_true(strpos($htmlDet, 'width: 56px') !== false && strpos($htmlDet, 'height: 56px') !== false, 'Miniatura PDF al doble (56px)');
+assert_true(strpos($htmlDet, 'width="64"') !== false, 'Celda de miniatura PDF al doble');
 assert_true(strpos($htmlDet, 'Total línea') !== false, 'PDF mantiene columna de total de línea');
 
 $trav = \Crm\Cotizaciones::store(array(
