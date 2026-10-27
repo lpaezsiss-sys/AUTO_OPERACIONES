@@ -115,7 +115,7 @@ table { border-collapse: collapse; }
 .box-doc .tipo { font-size: 7pt; letter-spacing: 1px; }
 .box-doc .num { font-size: 11pt; font-weight: bold; }
 .logo { max-width: 92px; max-height: 28px; }
-.item-thumb { width: 28px; height: 28px; }
+.item-thumb { width: 56px; height: 56px; }
 .item-detail { font-size: 6.5pt; color: #666666; margin-top: 1px; line-height: 1.2; font-weight: normal; }
 h1, h2, h3 { margin: 0; padding: 0; }
 .rule { height: 2px; background: #0b3c5d; font-size: 1px; line-height: 1px; padding: 0; }
@@ -235,7 +235,7 @@ h1, h2, h3 { margin: 0; padding: 0; }
                 <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                         <?php if ($imgSrc !== '') { ?>
-                        <td width="32" valign="top" style="padding:0 6px 0 0;">
+                        <td width="64" valign="top" style="padding:0 8px 0 0;">
                             <img class="item-thumb" src="<?php echo $h($imgSrc); ?>" alt="">
                         </td>
                         <?php } ?>
