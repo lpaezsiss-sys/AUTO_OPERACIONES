@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/Button";
@@ -291,6 +292,13 @@ export default function DocumentosPage() {
       <PageHeader
         title="Documentos"
         description="Ingresa facturas de compra (entrada) o guías de despacho/venta (salida). Más abajo puedes editar o eliminar si hubo error de digitación."
+        action={
+          <Link href="/documentos/importar-pdf">
+            <Button type="button" variant="secondary">
+              Prototipo: Importar PDF
+            </Button>
+          </Link>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
